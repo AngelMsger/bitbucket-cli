@@ -82,6 +82,7 @@ func newRootCmd() *cobra.Command {
 	root.AddCommand(
 		newRepoCmd(state),
 		newPRCmd(state),
+		newFileCmd(state),
 		newCommentCmd(state),
 		newBranchCmd(state),
 		newCommitCmd(state),

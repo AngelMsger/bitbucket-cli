@@ -19,6 +19,8 @@ func newPRCmd(s *appState) *cobra.Command {
 	cmd.AddCommand(
 		newPRListCmd(s), newPRGetCmd(s), newPRCreateCmd(s), newPRUpdateCmd(s),
 		newPRDiffCmd(s), newPRCommitsCmd(s), newPRActivityCmd(s),
+		newPRFilesCmd(s), newPRThreadsCmd(s), newPRStatusCmd(s),
+		newPRFetchCmd(s), newPRCheckoutCmd(s),
 		newPRApproveCmd(s), newPRUnapproveCmd(s), newPRRequestChangesCmd(s),
 		newPRDeclineCmd(s), newPRMergeCmd(s),
 	)
@@ -238,9 +240,10 @@ func newPRUpdateCmd(s *appState) *cobra.Command {
 }
 
 func newPRDiffCmd(s *appState) *cobra.Command {
-	return &cobra.Command{
+	var path string
+	cmd := &cobra.Command{
 		Use:   "diff <workspace>/<repo>/<id>",
-		Short: "Print the unified diff of a PR",
+		Short: "Print the unified diff of a PR (use --path to scope to one file)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ref, id, err := resolvePRRef(args[0], apiclient.RepoRef{})
@@ -253,7 +256,12 @@ func newPRDiffCmd(s *appState) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			diff, err := client.GetPRDiff(ctx, ref, id)
+			var diff string
+			if path != "" {
+				diff, err = client.GetPRDiffByPath(ctx, ref, id, path)
+			} else {
+				diff, err = client.GetPRDiff(ctx, ref, id)
+			}
 			if err != nil {
 				return err
 			}
@@ -261,6 +269,8 @@ func newPRDiffCmd(s *appState) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&path, "path", "", "restrict the diff to a single file path")
+	return cmd
 }
 
 func newPRCommitsCmd(s *appState) *cobra.Command {

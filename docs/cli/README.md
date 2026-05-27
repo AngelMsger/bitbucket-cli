@@ -60,6 +60,15 @@ is published at <https://angelmsger.github.io/bitbucket-cli/cli/>.
 | --- | --- |
 | [`bitbucket-cli doctor`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-doctor) | Diagnose configuration, credentials and connectivity |
 
+## file
+
+| Command | Description |
+| --- | --- |
+| [`bitbucket-cli file`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-file) | Browse and read repository source files at any ref |
+| [`bitbucket-cli file get`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-file-get) | Read a file's raw contents at a ref |
+| [`bitbucket-cli file list`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-file-list) | List entries under a repository path at a ref |
+| [`bitbucket-cli file tree`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-file-tree) | Recursively list files under a path at a ref |
+
 ## pr
 
 | Command | Description |
@@ -67,14 +76,19 @@ is published at <https://angelmsger.github.io/bitbucket-cli/cli/>.
 | [`bitbucket-cli pr`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr) | Drive Bitbucket pull requests (list, review, merge) |
 | [`bitbucket-cli pr activity`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-activity) | List the activity timeline of a PR |
 | [`bitbucket-cli pr approve`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-approve) | Approve a PR |
+| [`bitbucket-cli pr checkout`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-checkout) | Print (or run, with --exec) git fetch + checkout for a PR |
 | [`bitbucket-cli pr commits`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-commits) | List commits included in a PR |
 | [`bitbucket-cli pr create`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-create) | Open a new pull request |
 | [`bitbucket-cli pr decline`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-decline) | Decline (close without merging) a PR |
-| [`bitbucket-cli pr diff`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-diff) | Print the unified diff of a PR |
+| [`bitbucket-cli pr diff`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-diff) | Print the unified diff of a PR (use --path to scope to one file) |
+| [`bitbucket-cli pr fetch`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-fetch) | Print (or run, with --exec) git fetch for a PR's source ref |
+| [`bitbucket-cli pr files`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-files) | List changed files in a PR (diffstat: path / status / added / removed) |
 | [`bitbucket-cli pr get`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-get) | Show a pull request |
 | [`bitbucket-cli pr list`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-list) | List pull requests in a repository |
 | [`bitbucket-cli pr merge`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-merge) | Merge a PR |
 | [`bitbucket-cli pr request-changes`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-request-changes) | Cast (or withdraw) a request-changes vote (Cloud only) |
+| [`bitbucket-cli pr status`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-status) | Show merge readiness: mergeable, conflicts, reviewers, CI builds |
+| [`bitbucket-cli pr threads`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-threads) | List PR review threads grouped by file and anchor |
 | [`bitbucket-cli pr unapprove`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-unapprove) | Withdraw an approval |
 | [`bitbucket-cli pr update`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-update) | Edit a PR's title, description, or reviewers |
 

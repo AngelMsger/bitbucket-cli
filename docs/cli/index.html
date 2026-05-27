@@ -67,18 +67,30 @@
       <a href="#bitbucket-cli-doctor">bitbucket-cli doctor</a>
       </div>
     <div class="side-group">
+      <div class="side-title">file</div>
+      <a href="#bitbucket-cli-file">bitbucket-cli file</a>
+      <a href="#bitbucket-cli-file-get">bitbucket-cli file get</a>
+      <a href="#bitbucket-cli-file-list">bitbucket-cli file list</a>
+      <a href="#bitbucket-cli-file-tree">bitbucket-cli file tree</a>
+      </div>
+    <div class="side-group">
       <div class="side-title">pr</div>
       <a href="#bitbucket-cli-pr">bitbucket-cli pr</a>
       <a href="#bitbucket-cli-pr-activity">bitbucket-cli pr activity</a>
       <a href="#bitbucket-cli-pr-approve">bitbucket-cli pr approve</a>
+      <a href="#bitbucket-cli-pr-checkout">bitbucket-cli pr checkout</a>
       <a href="#bitbucket-cli-pr-commits">bitbucket-cli pr commits</a>
       <a href="#bitbucket-cli-pr-create">bitbucket-cli pr create</a>
       <a href="#bitbucket-cli-pr-decline">bitbucket-cli pr decline</a>
       <a href="#bitbucket-cli-pr-diff">bitbucket-cli pr diff</a>
+      <a href="#bitbucket-cli-pr-fetch">bitbucket-cli pr fetch</a>
+      <a href="#bitbucket-cli-pr-files">bitbucket-cli pr files</a>
       <a href="#bitbucket-cli-pr-get">bitbucket-cli pr get</a>
       <a href="#bitbucket-cli-pr-list">bitbucket-cli pr list</a>
       <a href="#bitbucket-cli-pr-merge">bitbucket-cli pr merge</a>
       <a href="#bitbucket-cli-pr-request-changes">bitbucket-cli pr request-changes</a>
+      <a href="#bitbucket-cli-pr-status">bitbucket-cli pr status</a>
+      <a href="#bitbucket-cli-pr-threads">bitbucket-cli pr threads</a>
       <a href="#bitbucket-cli-pr-unapprove">bitbucket-cli pr unapprove</a>
       <a href="#bitbucket-cli-pr-update">bitbucket-cli pr update</a>
       </div>
@@ -484,6 +496,69 @@ a single command with the global --use-context flag instead.</p>
   bitbucket-cli doctor --no-update-check</pre>
     </section>
     
+    <section class="cmd" id="bitbucket-cli-file">
+      <h2>bitbucket-cli file<span class="group-tag">command group</span></h2>
+      <p class="short">Browse and read repository source files at any ref</p>
+      <pre>bitbucket-cli file</pre>
+      
+      
+      
+    </section>
+    
+    <section class="cmd" id="bitbucket-cli-file-get">
+      <h2>bitbucket-cli file get</h2>
+      <p class="short">Read a file&#39;s raw contents at a ref</p>
+      <pre>bitbucket-cli file get &lt;workspace&gt;/&lt;repo&gt; [flags]</pre>
+      
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--output</code></td><td></td><td>write raw bytes to this file; `-` for stdout</td></tr>
+        <tr><td><code>--path</code></td><td></td><td>file path within the repo (required)</td></tr>
+        <tr><td><code>--range</code></td><td></td><td>1-based inclusive line range, e.g. 10:40 (client-side slicing)</td></tr>
+        <tr><td><code>--ref</code></td><td></td><td>branch / tag / commit (default: repository default branch)</td></tr>
+        </tbody>
+      </table>
+      
+    </section>
+    
+    <section class="cmd" id="bitbucket-cli-file-list">
+      <h2>bitbucket-cli file list</h2>
+      <p class="short">List entries under a repository path at a ref</p>
+      <pre>bitbucket-cli file list &lt;workspace&gt;/&lt;repo&gt; [flags]</pre>
+      
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--all</code></td><td><code>false</code></td><td>fetch every page of results</td></tr>
+        <tr><td><code>--cursor</code></td><td></td><td>start from this pagination cursor (the &#39;next&#39; of a prior page)</td></tr>
+        <tr><td><code>--limit</code></td><td><code>0</code></td><td>page size (default from config)</td></tr>
+        <tr><td><code>--path</code></td><td></td><td>path within the repo to list (empty = root)</td></tr>
+        <tr><td><code>--ref</code></td><td></td><td>branch / tag / commit (default: repository default branch)</td></tr>
+        </tbody>
+      </table>
+      
+    </section>
+    
+    <section class="cmd" id="bitbucket-cli-file-tree">
+      <h2>bitbucket-cli file tree</h2>
+      <p class="short">Recursively list files under a path at a ref</p>
+      <pre>bitbucket-cli file tree &lt;workspace&gt;/&lt;repo&gt; [flags]</pre>
+      
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--depth</code></td><td><code>0</code></td><td>maximum depth from --path (0 = unlimited)</td></tr>
+        <tr><td><code>--path</code></td><td></td><td>subtree root (empty = repo root)</td></tr>
+        <tr><td><code>--ref</code></td><td></td><td>branch / tag / commit (default: repository default branch)</td></tr>
+        </tbody>
+      </table>
+      
+    </section>
+    
     <section class="cmd" id="bitbucket-cli-pr">
       <h2>bitbucket-cli pr<span class="group-tag">command group</span></h2>
       <p class="short">Drive Bitbucket pull requests (list, review, merge)</p>
@@ -516,6 +591,23 @@ a single command with the global --use-context flag instead.</p>
       <pre>bitbucket-cli pr approve &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt;</pre>
       
       
+      
+    </section>
+    
+    <section class="cmd" id="bitbucket-cli-pr-checkout">
+      <h2>bitbucket-cli pr checkout</h2>
+      <p class="short">Print (or run, with --exec) git fetch &#43; checkout for a PR</p>
+      <pre>bitbucket-cli pr checkout &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt; [flags]</pre>
+      
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--branch</code></td><td><code>pr/%d</code></td><td>local branch name format; %d is replaced with the PR id</td></tr>
+        <tr><td><code>--exec</code></td><td><code>false</code></td><td>actually run the git commands in the current working directory</td></tr>
+        <tr><td><code>--remote</code></td><td><code>origin</code></td><td>git remote name to fetch from</td></tr>
+        </tbody>
+      </table>
       
     </section>
     
@@ -578,8 +670,39 @@ a single command with the global --use-context flag instead.</p>
     
     <section class="cmd" id="bitbucket-cli-pr-diff">
       <h2>bitbucket-cli pr diff</h2>
-      <p class="short">Print the unified diff of a PR</p>
-      <pre>bitbucket-cli pr diff &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt;</pre>
+      <p class="short">Print the unified diff of a PR (use --path to scope to one file)</p>
+      <pre>bitbucket-cli pr diff &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt; [flags]</pre>
+      
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--path</code></td><td></td><td>restrict the diff to a single file path</td></tr>
+        </tbody>
+      </table>
+      
+    </section>
+    
+    <section class="cmd" id="bitbucket-cli-pr-fetch">
+      <h2>bitbucket-cli pr fetch</h2>
+      <p class="short">Print (or run, with --exec) git fetch for a PR&#39;s source ref</p>
+      <pre>bitbucket-cli pr fetch &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt; [flags]</pre>
+      
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--exec</code></td><td><code>false</code></td><td>actually run `git fetch` in the current working directory</td></tr>
+        <tr><td><code>--remote</code></td><td><code>origin</code></td><td>git remote name to fetch from</td></tr>
+        </tbody>
+      </table>
+      
+    </section>
+    
+    <section class="cmd" id="bitbucket-cli-pr-files">
+      <h2>bitbucket-cli pr files</h2>
+      <p class="short">List changed files in a PR (diffstat: path / status / added / removed)</p>
+      <pre>bitbucket-cli pr files &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt;</pre>
       
       
       
@@ -655,6 +778,24 @@ a single command with the global --use-context flag instead.</p>
         <tr><td><code>--withdraw</code></td><td><code>false</code></td><td>withdraw a previous request-changes vote</td></tr>
         </tbody>
       </table>
+      
+    </section>
+    
+    <section class="cmd" id="bitbucket-cli-pr-status">
+      <h2>bitbucket-cli pr status</h2>
+      <p class="short">Show merge readiness: mergeable, conflicts, reviewers, CI builds</p>
+      <pre>bitbucket-cli pr status &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt;</pre>
+      
+      
+      
+    </section>
+    
+    <section class="cmd" id="bitbucket-cli-pr-threads">
+      <h2>bitbucket-cli pr threads</h2>
+      <p class="short">List PR review threads grouped by file and anchor</p>
+      <pre>bitbucket-cli pr threads &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt;</pre>
+      
+      
       
     </section>
     

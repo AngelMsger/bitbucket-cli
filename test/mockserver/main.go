@@ -128,6 +128,82 @@ func routes() http.Handler {
 		writeJSON(w, commit(r.PathValue("hash"), "feat: add login flow"))
 	})
 
+	// v0.2: source browsing + PR file-level + merge check + build status.
+	filesRoot := "/rest/api/1.0/projects/{key}/repos/{slug}/files"
+	mux.HandleFunc("GET "+filesRoot, func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, map[string]any{
+			"values":     []string{"README.md", "src/server.go", "src/cli.go"},
+			"size":       3,
+			"limit":      1000,
+			"start":      0,
+			"isLastPage": true,
+		})
+	})
+	mux.HandleFunc("GET "+filesRoot+"/{path...}", func(w http.ResponseWriter, r *http.Request) {
+		p := r.PathValue("path")
+		writeJSON(w, map[string]any{
+			"values":     []string{p + "/hello.go", p + "/world.go"},
+			"size":       2,
+			"limit":      1000,
+			"start":      0,
+			"isLastPage": true,
+		})
+	})
+	rawRoot := "/rest/api/1.0/projects/{key}/repos/{slug}/raw"
+	mux.HandleFunc("GET "+rawRoot+"/{path...}", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		_, _ = w.Write([]byte("line 1\nline 2\nline 3\nline 4\nline 5\n"))
+		_ = r
+	})
+
+	mux.HandleFunc("GET "+prKey+"/{id}/changes", func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, map[string]any{
+			"values": []any{
+				map[string]any{
+					"path":     map[string]string{"toString": "src/server.go"},
+					"type":     "MODIFY",
+					"nodeType": "FILE",
+				},
+				map[string]any{
+					"path":     map[string]string{"toString": "README.md"},
+					"type":     "ADD",
+					"nodeType": "FILE",
+				},
+			},
+			"size": 2, "limit": 100, "start": 0, "isLastPage": true,
+		})
+	})
+	mux.HandleFunc("GET "+prKey+"/{id}/diff/{path...}", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		_, _ = w.Write([]byte("--- a/" + r.PathValue("path") + "\n+++ b/" + r.PathValue("path") + "\n@@ -1 +1 @@\n-old\n+new\n"))
+	})
+	mux.HandleFunc("GET "+prKey+"/{id}/merge", func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, map[string]any{
+			"canMerge":   false,
+			"conflicted": true,
+			"outcome":    "CONFLICTED",
+			"vetoes": []any{
+				map[string]string{"summaryMessage": "Conflicts in src/server.go", "detailedMessage": "Resolve before merging."},
+			},
+		})
+	})
+	mux.HandleFunc("GET /rest/build-status/1.0/commits/{hash}", func(w http.ResponseWriter, r *http.Request) {
+		hash := r.PathValue("hash")
+		writeJSON(w, map[string]any{
+			"values": []any{
+				map[string]any{
+					"key":         "ci/build",
+					"name":        "build",
+					"state":       "SUCCESSFUL",
+					"url":         "https://ci.example.com/builds/1",
+					"description": "Built " + hash,
+					"dateAdded":   1,
+				},
+			},
+			"size": 1, "isLastPage": true,
+		})
+	})
+
 	mux.HandleFunc("GET /releases/latest", func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, map[string]any{"tag_name": "v99.0.0", "html_url": "https://example/releases"})
 	})

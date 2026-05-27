@@ -348,3 +348,96 @@ type WriteRequestPlan struct {
 	URL     string `json:"url"`
 	Payload any    `json:"payload,omitempty"`
 }
+
+// --- v0.2 file browsing + PR review aggregation models ---
+
+// FileEntry is one entry from a repository file listing.
+type FileEntry struct {
+	Path   string `json:"path"`
+	Name   string `json:"name,omitempty"`
+	Type   string `json:"type"` // "file" | "dir" | "link" | "submodule"
+	Size   int64  `json:"size,omitempty"`
+	Hash   string `json:"hash,omitempty"`   // git blob hash if exposed
+	Commit string `json:"commit,omitempty"` // commit that last touched this entry (Cloud only)
+}
+
+// FileContent is the raw byte content of a file at a given ref.
+type FileContent struct {
+	Path      string `json:"path"`
+	Ref       string `json:"ref,omitempty"`
+	Bytes     []byte `json:"-"` // raw bytes; not JSON-marshalled (callers stream directly)
+	Size      int64  `json:"size"`
+	Encoding  string `json:"encoding,omitempty"` // "utf-8" | "binary"
+	Truncated bool   `json:"truncated,omitempty"`
+}
+
+// Diffstat is one row of a PR's per-file change summary.
+type Diffstat struct {
+	Path         string `json:"path"`
+	OldPath      string `json:"old_path,omitempty"`
+	Status       string `json:"status"` // "added" | "modified" | "removed" | "renamed" | "copied"
+	LinesAdded   int    `json:"added"`
+	LinesRemoved int    `json:"removed"`
+	Binary       bool   `json:"binary,omitempty"`
+}
+
+// Thread is an inline review thread, grouped by file (and anchor).
+// File is "" for general (non-inline) discussions.
+type Thread struct {
+	File     string        `json:"file,omitempty"`
+	Anchor   *InlineAnchor `json:"anchor,omitempty"`
+	Comments []Comment     `json:"comments"`
+}
+
+// MergeCheck is the server-side pre-merge verdict for a PR.
+type MergeCheck struct {
+	CanMerge   bool     `json:"can_merge"`
+	Conflicted bool     `json:"conflicted"`
+	Outcome    string   `json:"outcome,omitempty"`
+	Vetoes     []string `json:"vetoes,omitempty"`
+}
+
+// BuildStatus is one CI / build report attached to a commit.
+type BuildStatus struct {
+	Key         string `json:"key"`
+	Name        string `json:"name,omitempty"`
+	State       string `json:"state"` // SUCCESSFUL | INPROGRESS | FAILED | STOPPED
+	URL         string `json:"url,omitempty"`
+	Description string `json:"description,omitempty"`
+	CommitHash  string `json:"commit_hash,omitempty"`
+	CreatedAt   string `json:"created_at,omitempty"`
+	UpdatedAt   string `json:"updated_at,omitempty"`
+}
+
+// PRStatus is the aggregated "is this PR ready to merge?" view returned by
+// the `pr status` command. Each field is independently fetched and may be nil
+// if the server omits / errors on that piece.
+type PRStatus struct {
+	PR         *PullRequest  `json:"pr"`
+	MergeCheck *MergeCheck   `json:"merge_check,omitempty"`
+	Reviewers  []Participant `json:"reviewers,omitempty"`
+	Builds     []BuildStatus `json:"builds,omitempty"`
+}
+
+// FileListOpts narrows a directory listing.
+type FileListOpts struct {
+	ListOpts
+	Repo RepoRef
+	Ref  string // branch / tag / commit hash; empty = repo default branch
+	Path string // "" = repo root
+}
+
+// FileGetOpts controls a single file fetch.
+type FileGetOpts struct {
+	Repo RepoRef
+	Ref  string
+	Path string
+}
+
+// TreeOpts controls a recursive tree walk.
+type TreeOpts struct {
+	Repo  RepoRef
+	Ref   string
+	Path  string
+	Depth int // 0 = unlimited
+}

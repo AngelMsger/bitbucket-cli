@@ -36,6 +36,9 @@ The process exit code matches the category:
   `BITBUCKET_TOKEN`).
 - **`not_found`** → confirm with `bitbucket-cli repo get <ref>` / `pr get <ref>`.
 - **`usage` on `pr decline`/`pr merge`/`pr delete`/`comment delete`** → add `--yes`.
+- **`usage` `NOT_A_GIT_WORKTREE` on `pr fetch --exec` / `pr checkout --exec`** →
+  the current directory is not inside a git checkout. `cd` into a local clone
+  of the repo first, or drop `--exec` to keep the print-only behaviour.
 - **`rate_limit`** → wait the retry-after window then re-run.
 
 ## Diagnostic mode

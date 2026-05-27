@@ -106,6 +106,18 @@ assert_contains  "commit list"               "aaaa111"        "${CLI[@]}" commit
 assert_contains  "commit get"                "aaaa111"        "${CLI[@]}" commit get --repo PROJ/demo aaaa111
 assert_contains  "pr create dry-run"         '"method": "POST"' \
                                              "${CLI[@]}" pr create --repo PROJ/demo --source feature/x --target main --title "X" --dry-run
+# v0.2 — file browsing + PR review aggregation
+assert_contains  "file list"                 "README.md"      "${CLI[@]}" file list PROJ/demo --ref main
+assert_contains  "file get full"             "line 1"         "${CLI[@]}" file get PROJ/demo --ref main --path README.md
+assert_contains  "file get --range"          "line 2"         "${CLI[@]}" file get PROJ/demo --ref main --path README.md --range 2:3
+assert_contains  "file tree"                 "src/server.go"  "${CLI[@]}" file tree PROJ/demo --ref main
+assert_contains  "pr files (diffstat)"       "src/server.go"  "${CLI[@]}" pr files PROJ/demo/1
+assert_contains  "pr diff --path"            "+new"           "${CLI[@]}" pr diff PROJ/demo/1 --path src/server.go
+assert_contains  "pr status mergeable=false" '"can_merge": false' "${CLI[@]}" pr status PROJ/demo/1
+assert_contains  "pr status has builds"      "SUCCESSFUL"     "${CLI[@]}" pr status PROJ/demo/1
+assert_contains  "pr threads"                "Looks good"     "${CLI[@]}" pr threads PROJ/demo/1
+assert_contains  "pr fetch print-only"       "git fetch"      "${CLI[@]}" pr fetch PROJ/demo/1
+assert_contains  "pr checkout print-only"    "git checkout"   "${CLI[@]}" pr checkout PROJ/demo/1
 assert_contains  "fields projection"         '"id"'           "${CLI[@]}" pr get PROJ/demo/1 --fields id,title
 SKILL_DIR="$(mktemp -d)"
 assert_contains  "skill install"             '"installed"' \

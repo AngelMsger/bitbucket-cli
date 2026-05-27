@@ -6,6 +6,9 @@ import (
 	"strings"
 )
 
+// urlPathEscape escapes a single path segment using net/url's rules.
+func urlPathEscape(s string) string { return url.PathEscape(s) }
+
 // dialect.go centralises per-flavor REST differences:
 //   - Cloud serves REST 2.0 under /2.0
 //   - Data Center serves REST 1.0 under /rest/api/1.0
@@ -127,3 +130,89 @@ func cloudNextCursor(raw string) string {
 func cloudFollowURL(cursor string) bool {
 	return strings.HasPrefix(cursor, "http://") || strings.HasPrefix(cursor, "https://")
 }
+
+// --- v0.2 path helpers ---
+
+// srcPath returns the URL for browsing source at a ref + path on Cloud
+// (`/2.0/repositories/{ws}/{slug}/src/{ref}/{path}`). The ref segment is not
+// percent-escaped (Bitbucket treats slashes as part of the ref segment), but
+// path components are.
+func (c *apiClient) srcPath(ref RepoRef, gitRef, p string) string {
+	base := c.repoPath(ref) + "/src/" + gitRef
+	if p == "" {
+		return base
+	}
+	return base + "/" + escapePath(p)
+}
+
+// filesPath returns the DC URL for listing files at a ref + path
+// (`/rest/api/1.0/projects/{key}/repos/{slug}/files/{path}`). The ref is
+// passed as `?at=<ref>` by the caller (it's a query param on DC).
+func (c *apiClient) filesPath(ref RepoRef, p string) string {
+	base := c.repoPath(ref) + "/files"
+	if p == "" {
+		return base
+	}
+	return base + "/" + escapePath(p)
+}
+
+// rawPath returns the DC URL for the raw byte content of a file
+// (`/rest/api/1.0/projects/{key}/repos/{slug}/raw/{path}`).
+func (c *apiClient) rawPath(ref RepoRef, p string) string {
+	base := c.repoPath(ref) + "/raw"
+	if p == "" {
+		return base
+	}
+	return base + "/" + escapePath(p)
+}
+
+// prDiffstatPath is the Cloud per-file change summary endpoint.
+func (c *apiClient) prDiffstatPath(ref RepoRef, id int) string {
+	return c.prPath(ref, id) + "/diffstat"
+}
+
+// prChangesPath is the DC counterpart to Cloud's diffstat — same shape, named
+// `/changes` because DC mixes change metadata with rename detection there.
+func (c *apiClient) prChangesPath(ref RepoRef, id int) string {
+	return c.prPath(ref, id) + "/changes"
+}
+
+// prMergePath is the DC pre-merge check endpoint:
+// `/rest/api/1.0/.../pull-requests/{id}/merge` (GET returns mergeable verdict;
+// POST performs the actual merge). Cloud has no direct counterpart; the CLI
+// derives mergeability from the PR state on Cloud.
+func (c *apiClient) prMergePath(ref RepoRef, id int) string {
+	return c.prPath(ref, id) + "/merge"
+}
+
+// commitStatusesPath is the per-commit CI / build status endpoint.
+//   Cloud: /2.0/repositories/{ws}/{slug}/commit/{hash}/statuses
+//   DC:    /rest/build-status/1.0/commits/{hash}  (NOTE: a different rest plugin)
+func (c *apiClient) commitStatusesPath(ref RepoRef, hash string) string {
+	if c.flavor == FlavorCloud {
+		return c.repoPath(ref) + "/commit/" + hash + "/statuses"
+	}
+	// DC's build-status plugin lives outside the standard /rest/api/1.0 tree.
+	return "/rest/build-status/1.0/commits/" + hash
+}
+
+// prStatusesPath is the Cloud-only per-PR aggregate of build statuses.
+// On DC the CLI walks via the PR's toRef.latestCommit and the build-status plugin.
+func (c *apiClient) prStatusesPath(ref RepoRef, id int) string {
+	return c.prPath(ref, id) + "/statuses"
+}
+
+// escapePath URL-escapes a path's segments but preserves "/" separators so
+// nested paths still resolve. (`url.PathEscape("a/b")` returns "a%2Fb", which
+// the Bitbucket source endpoints reject as a single segment.)
+func escapePath(p string) string {
+	parts := strings.Split(p, "/")
+	for i, s := range parts {
+		parts[i] = pathSegmentEscape(s)
+	}
+	return strings.Join(parts, "/")
+}
+
+// pathSegmentEscape mirrors url.PathEscape but is a thin wrapper to keep the
+// rule local — Bitbucket accepts the standard pchar set including `:@!$&'()*+,;=`.
+func pathSegmentEscape(s string) string { return urlPathEscape(s) }

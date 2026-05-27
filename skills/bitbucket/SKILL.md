@@ -1,7 +1,7 @@
 ---
 name: bitbucket
-version: 0.1.0
-description: "Use Bitbucket as a code-hosting backend for coding agents. Browse repositories, drive pull request review and merge workflows, post inline review comments, and query commits and branches. Supports Bitbucket Cloud and Data Center / Server. Use when the user mentions Bitbucket, a PR or pull-request URL or ID, repository browsing, code review, approve/decline/merge a PR, or asks to read a diff."
+version: 0.2.0
+description: "Use Bitbucket as a code-hosting backend for coding agents. Browse repositories and source files at any ref, drive pull request review and merge workflows, see per-file diffs and diffstats, check mergeability and CI build status, fetch a PR into a local git checkout, and post inline review comments. Supports Bitbucket Cloud and Data Center / Server. Use when the user mentions Bitbucket, a PR or pull-request URL or ID, repository browsing, file content at a ref, code review, approve/decline/merge a PR, or asks to read a diff."
 metadata:
   requires:
     bins: ["bitbucket-cli"]
@@ -37,13 +37,16 @@ contexts.
 
 ## Core workflows
 
-- **Read a PR** — `bitbucket-cli pr get <ws>/<repo>/<id> --scope summary`
-  then `--scope diff` for the unified patch, `--scope commits` for the
-  contained commits, `--scope activity` for the timeline.
+- **Review a PR (with local codebase)** — start with `pr status` (mergeable + CI),
+  then `pr files` (diffstat) to budget context, then `pr diff --path <p>` per
+  file (or `pr fetch --exec` to bring the PR into your local clone and read
+  files directly). Finish with `pr threads` to see inline discussions,
+  `comment add --inline` to reply, and `pr approve` / `pr merge`. See
+  `references/reviewing-locally.md` for the full decision tree.
+- **Browse source at any ref** — `bitbucket-cli file list/get/tree` reads
+  directories and files at a branch, tag or commit. See `references/files.md`.
 - **Comment** — `bitbucket-cli comment add --pr <ws>/<repo>/<id> --content "<text>"`,
   add `--inline <path>:<line>` for inline review comments.
-- **Review & merge** — `bitbucket-cli pr approve <ws>/<repo>/<id>`,
-  `bitbucket-cli pr merge <ws>/<repo>/<id> --strategy squash`.
 - **Repository / branches / commits** — see `references/reading-repos.md`.
 
 See the topic references in `references/` for details and decision trees.

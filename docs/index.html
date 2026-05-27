@@ -86,6 +86,21 @@
         <h3>Secure credentials</h3>
         <p>Tokens live in the OS keychain, with a <code>0600</code> file fallback — never in the config file.</p>
       </div>
+      <div class="card feat is-new">
+        <div class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h12l4 4v12H4z"/><path d="M14 4v4h4"/><path d="M7 12h7M7 15h6M7 18h4"/></svg></div>
+        <h3>Browse files at any ref<span class="tag-new">v0.2</span></h3>
+        <p><code>file list / get / tree</code> read repository source at any branch, tag or commit — with optional line-range slicing. No local clone needed.</p>
+      </div>
+      <div class="card feat is-new">
+        <div class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h10M4 18h6"/><circle cx="18" cy="18" r="3"/></svg></div>
+        <h3>Diffstat &amp; merge readiness<span class="tag-new">v0.2</span></h3>
+        <p><code>pr files</code> returns per-file change summary; <code>pr status</code> aggregates mergeability, conflicts, reviewers and CI build status.</p>
+      </div>
+      <div class="card feat is-new">
+        <div class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l4-4 4 4"/><path d="M8 3v10"/><path d="M16 17l4 4 4-4" transform="translate(-4 -4)"/><path d="M16 21V11"/></svg></div>
+        <h3>Local git bridge<span class="tag-new">v0.2</span></h3>
+        <p><code>pr fetch</code> / <code>pr checkout</code> print the equivalent git commands; <code>--exec</code> runs them in your current checkout for fast local review.</p>
+      </div>
       <div class="card feat">
         <div class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18a4 4 0 0 1 0-8 6 6 0 0 1 11.5-1.5A3.5 3.5 0 0 1 18 18z"/></svg></div>
         <h3>Cloud &amp; Data Center</h3>
@@ -160,12 +175,16 @@ make install</pre>
     <div class="section-head">
       <span class="eyebrow">Commands</span>
       <h2>The command surface</h2>
-      <p class="lead">Eight command groups. Every flag and example lives in the full CLI reference.</p>
+      <p class="lead">Nine command groups. Every flag and example lives in the full CLI reference.</p>
     </div>
     <div class="grid grid-3">
       <a class="card cmd-group" href="cli/#bitbucket-cli-pr">
         <span class="cg-name">pr</span>
-        <p>List, get, diff, create, update, approve, decline and merge pull requests.</p>
+        <p>Full PR lifecycle plus diffstat, per-file diff, merge-readiness status, and local git fetch / checkout.</p>
+      </a>
+      <a class="card cmd-group" href="cli/#bitbucket-cli-file">
+        <span class="cg-name">file</span>
+        <p>Read source at any branch / tag / commit — list, tree, and per-file get with optional line range.</p>
       </a>
       <a class="card cmd-group" href="cli/#bitbucket-cli-repo">
         <span class="cg-name">repo</span>

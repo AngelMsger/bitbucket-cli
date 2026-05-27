@@ -56,6 +56,22 @@ type Client interface {
 	ListCommits(ctx context.Context, opt ListCommitsOpts) (ListResult[Commit], error)
 	CompareCommits(ctx context.Context, req CompareCommitsReq) (ListResult[Commit], error)
 
+	// v0.2: source browsing.
+	ListFiles(ctx context.Context, opt FileListOpts) (ListResult[FileEntry], error)
+	GetFile(ctx context.Context, opt FileGetOpts) (*FileContent, error)
+	Tree(ctx context.Context, opt TreeOpts) (ListResult[FileEntry], error)
+
+	// v0.2: PR file-level operations.
+	ListPRFiles(ctx context.Context, repo RepoRef, id int) (ListResult[Diffstat], error)
+	GetPRDiffByPath(ctx context.Context, repo RepoRef, id int, path string) (string, error)
+	ListPRThreads(ctx context.Context, repo RepoRef, id int) (ListResult[Thread], error)
+
+	// v0.2: PR merge readiness + CI status.
+	CheckPRMerge(ctx context.Context, repo RepoRef, id int) (*MergeCheck, error)
+	ListCommitStatuses(ctx context.Context, repo RepoRef, hash string) (ListResult[BuildStatus], error)
+	ListPRStatuses(ctx context.Context, repo RepoRef, id int) (ListResult[BuildStatus], error)
+	GetPRStatus(ctx context.Context, repo RepoRef, id int) (*PRStatus, error)
+
 	DescribeWrite(ctx context.Context, op any) (WriteRequestPlan, error)
 }
 

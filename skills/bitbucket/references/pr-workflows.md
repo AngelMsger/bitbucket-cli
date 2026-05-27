@@ -6,16 +6,25 @@ The `pr` and `comment` subtrees cover the entire PR lifecycle.
 
 When the user pastes a PR URL or names `<workspace>/<repo>/<id>`:
 
-1. **Summary first** — `bitbucket-cli pr get <ref> --scope summary`. Returns
-   the metadata: title, description, author, source, destination, reviewers,
-   state, counts.
-2. **Diff when needed** — `bitbucket-cli pr get <ref> --scope diff` (or
-   `bitbucket-cli pr diff <ref>`) returns the raw unified patch. Pipe to
-   `delta`, `bat` or a model that consumes diffs.
-3. **Commits** — `bitbucket-cli pr get <ref> --scope commits` enumerates the
-   commit set included in the PR.
-4. **Activity** — `bitbucket-cli pr get <ref> --scope activity` returns the
-   timeline (approvals, comments, state changes).
+1. **Merge readiness first** — `bitbucket-cli pr status <ref>` returns the
+   aggregated view: mergeable + conflicts + reviewer states + CI build
+   status. Often this alone answers "why is this PR not going in?".
+2. **Diffstat (per-file metadata) next** — `bitbucket-cli pr files <ref>`
+   returns one row per changed file with `path / status / added / removed`,
+   sorted by churn. **Diffstat-first** is the right default for large PRs —
+   don't pull the whole patch until you know which files matter.
+3. **Per-file diff** — `bitbucket-cli pr diff <ref> --path <path>` returns
+   just one file's unified patch. The full `pr diff <ref>` (no `--path`) is
+   still available when you really want the whole patch.
+4. **Local fetch** — `bitbucket-cli pr fetch <ref>` (or `pr checkout`) prints
+   the equivalent `git` commands; `--exec` runs them in your current checkout.
+   The PR's source ref ends up at `refs/remotes/origin/pr/<id>`. Bridging to a
+   local checkout is the cheapest way to read many large files.
+5. **Commits / activity** — `pr commits` / `pr activity` enumerate the
+   contained commits and the timeline (approvals, comments, state changes).
+
+See `reviewing-locally.md` for the end-to-end review decision tree (combines
+diffstat-first navigation with a local clone).
 
 ## Reviewing
 
