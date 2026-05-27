@@ -1,0 +1,350 @@
+// Package apiclient is a flavor-agnostic Bitbucket REST client. It supports
+// Bitbucket Cloud (REST 2.0) and Data Center / Server (REST 1.0) behind a
+// single Client interface returning normalized models.
+package apiclient
+
+// Flavor identifies the Bitbucket backend variant.
+type Flavor string
+
+const (
+	FlavorCloud      Flavor = "cloud"
+	FlavorDataCenter Flavor = "datacenter"
+	FlavorAuto       Flavor = "auto"
+)
+
+// ServerInfo is the result of a connectivity probe.
+type ServerInfo struct {
+	Flavor    Flavor `json:"flavor"`
+	BaseURL   string `json:"base_url"`
+	Reachable bool   `json:"reachable"`
+}
+
+// User is a normalized Bitbucket user. Cloud identifies users by AccountID and
+// nickname; Data Center by Name/Slug. Whichever the server returns is kept.
+type User struct {
+	AccountID   string `json:"account_id,omitempty"`
+	UUID        string `json:"uuid,omitempty"`
+	Name        string `json:"name,omitempty"`
+	Slug        string `json:"slug,omitempty"`
+	DisplayName string `json:"display_name,omitempty"`
+	Email       string `json:"email,omitempty"`
+	Type        string `json:"type,omitempty"`
+}
+
+// RepoRef identifies a repository inside its workspace (Cloud) or project (DC).
+// Workspace holds the Cloud workspace slug or the DC project key.
+type RepoRef struct {
+	Workspace string `json:"workspace"`
+	Slug      string `json:"slug"`
+}
+
+// Repository is a normalized Bitbucket repository.
+type Repository struct {
+	UUID          string   `json:"uuid,omitempty"`
+	Slug          string   `json:"slug"`
+	Name          string   `json:"name,omitempty"`
+	Workspace     string   `json:"workspace"`
+	FullName      string   `json:"full_name,omitempty"`
+	Description   string   `json:"description,omitempty"`
+	Private       bool     `json:"private"`
+	DefaultBranch string   `json:"default_branch,omitempty"`
+	MainBranch    string   `json:"main_branch,omitempty"`
+	Language      string   `json:"language,omitempty"`
+	Size          int64    `json:"size,omitempty"`
+	URL           string   `json:"url,omitempty"`
+	CloneHTTPS    string   `json:"clone_https,omitempty"`
+	CloneSSH      string   `json:"clone_ssh,omitempty"`
+	CreatedAt     string   `json:"created_at,omitempty"`
+	UpdatedAt     string   `json:"updated_at,omitempty"`
+	Links         []string `json:"links,omitempty"`
+}
+
+// BranchRef identifies a branch (and its target commit).
+type BranchRef struct {
+	Name   string `json:"name"`
+	Target string `json:"target,omitempty"` // commit hash
+}
+
+// Branch is a normalized branch listing entry.
+type Branch struct {
+	Name        string `json:"name"`
+	Target      string `json:"target,omitempty"`
+	Default     bool   `json:"default,omitempty"`
+	LastCommit  string `json:"last_commit,omitempty"`
+	LastUpdated string `json:"last_updated,omitempty"`
+}
+
+// Commit is a normalized commit.
+type Commit struct {
+	Hash      string   `json:"hash"`
+	Message   string   `json:"message,omitempty"`
+	Author    string   `json:"author,omitempty"`
+	Date      string   `json:"date,omitempty"`
+	Parents   []string `json:"parents,omitempty"`
+	URL       string   `json:"url,omitempty"`
+}
+
+// PRRef is the source / destination of a pull request.
+type PRRef struct {
+	Branch     string `json:"branch"`
+	Commit     string `json:"commit,omitempty"`
+	Repository string `json:"repository,omitempty"` // for cross-repo PRs (Cloud forks)
+}
+
+// Participant is a reviewer / participant on a PR.
+type Participant struct {
+	User     User   `json:"user"`
+	Role     string `json:"role,omitempty"`     // REVIEWER / PARTICIPANT
+	Approved bool   `json:"approved,omitempty"`
+	State    string `json:"state,omitempty"`    // approved / changes_requested / null
+}
+
+// PullRequest is a normalized Bitbucket pull request.
+type PullRequest struct {
+	ID           int           `json:"id"`
+	Title        string        `json:"title"`
+	Description  string        `json:"description,omitempty"`
+	State        string        `json:"state"` // OPEN / MERGED / DECLINED / SUPERSEDED
+	Author       User          `json:"author"`
+	Source       PRRef         `json:"source"`
+	Destination  PRRef         `json:"destination"`
+	Reviewers    []Participant `json:"reviewers,omitempty"`
+	Participants []Participant `json:"participants,omitempty"`
+	Repository   RepoRef       `json:"repository"`
+	URL          string        `json:"url,omitempty"`
+	CommentCount int           `json:"comment_count,omitempty"`
+	TaskCount    int           `json:"task_count,omitempty"`
+	CreatedAt    string        `json:"created_at,omitempty"`
+	UpdatedAt    string        `json:"updated_at,omitempty"`
+	ClosedAt     string        `json:"closed_at,omitempty"`
+	MergeCommit  string        `json:"merge_commit,omitempty"`
+}
+
+// InlineAnchor pins an inline review comment to a path and line.
+type InlineAnchor struct {
+	Path string `json:"path"`
+	Line int    `json:"line,omitempty"`
+	From int    `json:"from,omitempty"` // DC origin line for the LHS side
+	To   int    `json:"to,omitempty"`   // DC destination line for the RHS side
+}
+
+// Comment is a normalized PR or commit comment.
+type Comment struct {
+	ID        int           `json:"id"`
+	Content   string        `json:"content"`
+	Author    User          `json:"author"`
+	Inline    *InlineAnchor `json:"inline,omitempty"`
+	ParentID  int           `json:"parent_id,omitempty"`
+	PRID      int           `json:"pr_id,omitempty"`
+	CommitID  string        `json:"commit_id,omitempty"`
+	URL       string        `json:"url,omitempty"`
+	CreatedAt string        `json:"created_at,omitempty"`
+	UpdatedAt string        `json:"updated_at,omitempty"`
+}
+
+// Activity is one entry in a PR's activity stream.
+type Activity struct {
+	Kind      string  `json:"kind"` // comment / approval / update / merge / decline
+	Actor     User    `json:"actor"`
+	When      string  `json:"when,omitempty"`
+	Comment   *Comment `json:"comment,omitempty"`
+	Approved  bool    `json:"approved,omitempty"`
+	State     string  `json:"state,omitempty"`
+}
+
+// ListResult is one page of a paginated listing. Next is an opaque cursor for
+// the following page, empty when the listing is exhausted.
+type ListResult[T any] struct {
+	Items []T    `json:"items"`
+	Next  string `json:"next,omitempty"`
+}
+
+// ListOpts controls a paginated listing.
+type ListOpts struct {
+	Limit  int
+	Cursor string
+}
+
+// RepoListOpts narrows a repository listing.
+type RepoListOpts struct {
+	ListOpts
+	Workspace string // Cloud workspace slug / DC project key
+	Role      string // owner / contributor / member (Cloud only)
+	Query     string // server-side query (Cloud "q=")
+	Sort      string // Cloud sort key
+}
+
+// PRListOpts narrows a PR listing.
+type PRListOpts struct {
+	ListOpts
+	Repo     RepoRef
+	State    string // OPEN (default) / MERGED / DECLINED / ALL
+	Author   string
+	Reviewer string
+	Source   string // source branch
+	Target   string // destination branch
+	Query    string
+}
+
+// PRScope controls how much detail to fetch when getting a single PR.
+type PRScope string
+
+const (
+	PRScopeSummary  PRScope = "summary"
+	PRScopeFull     PRScope = "full"
+	PRScopeDiff     PRScope = "diff"
+	PRScopeCommits  PRScope = "commits"
+	PRScopeActivity PRScope = "activity"
+)
+
+// GetPROpts controls a PR fetch.
+type GetPROpts struct {
+	Repo  RepoRef
+	ID    int
+	Scope PRScope
+}
+
+// CreatePRReq is a request to open a new PR.
+type CreatePRReq struct {
+	Repo            RepoRef
+	Title           string
+	Description     string
+	Source          string // source branch
+	SourceRepo      string // optional, defaults to Repo for non-fork PRs
+	Destination     string // target branch; empty -> repo default branch
+	Reviewers       []string
+	CloseSourceBranch bool
+}
+
+// UpdatePRReq edits an existing PR's title / description / reviewers.
+type UpdatePRReq struct {
+	Repo        RepoRef
+	ID          int
+	Title       string
+	Description string
+	Reviewers   []string // when non-nil, replaces the reviewer list
+}
+
+// DeclinePRReq closes an open PR without merging.
+type DeclinePRReq struct {
+	Repo    RepoRef
+	ID      int
+	Message string
+}
+
+// MergePRReq merges a PR. Strategy values:
+//   - merge_commit: --no-ff merge commit (Cloud "merge_commit", DC "merge-commit")
+//   - squash:       single squashed commit
+//   - fast_forward: fast-forward when possible (Cloud "fast_forward", DC "ff")
+type MergePRReq struct {
+	Repo              RepoRef
+	ID                int
+	Strategy          string
+	Message           string
+	CloseSourceBranch bool
+}
+
+// ApprovePRReq toggles an approval on a PR.
+type ApprovePRReq struct {
+	Repo    RepoRef
+	ID      int
+	Approve bool // false = withdraw approval
+}
+
+// RequestChangesReq toggles a "request changes" vote (Cloud-only).
+type RequestChangesReq struct {
+	Repo    RepoRef
+	ID      int
+	Request bool // false = withdraw
+}
+
+// ListPRCommentsOpts narrows a PR comment listing.
+type ListPRCommentsOpts struct {
+	ListOpts
+	Repo RepoRef
+	PRID int
+}
+
+// AddPRCommentReq creates a comment (general or inline) on a PR.
+type AddPRCommentReq struct {
+	Repo     RepoRef
+	PRID     int
+	Content  string
+	Inline   *InlineAnchor // nil = general comment
+	ReplyTo  int           // 0 = top-level comment
+}
+
+// UpdatePRCommentReq edits a comment's content.
+type UpdatePRCommentReq struct {
+	Repo    RepoRef
+	PRID    int
+	ID      int
+	Content string
+}
+
+// DeletePRCommentReq removes a comment.
+type DeletePRCommentReq struct {
+	Repo RepoRef
+	PRID int
+	ID   int
+}
+
+// ListCommitsOpts narrows a commit listing.
+type ListCommitsOpts struct {
+	ListOpts
+	Repo   RepoRef
+	Branch string
+	Path   string
+	Since  string
+	Until  string
+}
+
+// CompareCommitsReq compares two refs (branches or hashes).
+type CompareCommitsReq struct {
+	Repo RepoRef
+	From string
+	To   string
+}
+
+// BranchListOpts narrows a branch listing.
+type BranchListOpts struct {
+	ListOpts
+	Repo  RepoRef
+	Query string
+	Sort  string
+}
+
+// CreateBranchReq creates a branch from a ref.
+type CreateBranchReq struct {
+	Repo    RepoRef
+	Name    string
+	FromRef string
+}
+
+// DeleteBranchReq removes a branch.
+type DeleteBranchReq struct {
+	Repo RepoRef
+	Name string
+}
+
+// CreateRepoReq creates a repository.
+type CreateRepoReq struct {
+	Workspace   string
+	Slug        string
+	Name        string
+	Description string
+	Private     bool
+}
+
+// DeleteRepoReq removes a repository.
+type DeleteRepoReq struct {
+	Repo RepoRef
+}
+
+// WriteRequestPlan describes the HTTP request a write operation would send,
+// without sending it. It is used to render --dry-run previews.
+type WriteRequestPlan struct {
+	Method  string `json:"method"`
+	URL     string `json:"url"`
+	Payload any    `json:"payload,omitempty"`
+}

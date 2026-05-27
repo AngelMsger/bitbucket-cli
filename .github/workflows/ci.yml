@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: gofmt
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "These files are not gofmt-clean:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: cli docs up to date
+        run: |
+          go run ./cmd/gen-docs
+          if ! git diff --quiet -- docs/cli; then
+            echo "docs/cli is stale — run 'make docs' and commit the result:"
+            git diff --stat -- docs/cli
+            exit 1
+          fi
+
+      - name: unit tests
+        run: go test ./...
+
+      - name: end-to-end tests (mock server)
+        run: ./scripts/e2e.sh

@@ -1,0 +1,84 @@
+name: Release
+
+# Triggered by pushing a version tag, e.g.  git tag v0.1.0 && git push origin v0.1.0
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write # create the GitHub Release
+  id-token: write # OIDC token for npm trusted publishing
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # full history + tags so `git describe` yields the tag
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: unit tests
+        run: go test ./...
+
+      - name: cross-compile binaries
+        run: make cross
+
+      - name: checksums
+        working-directory: dist
+        run: sha256sum confluence-cli-* > checksums.txt
+
+      # Idempotent: if the release already exists (e.g. a re-run after the npm
+      # step failed) refresh its assets instead of failing the whole workflow.
+      - name: create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "release $TAG already exists — re-uploading assets"
+            gh release upload "$TAG" dist/* --clobber
+          else
+            gh release create "$TAG" dist/* --title "$TAG" --generate-notes
+          fi
+
+      # No registry-url on purpose: actions/setup-node's registry-url writes an
+      # .npmrc with `_authToken=${NODE_AUTH_TOKEN}`. With no token set that
+      # expands to an empty string, and npm then uses (empty) token auth and
+      # skips OIDC trusted publishing entirely. Omitting it leaves npm without
+      # credentials, so it performs the trusted-publishing exchange. The public
+      # registry is the default, so no registry config is needed.
+      # Node 24 bundles npm >= 11.5.1, which is required for trusted
+      # publishing — so there is no fragile `npm install -g npm@latest`
+      # self-upgrade step (it intermittently corrupts the npm install).
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      # Publishes @angelmsger/confluence-cli via npm trusted publishing (OIDC):
+      # no token is needed — the `id-token: write` permission above lets the npm
+      # CLI authenticate, and provenance is attested automatically. Requires the
+      # package's trusted publisher to be configured on npmjs.com first (see
+      # docs/releasing.md). The GitHub Release above is already complete if this
+      # step fails.
+      #
+      # Idempotent: skip publishing when this version is already on the
+      # registry, so the workflow can be re-run safely.
+      - name: publish to npm
+        working-directory: build/npm
+        run: |
+          echo "node $(node --version) / npm $(npm --version)"
+          echo "OIDC token endpoint present: ${ACTIONS_ID_TOKEN_REQUEST_URL:+yes}"
+          VERSION="${TAG#v}"
+          npm version "$VERSION" --no-git-tag-version --allow-same-version
+          if npm view "@angelmsger/confluence-cli@$VERSION" version >/dev/null 2>&1; then
+            echo "@angelmsger/confluence-cli@$VERSION already published — skipping"
+          else
+            npm publish --access public
+          fi
