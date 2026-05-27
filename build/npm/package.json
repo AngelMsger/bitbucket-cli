@@ -1,0 +1,44 @@
+{
+  "name": "@angelmsger/bitbucket-cli",
+  "version": "0.2.0",
+  "description": "Drive Bitbucket pull requests and repositories from the terminal — built for coding agents: list/get/diff/approve/merge PRs, browse source at any ref, post inline review comments, and fetch a PR into a local git checkout. Supports Bitbucket Cloud and Data Center / Server.",
+  "keywords": [
+    "bitbucket",
+    "cli",
+    "pull-request",
+    "code-review",
+    "agent",
+    "claude",
+    "atlassian"
+  ],
+  "homepage": "https://AngelMsger.github.io/bitbucket-cli/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AngelMsger/bitbucket-cli.git"
+  },
+  "license": "MIT",
+  "bin": {
+    "bitbucket-cli": "bin/bitbucket-cli.js"
+  },
+  "main": "install.js",
+  "scripts": {
+    "postinstall": "node install.js"
+  },
+  "files": [
+    "bin/",
+    "install.js",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ]
+}
