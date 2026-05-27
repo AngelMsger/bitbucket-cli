@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-05-28
+
 ### Changed
 
 - **Default config location moved to `~/.angelmsger/bitbucket/`.** New
