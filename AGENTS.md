@@ -32,6 +32,47 @@ up front.
   conventions in `CONTRIBUTING.md`.
 - Never commit `.env`, credentials, tokens, or build artifacts.
 
+## Discoverability — no dead-end inputs
+
+**Every non-trivial identifier a command accepts as input must be discoverable
+through another command in this CLI.** Examples of inputs covered by this
+rule: workspace slugs, repository slugs, branch / tag names, PR IDs, commit
+hashes, user identifiers (UUID on Cloud, username on Data Center), comment
+IDs, file paths within a ref.
+
+The rule is symmetric: an input is *only* discoverable if (a) the CLI has a
+command that lists / searches values of that kind, **and** (b) that listing
+command itself is reachable without already knowing some other value the CLI
+can't tell you about. A `repo list` that demands a workspace slug is only
+useful if `workspace list` also exists.
+
+When you add a command or flag that takes a new kind of input:
+
+1. Walk every parameter the new surface accepts. For each, answer:
+   *"Where does the caller (especially an AI agent) get this value?"*
+2. If the answer is **another command in this CLI**, you are done.
+3. If the answer is **an existing identifier the user already had in hand**
+   (e.g. they pasted a Bitbucket URL), that counts too — `pkg/urlref` already
+   parses workspace / repo / PR / commit out of URLs.
+4. If the answer is **out-of-band** (a web UI, another tool, the API
+   directly), that is a gap. Add the missing discovery command in the same
+   PR, or surface it as a follow-up issue and document the dead end in
+   `CHANGELOG.md` under *Known gaps*.
+
+The same rule applies to error messages. When a command rejects an
+invocation for missing a required identifier, the resulting `CLIError`'s
+`next_steps` must include the discovery command — see
+`internal/apiclient/repos.go` (`REPO_NO_WORKSPACE`) and
+`internal/apiclient/pulls_inbox.go` (`INBOX_NO_WORKSPACE`) for the canonical
+shape: list the discovery command first, then the flag or environment
+variable fallback. Errors that say "Pass `--workspace <name>`" without
+showing the user how to find a valid `<name>` are defects.
+
+The e2e harness exercises this contract via `assert_err_contains` — error
+paths that should include a discovery hint are asserted on (see
+`scripts/e2e.sh`'s `repo list hint` check). New "missing input" errors
+should grow a matching assertion.
+
 ## Documentation — keep it current
 
 - **Actively maintain the docs.** When a change affects architecture,

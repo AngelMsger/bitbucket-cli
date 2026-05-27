@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+### Known gaps (discoverability)
+
+Per the discoverability rule in [`AGENTS.md`](AGENTS.md), the following
+identifiers still have no listing command:
+
+- **User identifiers** (`--reviewer`, `--author`). `pr create --reviewer
+  <uuid|username>`, `pr update --reviewer ...`, `pr list --author ...` /
+  `--reviewer ...` all accept a Cloud UUID or DC username with no way to
+  enumerate workspace / project members from the CLI. Underlying APIs:
+  Cloud `GET /2.0/workspaces/{ws}/members`; DC
+  `GET /rest/api/1.0/projects/{key}/permissions/users`.
+- **Tag names**. `file get --ref v1.2.3`, `commit get <hash>` and other
+  ref-bearing commands accept a tag name, but the CLI only lists branches.
+  Underlying APIs: Cloud `GET /2.0/repositories/{ws}/{slug}/refs/tags`; DC
+  `GET /rest/api/1.0/projects/{key}/repos/{slug}/tags`.
+
+### Features
+
 - `bitbucket-cli workspace list` / `workspace get` enumerate the Bitbucket
   workspaces (Cloud) / projects (Data Center) the current credentials can see
   — the universe of values every other command's `--workspace` flag accepts.
