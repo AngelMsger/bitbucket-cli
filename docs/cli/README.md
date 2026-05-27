@@ -114,6 +114,23 @@ is published at <https://angelmsger.github.io/bitbucket-cli/cli/>.
 | [`bitbucket-cli skill show`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-skill-show) | Print the embedded SKILL.md to stdout |
 | [`bitbucket-cli skill uninstall`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-skill-uninstall) | Remove the companion Skill from a coding agent's skills directory |
 
+## tag
+
+| Command | Description |
+| --- | --- |
+| [`bitbucket-cli tag`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-tag) | List and inspect repository tags |
+| [`bitbucket-cli tag get`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-tag-get) | Show a single tag (commit hash + date / message on Cloud) |
+| [`bitbucket-cli tag list`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-tag-list) | List tags in a repository |
+
+## user
+
+| Command | Description |
+| --- | --- |
+| [`bitbucket-cli user`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-user) | Discover Bitbucket users (workspace members on Cloud / global users on DC) |
+| [`bitbucket-cli user get`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-user-get) | Show details of a single user (UUID/account_id on Cloud; slug/username on DC) |
+| [`bitbucket-cli user list`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-user-list) | List users (workspace members on Cloud / global users on DC) |
+| [`bitbucket-cli user me`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-user-me) | Print the user the configured credentials authenticate as (alias for whoami) |
+
 ## version
 
 | Command | Description |

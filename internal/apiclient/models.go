@@ -60,6 +60,31 @@ type WorkspaceListOpts struct {
 	Query string
 }
 
+// UserListOpts narrows a user listing. Cloud's user listing is workspace-
+// scoped (no global user endpoint), so Workspace is required there; Data
+// Center has a global `/users` endpoint and Workspace is optional.
+type UserListOpts struct {
+	ListOpts
+	Workspace string
+	Query     string
+}
+
+// Tag is a normalized repository tag.
+type Tag struct {
+	Name    string `json:"name"`
+	Target  string `json:"target,omitempty"`  // commit hash
+	Date    string `json:"date,omitempty"`
+	Message string `json:"message,omitempty"`
+}
+
+// TagListOpts narrows a tag listing.
+type TagListOpts struct {
+	ListOpts
+	Repo  RepoRef
+	Query string
+	Sort  string
+}
+
 // Repository is a normalized Bitbucket repository.
 type Repository struct {
 	UUID          string   `json:"uuid,omitempty"`

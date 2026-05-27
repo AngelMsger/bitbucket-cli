@@ -59,6 +59,42 @@ func routes() http.Handler {
 		})
 	})
 
+	// User discovery.
+	mux.HandleFunc("GET /rest/api/1.0/users", func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, map[string]any{
+			"values":     []any{user()},
+			"size":       1,
+			"limit":      25,
+			"start":      0,
+			"isLastPage": true,
+		})
+	})
+	mux.HandleFunc("GET /rest/api/1.0/users/{slug}", func(w http.ResponseWriter, r *http.Request) {
+		u := user()
+		u["slug"] = r.PathValue("slug")
+		u["name"] = r.PathValue("slug")
+		writeJSON(w, u)
+	})
+
+	// Tags.
+	mux.HandleFunc("GET /rest/api/1.0/projects/{key}/repos/{slug}/tags", func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, map[string]any{
+			"values": []any{
+				map[string]any{
+					"id": "refs/tags/v1.2.3", "displayId": "v1.2.3",
+					"type": "TAG", "latestCommit": "aaaa111",
+				},
+			},
+			"size": 1, "limit": 25, "start": 0, "isLastPage": true,
+		})
+	})
+	mux.HandleFunc("GET /rest/api/1.0/projects/{key}/repos/{slug}/tags/{name}", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, map[string]any{
+			"id": "refs/tags/" + r.PathValue("name"), "displayId": r.PathValue("name"),
+			"type": "TAG", "latestCommit": "aaaa111",
+		})
+	})
+
 	mux.HandleFunc("GET /rest/api/1.0/projects/{key}/repos", func(w http.ResponseWriter, r *http.Request) {
 		key := r.PathValue("key")
 		writeJSON(w, map[string]any{

@@ -113,6 +113,19 @@
       <a href="#bitbucket-cli-skill-uninstall">bitbucket-cli skill uninstall</a>
       </div>
     <div class="side-group">
+      <div class="side-title">tag</div>
+      <a href="#bitbucket-cli-tag">bitbucket-cli tag</a>
+      <a href="#bitbucket-cli-tag-get">bitbucket-cli tag get</a>
+      <a href="#bitbucket-cli-tag-list">bitbucket-cli tag list</a>
+      </div>
+    <div class="side-group">
+      <div class="side-title">user</div>
+      <a href="#bitbucket-cli-user">bitbucket-cli user</a>
+      <a href="#bitbucket-cli-user-get">bitbucket-cli user get</a>
+      <a href="#bitbucket-cli-user-list">bitbucket-cli user list</a>
+      <a href="#bitbucket-cli-user-me">bitbucket-cli user me</a>
+      </div>
+    <div class="side-group">
       <div class="side-title">version</div>
       <a href="#bitbucket-cli-version">bitbucket-cli version</a>
       </div>
@@ -1018,6 +1031,102 @@ from each one found.</p>
         <tr><td><code>--project</code></td><td><code>false</code></td><td>remove from the project (./.claude/skills, ./.agents/skills) instead of $HOME</td></tr>
         </tbody>
       </table>
+      
+    </section>
+    
+    <section class="cmd" id="bitbucket-cli-tag">
+      <h2>bitbucket-cli tag<span class="group-tag">command group</span></h2>
+      <p class="short">List and inspect repository tags</p>
+      <pre>bitbucket-cli tag</pre>
+      
+      
+      
+    </section>
+    
+    <section class="cmd" id="bitbucket-cli-tag-get">
+      <h2>bitbucket-cli tag get</h2>
+      <p class="short">Show a single tag (commit hash &#43; date / message on Cloud)</p>
+      <pre>bitbucket-cli tag get &lt;name&gt; [flags]</pre>
+      
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--repo</code></td><td></td><td>&lt;workspace&gt;/&lt;repo&gt;</td></tr>
+        </tbody>
+      </table>
+      
+    </section>
+    
+    <section class="cmd" id="bitbucket-cli-tag-list">
+      <h2>bitbucket-cli tag list</h2>
+      <p class="short">List tags in a repository</p>
+      <pre>bitbucket-cli tag list [flags]</pre>
+      
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--all</code></td><td><code>false</code></td><td>fetch every page of results</td></tr>
+        <tr><td><code>--cursor</code></td><td></td><td>start from this pagination cursor (the &#39;next&#39; of a prior page)</td></tr>
+        <tr><td><code>--limit</code></td><td><code>0</code></td><td>page size (default from config)</td></tr>
+        <tr><td><code>--query</code></td><td></td><td>filter by name substring</td></tr>
+        <tr><td><code>--repo</code></td><td></td><td>&lt;workspace&gt;/&lt;repo&gt;</td></tr>
+        <tr><td><code>--sort</code></td><td></td><td>sort key</td></tr>
+        </tbody>
+      </table>
+      
+    </section>
+    
+    <section class="cmd" id="bitbucket-cli-user">
+      <h2>bitbucket-cli user<span class="group-tag">command group</span></h2>
+      <p class="short">Discover Bitbucket users (workspace members on Cloud / global users on DC)</p>
+      <pre>bitbucket-cli user</pre>
+      
+      
+      
+    </section>
+    
+    <section class="cmd" id="bitbucket-cli-user-get">
+      <h2>bitbucket-cli user get</h2>
+      <p class="short">Show details of a single user (UUID/account_id on Cloud; slug/username on DC)</p>
+      <pre>bitbucket-cli user get &lt;selector&gt;</pre>
+      
+      
+      
+    </section>
+    
+    <section class="cmd" id="bitbucket-cli-user-list">
+      <h2>bitbucket-cli user list</h2>
+      <p class="short">List users (workspace members on Cloud / global users on DC)</p>
+      <pre>bitbucket-cli user list [flags]</pre>
+      <p class="long">List Bitbucket users.
+
+Cloud: --workspace is required (Cloud has no global user list; the API exposes
+  members of a specific workspace).
+DC:    --workspace is ignored; the global /users endpoint is used.
+
+Use --query to filter by display-name substring.</p>
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--all</code></td><td><code>false</code></td><td>fetch every page of results</td></tr>
+        <tr><td><code>--cursor</code></td><td></td><td>start from this pagination cursor (the &#39;next&#39; of a prior page)</td></tr>
+        <tr><td><code>--limit</code></td><td><code>0</code></td><td>page size (default from config)</td></tr>
+        <tr><td><code>--query</code></td><td></td><td>filter by display-name substring</td></tr>
+        <tr><td><code>--workspace</code></td><td></td><td>workspace slug (Cloud only; ignored on DC)</td></tr>
+        </tbody>
+      </table>
+      
+    </section>
+    
+    <section class="cmd" id="bitbucket-cli-user-me">
+      <h2>bitbucket-cli user me</h2>
+      <p class="short">Print the user the configured credentials authenticate as (alias for whoami)</p>
+      <pre>bitbucket-cli user me</pre>
+      
+      
       
     </section>
     

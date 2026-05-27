@@ -117,6 +117,8 @@ variables (`BITBUCKET_*`) → `.env` → `~/.bitbucket/config.yaml` → defaults
 | Command | Purpose |
 |---------|---------|
 | `workspace list` / `workspace get` | discover workspaces (Cloud) / projects (DC) — the values `--workspace` accepts elsewhere |
+| `user list` / `user get` / `user me` | discover Bitbucket users — the values `--reviewer` / `--author` accept (Cloud: workspace-scoped via `--workspace`; DC: global) |
+| `tag list` / `tag get` | discover repository tags — the values `--ref` accepts (alongside branches and commit hashes) |
 | `pr list` / `pr get` | list pull requests; show details (`--scope summary/full/commits/activity`) |
 | `pr inbox` | cross-repo "PRs involving me" (`--role reviewer/author/participant`, `--state ...`) — single dashboard call on DC; on Cloud, `--workspace` required for reviewer/participant |
 | `pr status` | aggregated merge readiness: mergeable, conflicts, reviewers, CI builds |

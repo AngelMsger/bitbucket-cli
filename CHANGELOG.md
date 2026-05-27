@@ -2,24 +2,19 @@
 
 ## Unreleased
 
-### Known gaps (discoverability)
-
-Per the discoverability rule in [`AGENTS.md`](AGENTS.md), the following
-identifiers still have no listing command:
-
-- **User identifiers** (`--reviewer`, `--author`). `pr create --reviewer
-  <uuid|username>`, `pr update --reviewer ...`, `pr list --author ...` /
-  `--reviewer ...` all accept a Cloud UUID or DC username with no way to
-  enumerate workspace / project members from the CLI. Underlying APIs:
-  Cloud `GET /2.0/workspaces/{ws}/members`; DC
-  `GET /rest/api/1.0/projects/{key}/permissions/users`.
-- **Tag names**. `file get --ref v1.2.3`, `commit get <hash>` and other
-  ref-bearing commands accept a tag name, but the CLI only lists branches.
-  Underlying APIs: Cloud `GET /2.0/repositories/{ws}/{slug}/refs/tags`; DC
-  `GET /rest/api/1.0/projects/{key}/repos/{slug}/tags`.
-
 ### Features
 
+- `bitbucket-cli user list` / `user get` / `user me` close the
+  discoverability gap for `--reviewer` and `--author` identifiers. Cloud
+  uses workspace membership (`GET /2.0/workspaces/{ws}/members`, requires
+  `--workspace`); Data Center uses the global `/rest/api/1.0/users`
+  endpoint and ignores `--workspace`. `--query` filters by display-name
+  substring. `user me` is an in-subtree alias for the top-level `whoami`.
+- `bitbucket-cli tag list` / `tag get` enumerate repository tags. Tags
+  were already silently accepted by any `--ref`-bearing command (`file
+  get --ref v1.2.3`, `commit get <hash>`), but the CLI previously had
+  no listing path for them. Cloud uses `/2.0/repositories/{ws}/{slug}/refs/tags`;
+  DC uses `/rest/api/1.0/projects/{key}/repos/{slug}/tags`.
 - `bitbucket-cli workspace list` / `workspace get` enumerate the Bitbucket
   workspaces (Cloud) / projects (Data Center) the current credentials can see
   — the universe of values every other command's `--workspace` flag accepts.

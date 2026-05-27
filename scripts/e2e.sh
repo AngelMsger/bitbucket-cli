@@ -132,6 +132,10 @@ assert_contains  "pr checkout print-only"    "git checkout"   "${CLI[@]}" pr che
 assert_contains  "pr inbox (DC dashboard)"   "Wire payment retry" "${CLI[@]}" pr inbox --role reviewer
 assert_contains  "workspace list"            "PROJ"           "${CLI[@]}" workspace list
 assert_contains  "workspace get"             "Demo project"   "${CLI[@]}" workspace get PROJ
+assert_contains  "user list (DC global)"     "alice"          "${CLI[@]}" user list
+assert_contains  "user get"                  "Alice"          "${CLI[@]}" user get alice
+assert_contains  "tag list"                  "v1.2.3"         "${CLI[@]}" tag list --repo PROJ/demo
+assert_contains  "tag get"                   "aaaa111"        "${CLI[@]}" tag get --repo PROJ/demo v1.2.3
 # Hint surfaces workspace discovery when --workspace is missing.
 assert_err_contains "repo list hint"         "workspace list" \
                                              env -u BITBUCKET_DEFAULT_WORKSPACE "${CLI[@]}" repo list
