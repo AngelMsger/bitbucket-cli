@@ -27,7 +27,7 @@ func TestAssembleContextResult(t *testing.T) {
 		{
 			name: "cloud_basic_new",
 			picks: contextPicks{
-				Name: "default", BaseURL: "https://x.atlassian.net/wiki",
+				Name: "default", BaseURL: "https://api.bitbucket.org",
 				Flavor: FlavorCloud, Scheme: SchemeBasic,
 				Username: "u@x.com", Secret: "tok",
 			},
@@ -111,7 +111,7 @@ func TestAssembleContextResult(t *testing.T) {
 func TestRunWizardFresh(t *testing.T) {
 	t.Parallel()
 	d, out := newPlainTest(strings.Join([]string{
-		"https://acme.atlassian.net/wiki",
+		"https://api.bitbucket.org",
 		"cloud",
 		"basic",
 		"alice@acme.com",
@@ -130,7 +130,7 @@ func TestRunWizardFresh(t *testing.T) {
 	if got.Context.Name != DefaultContextName {
 		t.Errorf("context name = %q", got.Context.Name)
 	}
-	if got.Context.BaseURL != "https://acme.atlassian.net/wiki" {
+	if got.Context.BaseURL != "https://api.bitbucket.org" {
 		t.Errorf("base URL = %q", got.Context.BaseURL)
 	}
 	if got.Context.Flavor != FlavorCloud {
@@ -147,7 +147,7 @@ func TestRunWizardFresh(t *testing.T) {
 	text := out.String()
 	// Fresh setup must surface the example placeholders so the user knows the
 	// expected shape; no "Existing configuration" preamble.
-	if !strings.Contains(text, "https://your-site.atlassian.net/wiki") {
+	if !strings.Contains(text, "https://api.bitbucket.org") {
 		t.Errorf("missing base URL example in prompts:\n%s", text)
 	}
 	if !strings.Contains(text, "you@example.com") {
@@ -164,7 +164,7 @@ func TestRunWizardEditKeepsSecret(t *testing.T) {
 		CurrentContext: "default",
 		Contexts: []NamedContext{{
 			Name:    "default",
-			BaseURL: "https://acme.atlassian.net/wiki",
+			BaseURL: "https://api.bitbucket.org",
 			Flavor:  FlavorCloud,
 			Auth:    AuthConfig{Scheme: SchemeBasic, Username: "alice@acme.com"},
 		}},
@@ -195,7 +195,7 @@ func TestRunWizardEditKeepsSecret(t *testing.T) {
 		t.Fatalf("want 1 creds entry, got %d", len(result.Creds))
 	}
 	got := result.Creds[0]
-	if got.Context.BaseURL != "https://acme.atlassian.net/wiki" {
+	if got.Context.BaseURL != "https://api.bitbucket.org" {
 		t.Errorf("kept URL lost: %q", got.Context.BaseURL)
 	}
 	if got.Secrets.APIToken != "stored-token" {
@@ -216,7 +216,7 @@ func TestRunWizardAddPreservesOthers(t *testing.T) {
 		CurrentContext: "prod",
 		Contexts: []NamedContext{{
 			Name:    "prod",
-			BaseURL: "https://prod.atlassian.net/wiki",
+			BaseURL: "https://bitbucket-prod.example.com",
 			Flavor:  FlavorCloud,
 			Auth:    AuthConfig{Scheme: SchemeBasic, Username: "ops@acme.com"},
 		}},
@@ -224,7 +224,7 @@ func TestRunWizardAddPreservesOthers(t *testing.T) {
 	d, _ := newPlainTest(strings.Join([]string{
 		"add",                                // action
 		"staging",                            // new context name
-		"https://staging.atlassian.net/wiki", // base URL
+		"https://bitbucket-staging.example.com", // base URL
 		"cloud",                              // flavor
 		"basic",                              // scheme
 		"qa@acme.com",                        // username
@@ -276,7 +276,7 @@ func TestDefaultSchemeForFlavor(t *testing.T) {
 func TestRunWizardAutoDetectedCloudDefaultsToBasic(t *testing.T) {
 	t.Parallel()
 	d, out := newPlainTest(strings.Join([]string{
-		"https://acme.atlassian.net/wiki", // base URL
+		"https://api.bitbucket.org", // base URL
 		"",                                // flavor — accept default (auto)
 		"",                                // scheme — accept default (should be basic post-detection)
 		"alice@acme.com",                  // username (only asked when basic)
@@ -305,7 +305,7 @@ func TestRunWizardAutoDetectedCloudDefaultsToBasic(t *testing.T) {
 func TestRunWizardExplicitCloudDefaultsToBasic(t *testing.T) {
 	t.Parallel()
 	d, out := newPlainTest(strings.Join([]string{
-		"https://acme.atlassian.net/wiki", // base URL
+		"https://api.bitbucket.org", // base URL
 		"cloud",                           // flavor
 		"",                                // scheme — accept default
 		"alice@acme.com",                  // username
@@ -327,7 +327,7 @@ func TestRunWizardExplicitCloudDefaultsToBasic(t *testing.T) {
 func TestRunWizardDataCenterDefaultsToPAT(t *testing.T) {
 	t.Parallel()
 	d, out := newPlainTest(strings.Join([]string{
-		"https://wiki.acme.corp", // base URL
+		"https://bitbucket.acme.corp", // base URL
 		"datacenter",             // flavor
 		"",                       // scheme — accept default (PAT)
 		"pat-tok",                // PAT

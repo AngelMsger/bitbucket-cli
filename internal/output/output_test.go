@@ -234,7 +234,7 @@ func TestEmitListFields(t *testing.T) {
 
 // TestEmitJSONPrettyOnNonTTY proves that Pretty has no effect on a non-TTY
 // writer: the bytes must be identical to the plain path. This is the contract
-// that keeps `bitbucket-cli --pretty page get … | jq` working.
+// that keeps `bitbucket-cli --pretty pr get … | jq` working.
 func TestEmitJSONPrettyOnNonTTY(t *testing.T) {
 	t.Parallel()
 	rec := mk("1", "Hello <world> & \"friends\"", "ENG")

@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>confluence-cli — read and write Confluence from your terminal</title>
-<meta name="description" content="A command-line tool that lets coding agents use a Confluence instance as an external knowledge base — read, search, create and edit pages. Confluence Cloud and Data Center.">
+<title>bitbucket-cli — drive Bitbucket from your terminal</title>
+<meta name="description" content="A command-line tool for coding agents and humans to browse Bitbucket repositories, drive pull-request review and merge workflows, post inline review comments, and query branches and commits. Bitbucket Cloud and Data Center.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -14,34 +14,31 @@
 
 <nav class="nav">
   <div class="nav-inner">
-    <a class="brand" href="#top">confluence-cli</a>
+    <a class="brand" href="#top">bitbucket-cli</a>
     <div class="nav-links">
       <a href="#features">Features</a>
       <a href="#quickstart">Quick start</a>
       <a href="#commands">Commands</a>
       <a class="is-cli" href="cli/">CLI reference</a>
       <a href="#guides">Guides</a>
-      <a href="https://github.com/angelmsger/confluence-cli">GitHub</a>
+      <a href="https://github.com/AngelMsger/bitbucket-cli">GitHub</a>
     </div>
   </div>
 </nav>
 
 <header class="hero" id="top">
   <div class="wrap">
-    <h1 class="reveal d1">confluence-cli<span class="cursor"></span></h1>
-    <p class="tagline reveal d2">Read and write Confluence from your terminal — built for coding agents, designed for humans.</p>
+    <h1 class="reveal d1">bitbucket-cli<span class="cursor"></span></h1>
+    <p class="tagline reveal d2">Drive Bitbucket from your terminal — built for coding agents, designed for humans.</p>
     <div class="pills reveal d3">
-      <span class="pill">Confluence Cloud</span>
+      <span class="pill">Bitbucket Cloud</span>
       <span class="pill">Data Center / Server</span>
       <span class="pill">Built for agents</span>
     </div>
     <div class="cta reveal d4">
       <a class="btn btn-primary" href="#install">Get started</a>
       <a class="btn btn-ghost" href="cli/">Browse the CLI reference →</a>
-      <a class="btn btn-ghost" href="https://github.com/angelmsger/confluence-cli">GitHub</a>
-    </div>
-    <div class="shot reveal d5">
-      <img src="image.png" alt="confluence-cli in a terminal">
+      <a class="btn btn-ghost" href="https://github.com/AngelMsger/bitbucket-cli">GitHub</a>
     </div>
   </div>
 </header>
@@ -50,34 +47,34 @@
   <div class="wrap">
     <div class="section-head">
       <span class="eyebrow">Capabilities</span>
-      <h2>One CLI for the whole wiki</h2>
-      <p class="lead">Read, search and edit Confluence — with output a coding agent can act on.</p>
+      <h2>One CLI for the whole PR loop</h2>
+      <p class="lead">Read repositories, drive PR review and merge — with output a coding agent can act on.</p>
     </div>
     <div class="grid grid-3">
       <div class="card feat">
-        <div class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h9l5 5v13H5z"/><path d="M14 3v5h5"/><path d="M8 13h8M8 17h5"/></svg></div>
-        <h3>Focused page reads</h3>
-        <p>Pull a whole page, or just an outline, one section or keyword matches — an agent loads only the context it needs.</p>
-      </div>
-      <div class="card feat">
-        <div class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16"/><path d="M14.5 5.5l4 4L8 20H4v-4z"/><path d="M12.5 7.5l4 4"/></svg></div>
-        <h3>Create &amp; edit pages</h3>
-        <p>Create, update, delete, move and copy pages. Author in Markdown — it converts to storage format — and preview any write with <code>--dry-run</code>.</p>
-      </div>
-      <div class="card feat">
-        <div class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5"/></svg></div>
-        <h3>CQL search</h3>
-        <p>Query with raw CQL, or build one from filter flags: text, author, space, label, type and date ranges.</p>
+        <div class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v14"/><path d="M18 7v10"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="19" r="2"/><circle cx="6" cy="5" r="2"/><path d="M8 5h6a4 4 0 0 1 4 4"/></svg></div>
+        <h3>Pull request lifecycle</h3>
+        <p>List, get, diff, comment, approve, decline and merge. Scoped reads — <code>--scope summary|diff|commits|activity</code> — let an agent load only what it needs.</p>
       </div>
       <div class="card feat">
         <div class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-4 4z"/><path d="M8 9h8M8 12h5"/></svg></div>
-        <h3>Comments &amp; threads</h3>
-        <p>Read footer comments and post replies, threaded under any parent comment.</p>
+        <h3>Inline review comments</h3>
+        <p>Post inline comments with <code>--inline path:line</code>, reply with <code>--reply-to</code>; Cloud and Data Center anchor shapes hidden behind one flag.</p>
+      </div>
+      <div class="card feat">
+        <div class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/><path d="M8 14h8"/></svg></div>
+        <h3>Repositories &amp; branches</h3>
+        <p>Browse, search and query repositories; list and manage branches; print HTTPS / SSH clone URLs ready to paste into <code>git clone</code>.</p>
+      </div>
+      <div class="card feat">
+        <div class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="M6 8v8a2 2 0 0 0 2 2h2"/><path d="M18 8v2a2 2 0 0 1-2 2h-4"/></svg></div>
+        <h3>Commits &amp; comparisons</h3>
+        <p>Walk commit history with <code>commit list</code>, look up a single hash with <code>commit get</code>, or list what is reachable from <em>to</em> but not <em>from</em> with <code>commit compare</code>.</p>
       </div>
       <div class="card feat is-new">
         <div class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4-8 4-8-4z"/><path d="M4 12l8 4 8-4"/><path d="M4 17l8 4 8-4"/></svg></div>
-        <h3>Multiple servers<span class="tag-new">new</span></h3>
-        <p>kubectl-style named contexts in one config file. Switch the current server, or override per command with <code>--use-context</code>.</p>
+        <h3>Multiple instances<span class="tag-new">new</span></h3>
+        <p>kubectl-style named contexts in one config file. Switch instance with <code>--use-context</code>; each context has its own credential.</p>
       </div>
       <div class="card feat">
         <div class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 8l-4 4 4 4"/><path d="M16 8l4 4-4 4"/><path d="M13 5l-2 14"/></svg></div>
@@ -92,7 +89,7 @@
       <div class="card feat">
         <div class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18a4 4 0 0 1 0-8 6 6 0 0 1 11.5-1.5A3.5 3.5 0 0 1 18 18z"/></svg></div>
         <h3>Cloud &amp; Data Center</h3>
-        <p>One flavor-agnostic client; the backend — Cloud or Data Center / Server — is detected automatically.</p>
+        <p>One flavor-agnostic client; the backend — Cloud (REST 2.0) or Data Center / Server (REST 1.0) — is detected automatically.</p>
       </div>
     </div>
   </div>
@@ -103,33 +100,28 @@
     <div class="section-head">
       <span class="eyebrow">Install</span>
       <h2>Up and running in a minute</h2>
-      <p class="lead">Pick whichever method suits you — or grab a prebuilt binary.</p>
+      <p class="lead">Build from source today; prebuilt binaries follow.</p>
     </div>
     <div class="term">
       <div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="term-title">install</span></div>
-<pre><span class="c"># npm</span>
-npm install -g @angelmsger/confluence-cli
+<pre><span class="c"># go install</span>
+go install github.com/angelmsger/bitbucket-cli/cmd/bitbucket-cli@latest
 
-<span class="c"># go</span>
-go install github.com/angelmsger/confluence-cli/cmd/confluence-cli@latest
-
-<span class="c"># from source</span>
+<span class="c"># from a local checkout</span>
 make install</pre>
     </div>
-    <p style="margin-top:14px;color:var(--muted)">Prefer a binary? Download one from the
-      <a href="https://github.com/angelmsger/confluence-cli/releases">Releases page</a>.</p>
     <div class="grid grid-2" style="margin-top:28px">
       <div class="card">
         <h3>Shell completion</h3>
-        <p style="margin:6px 0 12px">Completes subcommands, flag values and live space keys. Load it once:</p>
+        <p style="margin:6px 0 12px">Completes subcommands, flag values and live repository slugs. Load it once:</p>
         <div class="term"><div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
-<pre><span class="p">$</span> source &lt;(confluence-cli completion bash)</pre></div>
+<pre><span class="p">$</span> source &lt;(bitbucket-cli completion bash)</pre></div>
       </div>
       <div class="card">
         <h3>Companion Skill</h3>
-        <p style="margin:6px 0 12px">A <code>confluence</code> Skill is embedded in the binary. It detects your coding agent — Claude Code, Codex — and installs for each:</p>
+        <p style="margin:6px 0 12px">A <code>bitbucket</code> Skill is embedded in the binary. It detects your coding agent — Claude Code, Codex — and installs for each:</p>
         <div class="term"><div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
-<pre><span class="p">$</span> confluence-cli skill install</pre></div>
+<pre><span class="p">$</span> bitbucket-cli skill install</pre></div>
       </div>
     </div>
   </div>
@@ -139,23 +131,26 @@ make install</pre>
   <div class="wrap">
     <div class="section-head">
       <span class="eyebrow">Quick start</span>
-      <h2>Configure once, then work the wiki</h2>
-      <p class="lead">Set up a server, then read and write from the terminal.</p>
+      <h2>Configure once, then drive the PR loop</h2>
+      <p class="lead">Set up a server, then review and merge from the terminal.</p>
     </div>
     <div class="term">
       <div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="term-title">a typical session</span></div>
 <pre><span class="c"># interactive TUI setup, then verify connectivity</span>
-<span class="p">$</span> confluence-cli config init --pretty
-<span class="p">$</span> confluence-cli doctor
+<span class="p">$</span> bitbucket-cli config init --pretty
+<span class="p">$</span> bitbucket-cli doctor
 
-<span class="c"># find a page, then read it in stages</span>
-<span class="p">$</span> confluence-cli search --text "release process"
-<span class="p">$</span> confluence-cli page get &lt;id|url&gt; --scope outline
-<span class="p">$</span> confluence-cli page get &lt;id|url&gt; --scope section --section sec-2
+<span class="c"># browse and read PRs</span>
+<span class="p">$</span> bitbucket-cli pr list --repo myws/myrepo --state OPEN
+<span class="p">$</span> bitbucket-cli pr get myws/myrepo/42 --scope summary
+<span class="p">$</span> bitbucket-cli pr get myws/myrepo/42 --scope diff
 
-<span class="c"># create a page from Markdown, preview before sending</span>
-<span class="p">$</span> confluence-cli page create --space ENG --title "Release Notes" \
-    --format markdown --body-file notes.md --dry-run</pre>
+<span class="c"># review and merge</span>
+<span class="p">$</span> bitbucket-cli comment add --pr myws/myrepo/42 \
+    --inline src/server.go:142 \
+    --content "Hoist this allocation out of the loop?"
+<span class="p">$</span> bitbucket-cli pr approve myws/myrepo/42
+<span class="p">$</span> bitbucket-cli pr merge myws/myrepo/42 --strategy squash --yes</pre>
     </div>
   </div>
 </section>
@@ -168,35 +163,35 @@ make install</pre>
       <p class="lead">Eight command groups. Every flag and example lives in the full CLI reference.</p>
     </div>
     <div class="grid grid-3">
-      <a class="card cmd-group" href="cli/#confluence-cli-page">
-        <span class="cg-name">page</span>
-        <p>Read, create, update, delete, move and copy pages; walk the tree.</p>
+      <a class="card cmd-group" href="cli/#bitbucket-cli-pr">
+        <span class="cg-name">pr</span>
+        <p>List, get, diff, create, update, approve, decline and merge pull requests.</p>
       </a>
-      <a class="card cmd-group" href="cli/#confluence-cli-search">
-        <span class="cg-name">search</span>
-        <p>CQL search — raw, or built from filter flags.</p>
+      <a class="card cmd-group" href="cli/#bitbucket-cli-repo">
+        <span class="cg-name">repo</span>
+        <p>Browse, search, create and inspect repositories; print clone URLs.</p>
       </a>
-      <a class="card cmd-group" href="cli/#confluence-cli-space">
-        <span class="cg-name">space</span>
-        <p>List and inspect Confluence spaces.</p>
-      </a>
-      <a class="card cmd-group" href="cli/#confluence-cli-comment">
+      <a class="card cmd-group" href="cli/#bitbucket-cli-comment">
         <span class="cg-name">comment</span>
-        <p>Read footer comments and post replies.</p>
+        <p>Post general or inline PR comments; reply to threads; edit and delete.</p>
       </a>
-      <a class="card cmd-group" href="cli/#confluence-cli-attachment">
-        <span class="cg-name">attachment</span>
-        <p>List and download page attachments.</p>
+      <a class="card cmd-group" href="cli/#bitbucket-cli-branch">
+        <span class="cg-name">branch</span>
+        <p>List, get, create and delete branches in a repository.</p>
       </a>
-      <a class="card cmd-group" href="cli/#confluence-cli-config">
+      <a class="card cmd-group" href="cli/#bitbucket-cli-commit">
+        <span class="cg-name">commit</span>
+        <p>Show a commit, walk history, or compare two refs.</p>
+      </a>
+      <a class="card cmd-group" href="cli/#bitbucket-cli-config">
         <span class="cg-name">config</span>
         <p>Setup wizard, plus multi-server context management.</p>
       </a>
-      <a class="card cmd-group" href="cli/#confluence-cli-auth">
+      <a class="card cmd-group" href="cli/#bitbucket-cli-auth">
         <span class="cg-name">auth</span>
         <p>Inspect and manage stored credentials.</p>
       </a>
-      <a class="card cmd-group" href="cli/#confluence-cli-doctor">
+      <a class="card cmd-group" href="cli/#bitbucket-cli-doctor">
         <span class="cg-name">doctor</span>
         <p>Diagnose configuration, credentials and connectivity.</p>
       </a>
@@ -212,24 +207,28 @@ make install</pre>
     <div class="section-head">
       <span class="eyebrow">Guides</span>
       <h2>Go deeper</h2>
-      <p class="lead">Longer-form documentation, rendered on GitHub.</p>
+      <p class="lead">Longer-form documentation, embedded as the companion Skill.</p>
     </div>
     <div class="grid grid-3">
-      <a class="card" href="https://github.com/angelmsger/confluence-cli/blob/main/docs/installation.md">
-        <h3>Installation &amp; setup →</h3>
-        <p>Every install method, shell completion, and deploying the Skill.</p>
+      <a class="card" href="https://github.com/AngelMsger/bitbucket-cli/blob/main/skills/bitbucket/references/getting-started.md">
+        <h3>Getting started →</h3>
+        <p>Configuration, env vars, auth schemes, multi-context setup.</p>
       </a>
-      <a class="card" href="https://github.com/angelmsger/confluence-cli/blob/main/docs/technical-design.md">
-        <h3>Technical design →</h3>
-        <p>Architecture, the flavor-agnostic API client, error model and rendering.</p>
+      <a class="card" href="https://github.com/AngelMsger/bitbucket-cli/blob/main/skills/bitbucket/references/pr-workflows.md">
+        <h3>PR workflows →</h3>
+        <p>The list → get → diff → comment → approve → merge decision tree.</p>
       </a>
-      <a class="card" href="https://github.com/angelmsger/confluence-cli/blob/main/docs/releasing.md">
-        <h3>Releasing →</h3>
-        <p>How releases are cut and published to GitHub and npm.</p>
+      <a class="card" href="https://github.com/AngelMsger/bitbucket-cli/blob/main/skills/bitbucket/references/commenting.md">
+        <h3>Commenting →</h3>
+        <p>General, inline and threaded review comments — Cloud and Data Center.</p>
       </a>
-      <a class="card" href="https://github.com/angelmsger/confluence-cli/tree/main/skills/confluence">
+      <a class="card" href="https://github.com/AngelMsger/bitbucket-cli/blob/main/skills/bitbucket/references/errors-and-exit-codes.md">
+        <h3>Errors &amp; exit codes →</h3>
+        <p>Structured error categories, exit codes, and recovery flows.</p>
+      </a>
+      <a class="card" href="https://github.com/AngelMsger/bitbucket-cli/tree/main/skills/bitbucket">
         <h3>Companion Skill →</h3>
-        <p>The <code>confluence</code> Skill that teaches a coding agent the CLI.</p>
+        <p>The <code>bitbucket</code> Skill that teaches a coding agent the CLI.</p>
       </a>
     </div>
   </div>
@@ -237,8 +236,8 @@ make install</pre>
 
 <footer class="footer">
   <div class="wrap">
-    <span class="brand-foot">confluence-cli — MIT License</span>
-    <span><a href="https://github.com/angelmsger/confluence-cli">github.com/angelmsger/confluence-cli</a></span>
+    <span class="brand-foot">bitbucket-cli — MIT License</span>
+    <span><a href="https://github.com/AngelMsger/bitbucket-cli">github.com/AngelMsger/bitbucket-cli</a></span>
   </div>
 </footer>
 

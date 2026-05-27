@@ -84,7 +84,7 @@ type SelectItem struct {
 }
 
 const (
-	exampleBaseURL  = "https://your-site.atlassian.net/wiki"
+	exampleBaseURL  = "https://api.bitbucket.org"
 	exampleUsername = "you@example.com"
 )
 
@@ -105,12 +105,14 @@ type contextPicks struct {
 	KeepSecret     bool   // user opted to retain the previously stored secret
 }
 
-// defaultSchemeForFlavor picks the auth scheme we should suggest based on the
-// backend flavor. Cloud's id.atlassian.com API tokens only authenticate with
-// HTTP Basic (email + token); Bearer/PAT against Cloud returns 403. PAT
-// (Bearer) is Data Center 7.9+. When the flavor is unknown we default to PAT
-// — that is the historical default and matches Data Center, where users are
-// most likely to have come from before this wizard learned to suggest basic.
+// defaultSchemeForFlavor picks the auth scheme to suggest based on the backend
+// flavor. Bitbucket Cloud supports both Bearer (Workspace / Repository /
+// Project Access Tokens) and Basic (email + API Token, or email + App
+// Password). Atlassian API Tokens issued at id.atlassian.com authenticate
+// over Basic only — Bearer returns 403 with them — so Cloud's default is
+// basic, which works for both API Tokens and App Passwords. Data Center
+// users typically have HTTP Access Tokens, so PAT is the historical default
+// there.
 func defaultSchemeForFlavor(flavor, detected string) string {
 	if flavor == FlavorCloud || detected == FlavorCloud {
 		return SchemeBasic

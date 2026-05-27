@@ -63,7 +63,7 @@ func TestDecoratorSetsAuthorization(t *testing.T) {
 
 func TestAccountKey(t *testing.T) {
 	t.Parallel()
-	got := AccountKey("https://kms.example.com/wiki", SchemePAT)
+	got := AccountKey("https://kms.example.com", SchemePAT)
 	if got != "kms.example.com:pat" {
 		t.Errorf("AccountKey = %q", got)
 	}

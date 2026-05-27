@@ -97,12 +97,11 @@ func (c *apiClient) GetPRDiff(ctx context.Context, repo RepoRef, id int) (string
 	if err := checkRepoRef(repo); err != nil {
 		return "", err
 	}
-	if c.flavor == FlavorCloud {
-		return c.getText(ctx, c.prPath(repo, id)+"/diff", nil)
-	}
-	// Data Center returns JSON hunks at /diff; for now request the raw
-	// `application/x-patch` content via /diff.diff.
-	return c.getText(ctx, c.prPath(repo, id)+".diff", nil)
+	// Both flavors expose a /diff endpoint on the PR. Cloud serves a unified
+	// diff as text/plain; Data Center serves JSON hunks at this path, but
+	// honors `Accept: text/plain` for a raw unified diff. The CLI requests
+	// text/plain in either case via the shared getText helper.
+	return c.getText(ctx, c.prPath(repo, id)+"/diff", nil)
 }
 
 // ListPRCommits lists the commits included in a PR.
@@ -156,7 +155,11 @@ func (c *apiClient) ListPRActivity(ctx context.Context, opt PRListOpts) (ListRes
 	}
 	limit := c.limitOf(opt.ListOpts)
 	q := c.queryWithLimit(opt.Cursor, limit)
+	// Cloud's path is `/activity`; Data Center uses `/activities`.
 	path := c.prPath(opt.Repo, prID) + "/activity"
+	if c.flavor != FlavorCloud {
+		path = c.prPath(opt.Repo, prID) + "/activities"
+	}
 	if c.flavor == FlavorCloud {
 		if cloudFollowURL(opt.Cursor) {
 			path = opt.Cursor

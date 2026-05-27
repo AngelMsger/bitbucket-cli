@@ -33,7 +33,7 @@ jobs:
 
       - name: checksums
         working-directory: dist
-        run: sha256sum confluence-cli-* > checksums.txt
+        run: sha256sum bitbucket-cli-* > checksums.txt
 
       # Idempotent: if the release already exists (e.g. a re-run after the npm
       # step failed) refresh its assets instead of failing the whole workflow.
@@ -61,7 +61,7 @@ jobs:
         with:
           node-version: 24
 
-      # Publishes @angelmsger/confluence-cli via npm trusted publishing (OIDC):
+      # Publishes @angelmsger/bitbucket-cli via npm trusted publishing (OIDC):
       # no token is needed — the `id-token: write` permission above lets the npm
       # CLI authenticate, and provenance is attested automatically. Requires the
       # package's trusted publisher to be configured on npmjs.com first (see
@@ -77,8 +77,8 @@ jobs:
           echo "OIDC token endpoint present: ${ACTIONS_ID_TOKEN_REQUEST_URL:+yes}"
           VERSION="${TAG#v}"
           npm version "$VERSION" --no-git-tag-version --allow-same-version
-          if npm view "@angelmsger/confluence-cli@$VERSION" version >/dev/null 2>&1; then
-            echo "@angelmsger/confluence-cli@$VERSION already published — skipping"
+          if npm view "@angelmsger/bitbucket-cli@$VERSION" version >/dev/null 2>&1; then
+            echo "@angelmsger/bitbucket-cli@$VERSION already published — skipping"
           else
             npm publish --access public
           fi

@@ -1,6 +1,11 @@
 // Command mockserver is a minimal in-memory Bitbucket Data Center REST API,
 // used by scripts/e2e.sh to exercise bitbucket-cli end-to-end without a real
 // server. It prints its base URL on the first line of stdout, then serves.
+//
+// The mock covers the Data Center (REST 1.0) endpoints the e2e flow touches:
+// application-properties probe, repos, pull requests (list / get / diff /
+// commits / activities / comments / approve), branches, commits, plus a
+// `/releases/latest` route for the update check.
 package main
 
 import (
@@ -19,7 +24,7 @@ func main() {
 		os.Exit(1)
 	}
 	fmt.Printf("http://%s\n", ln.Addr().String())
-	os.Stdout.Sync()
+	_ = os.Stdout.Sync()
 
 	if err := http.Serve(ln, routes()); err != nil {
 		fmt.Fprintln(os.Stderr, "mockserver:", err)
@@ -30,142 +35,175 @@ func main() {
 func routes() http.Handler {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("GET /rest/api/space", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, map[string]any{
-			"results": []any{space("ENG", "Engineering")},
-			"size":    1, "limit": 25,
-		})
-	})
-	mux.HandleFunc("GET /rest/api/space/{key}", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, space(r.PathValue("key"), "Engineering"))
+	mux.HandleFunc("GET /rest/api/1.0/application-properties", func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, map[string]any{"version": "8.19.0", "buildNumber": "0", "displayName": "Bitbucket"})
 	})
 
-	mux.HandleFunc("GET /rest/api/content/{id}", func(w http.ResponseWriter, r *http.Request) {
-		id := r.PathValue("id")
-		if id == "404" {
-			http.Error(w, `{"message":"No content found"}`, http.StatusNotFound)
+	mux.HandleFunc("GET /rest/api/1.0/projects/{key}/repos", func(w http.ResponseWriter, r *http.Request) {
+		key := r.PathValue("key")
+		writeJSON(w, map[string]any{
+			"values":     []any{repo(key, "demo", "Demo")},
+			"size":       1,
+			"limit":      25,
+			"start":      0,
+			"isLastPage": true,
+		})
+	})
+	mux.HandleFunc("GET /rest/api/1.0/projects/{key}/repos/{slug}", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, repo(r.PathValue("key"), r.PathValue("slug"), "Demo"))
+	})
+
+	prKey := "/rest/api/1.0/projects/{key}/repos/{slug}/pull-requests"
+	mux.HandleFunc("GET "+prKey, func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, map[string]any{
+			"values":     []any{pr(1, "Add login flow", "OPEN")},
+			"size":       1,
+			"limit":      25,
+			"start":      0,
+			"isLastPage": true,
+		})
+	})
+	mux.HandleFunc("GET "+prKey+"/{id}", func(w http.ResponseWriter, r *http.Request) {
+		id := atoi(r.PathValue("id"))
+		if id == 404 {
+			http.Error(w, `{"errors":[{"message":"Pull request not found"}]}`, http.StatusNotFound)
 			return
 		}
-		if id == "att1" {
-			writeJSON(w, attachment("att1", "spec.txt"))
-			return
-		}
-		writeJSON(w, page(id, "Welcome"))
+		writeJSON(w, pr(id, "Add login flow", "OPEN"))
 	})
-	mux.HandleFunc("GET /rest/api/content/{id}/child/page", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, map[string]any{
-			"results": []any{page("201", "Child One"), page("202", "Child Two")},
-			"size":    2, "limit": 25,
-		})
-	})
-	mux.HandleFunc("GET /rest/api/content/{id}/descendant/page", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, map[string]any{
-			"results": []any{page("201", "Child One")},
-			"size":    1, "limit": 25,
-		})
-	})
-	mux.HandleFunc("GET /rest/api/content/{id}/child/comment", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, map[string]any{
-			"results": []any{comment("c1", "<p>First comment</p>")},
-			"size":    1, "limit": 25,
-		})
-	})
-	mux.HandleFunc("GET /rest/api/content/{id}/child/attachment", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, map[string]any{
-			"results": []any{attachment("att1", "spec.txt")},
-			"size":    1, "limit": 25,
-		})
-	})
-	mux.HandleFunc("GET /rest/api/search", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, map[string]any{
-			"results": []any{map[string]any{
-				"content": page("123", "Welcome"),
-				"title":   "Welcome", "excerpt": "a warm welcome",
-			}},
-			"size": 1, "limit": 25,
-		})
-	})
-	mux.HandleFunc("POST /rest/api/content", func(w http.ResponseWriter, r *http.Request) {
-		var req struct {
-			Type  string `json:"type"`
-			Title string `json:"title"`
-		}
-		_ = json.NewDecoder(r.Body).Decode(&req)
-		if req.Type == "page" {
-			writeJSON(w, page("new-page", req.Title))
-			return
-		}
-		writeJSON(w, comment("new-comment", "<p>posted</p>"))
-	})
-	mux.HandleFunc("PUT /rest/api/content/{id}", func(w http.ResponseWriter, r *http.Request) {
-		id := r.PathValue("id")
-		if id == "409" {
-			http.Error(w, `{"message":"version conflict"}`, http.StatusConflict)
-			return
-		}
-		var req struct {
-			Title   string `json:"title"`
-			Version struct {
-				Number int `json:"number"`
-			} `json:"version"`
-		}
-		_ = json.NewDecoder(r.Body).Decode(&req)
-		p := page(id, req.Title)
-		p["version"] = map[string]any{"number": req.Version.Number}
-		writeJSON(w, p)
-	})
-	mux.HandleFunc("DELETE /rest/api/content/{id}", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNoContent)
-	})
-	mux.HandleFunc("GET /download/", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET "+prKey+"/{id}/diff", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
-		w.Write([]byte("attachment payload\n"))
+		_, _ = w.Write([]byte("--- a/src/server.go\n+++ b/src/server.go\n@@ -1 +1 @@\n-old\n+new\n"))
+	})
+	mux.HandleFunc("GET "+prKey+"/{id}/commits", func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, map[string]any{
+			"values":     []any{commit("aaaa111", "feat: add login flow")},
+			"size":       1,
+			"limit":      25,
+			"start":      0,
+			"isLastPage": true,
+		})
+	})
+	mux.HandleFunc("GET "+prKey+"/{id}/activities", func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, map[string]any{
+			"values": []any{
+				map[string]any{"id": 100, "action": "COMMENTED", "user": user(), "createdDate": 1, "comment": map[string]any{
+					"id": 9001, "text": "Looks good", "author": user(), "createdDate": 1, "version": 0,
+				}},
+				map[string]any{"id": 101, "action": "APPROVED", "user": user(), "createdDate": 2},
+			},
+			"size": 2, "limit": 25, "start": 0, "isLastPage": true,
+		})
+	})
+	mux.HandleFunc("POST "+prKey+"/{id}/comments", func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, map[string]any{
+			"id": 9100, "text": "added", "author": user(), "createdDate": 1, "version": 0,
+		})
+	})
+	mux.HandleFunc("POST "+prKey+"/{id}/approve", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
+	mux.HandleFunc("DELETE "+prKey+"/{id}/approve", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) })
+
+	branchKey := "/rest/api/1.0/projects/{key}/repos/{slug}/branches"
+	mux.HandleFunc("GET "+branchKey, func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, map[string]any{
+			"values": []any{
+				map[string]any{"id": "refs/heads/main", "displayId": "main", "type": "BRANCH",
+					"latestCommit": "aaaa111", "isDefault": true},
+			},
+			"size": 1, "limit": 25, "start": 0, "isLastPage": true,
+		})
 	})
 
-	// Stand-in for the GitHub "latest release" API used by the update check.
-	mux.HandleFunc("GET /releases/latest", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, map[string]any{"tag_name": "v99.0.0"})
+	commitKey := "/rest/api/1.0/projects/{key}/repos/{slug}/commits"
+	mux.HandleFunc("GET "+commitKey, func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, map[string]any{
+			"values":     []any{commit("aaaa111", "feat: add login flow")},
+			"size":       1,
+			"limit":      25,
+			"start":      0,
+			"isLastPage": true,
+		})
+	})
+	mux.HandleFunc("GET "+commitKey+"/{hash}", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, commit(r.PathValue("hash"), "feat: add login flow"))
 	})
 
+	mux.HandleFunc("GET /releases/latest", func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, map[string]any{"tag_name": "v99.0.0", "html_url": "https://example/releases"})
+	})
+
+	mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, fmt.Sprintf(`{"errors":[{"message":"no route for %s %s"}]}`, r.Method, r.URL.Path), http.StatusNotFound)
+	}))
 	return mux
 }
 
-func space(key, name string) map[string]any {
+func repo(key, slug, name string) map[string]any {
 	return map[string]any{
-		"id": 1, "key": key, "name": name, "type": "global",
-		"_links": map[string]any{"webui": "/display/" + key},
+		"slug":        slug,
+		"id":          1,
+		"name":        name,
+		"description": "Demo repository",
+		"public":      false,
+		"state":       "AVAILABLE",
+		"project":     map[string]any{"key": key, "name": "Demo project", "id": 1},
+		"links": map[string]any{
+			"clone": []any{
+				map[string]any{"href": "https://bitbucket.example.com/scm/" + strings.ToLower(key) + "/" + slug + ".git", "name": "http"},
+				map[string]any{"href": "ssh://git@bitbucket.example.com/" + strings.ToLower(key) + "/" + slug + ".git", "name": "ssh"},
+			},
+			"self": []any{map[string]any{"href": "https://bitbucket.example.com/projects/" + key + "/repos/" + slug + "/browse"}},
+		},
 	}
 }
 
-func page(id, title string) map[string]any {
+func pr(id int, title, state string) map[string]any {
 	return map[string]any{
-		"id": id, "type": "page", "status": "current", "title": title,
-		"space":   map[string]any{"key": "ENG", "name": "Engineering"},
-		"version": map[string]any{"number": 2, "when": "2025-05-01T00:00:00Z"},
-		"body": map[string]any{"storage": map[string]any{
-			"value": "<h1>Overview</h1><p>Body text for " + title +
-				".</p><h2>Details</h2><p>More detail here.</p>",
-			"representation": "storage",
-		}},
-		"_links": map[string]any{"webui": "/display/ENG/" + strings.ReplaceAll(title, " ", "+")},
+		"id":          id,
+		"version":     0,
+		"title":       title,
+		"description": "PR description",
+		"state":       state,
+		"open":        state == "OPEN",
+		"closed":      state != "OPEN",
+		"createdDate": 1,
+		"updatedDate": 2,
+		"fromRef": map[string]any{
+			"id": "refs/heads/feature/x", "displayId": "feature/x", "latestCommit": "bbbb222",
+			"repository": repo("PROJ", "demo", "Demo"),
+		},
+		"toRef": map[string]any{
+			"id": "refs/heads/main", "displayId": "main", "latestCommit": "aaaa111",
+			"repository": repo("PROJ", "demo", "Demo"),
+		},
+		"author":       map[string]any{"user": user(), "role": "AUTHOR", "approved": false, "status": "UNAPPROVED"},
+		"reviewers":    []any{map[string]any{"user": user(), "role": "REVIEWER", "approved": false, "status": "UNAPPROVED"}},
+		"participants": []any{},
+		"properties":   map[string]any{"commentCount": 1},
+		"links":        map[string]any{"self": []any{map[string]any{"href": "https://bitbucket.example.com/pr/" + itoa(id)}}},
 	}
 }
 
-func comment(id, body string) map[string]any {
+func commit(hash, message string) map[string]any {
 	return map[string]any{
-		"id": id, "type": "comment",
-		"version": map[string]any{"number": 1},
-		"body":    map[string]any{"storage": map[string]any{"value": body, "representation": "storage"}},
-		"_links":  map[string]any{"webui": "/display/ENG/comment"},
+		"id":              hash,
+		"displayId":       hash[:min(7, len(hash))],
+		"message":         message,
+		"authorTimestamp": 1,
+		"author":          user(),
+		"parents":         []any{},
 	}
 }
 
-func attachment(id, title string) map[string]any {
+func user() map[string]any {
 	return map[string]any{
-		"id": id, "type": "attachment", "title": title,
-		"metadata":   map[string]any{"mediaType": "text/plain"},
-		"extensions": map[string]any{"fileSize": 19},
-		"_links":     map[string]any{"download": "/download/attachments/123/" + title},
+		"name":         "alice",
+		"emailAddress": "alice@example.com",
+		"id":           1,
+		"displayName":  "Alice Example",
+		"active":       true,
+		"slug":         "alice",
+		"type":         "NORMAL",
 	}
 }
 
@@ -173,3 +211,17 @@ func writeJSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(v)
 }
+
+func atoi(s string) int {
+	n := 0
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return n
+		}
+		n = n*10 + int(r-'0')
+	}
+	return n
+}
+
+func itoa(n int) string { return fmt.Sprintf("%d", n) }
+func min(a, b int) int  { if a < b { return a }; return b }

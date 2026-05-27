@@ -16,10 +16,10 @@ func defaultGuidance(cat Category) (hint string, steps []string) {
 			[]string{"bitbucket-cli auth status", "bitbucket-cli config init --pretty"}
 	case CategoryPermission:
 		return "The credentials are valid but lack permission for this resource.",
-			[]string{"Verify the account can access the page/space in a browser."}
+			[]string{"Verify the account can access the workspace, repository or PR in a browser."}
 	case CategoryNotFound:
-		return "The requested page, space or attachment does not exist.",
-			[]string{"bitbucket-cli search --text \"<keywords>\"", "Double-check the ID or URL."}
+		return "The requested workspace, repository, pull request, branch or commit does not exist.",
+			[]string{"bitbucket-cli repo list --workspace <name>", "Double-check the <workspace>/<repo>/<id> reference or URL."}
 	case CategoryConflict:
 		return "The resource changed since it was last read (version conflict).",
 			[]string{"Re-fetch the resource to get its current version, then retry."}
@@ -34,7 +34,7 @@ func defaultGuidance(cat Category) (hint string, steps []string) {
 			[]string{"Retry later.", "bitbucket-cli doctor"}
 	case CategoryParse:
 		return "A response could not be parsed or rendered.",
-			[]string{"Retry with --format json and --scope full to inspect raw content."}
+			[]string{"Retry with --format json --verbose to inspect the raw response."}
 	default:
 		return "An unexpected internal error occurred.",
 			[]string{"Retry with --verbose for details."}

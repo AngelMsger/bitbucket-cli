@@ -75,59 +75,47 @@ echo "    mock server at $MOCK_URL"
 export BITBUCKET_SERVER="$MOCK_URL"
 export BITBUCKET_FLAVOR="datacenter"
 export BITBUCKET_PERSONAL_ACCESS_TOKEN="e2e-token"
+export BITBUCKET_DEFAULT_WORKSPACE="PROJ"
 # Point the release-update check at the mock server, not the real GitHub API.
 export BITBUCKET_RELEASE_API="$MOCK_URL/releases/latest"
 TMPCFG="$(mktemp -d)"
 CLI=("$BIN" --config "$TMPCFG")
 
 echo "==> mock e2e checks"
-assert_contains  "version"                "bitbucket-cli" "${CLI[@]}" version
-assert_contains  "doctor healthy"         '"healthy": true' "${CLI[@]}" doctor
-assert_contains  "doctor reports update"  '"available": true' "${CLI[@]}" doctor
-assert_contains  "doctor --no-update-check skips it" '"healthy": true' \
-                                          "${CLI[@]}" doctor --no-update-check
-assert_contains  "page get"               "Welcome"        "${CLI[@]}" page get 123
-assert_contains  "page get outline scope" '"scope_applied": "outline"' \
-                                          "${CLI[@]}" page get 123 --scope outline
-assert_contains  "page get section scope" "Details"        "${CLI[@]}" page get 123 --scope section --section sec-2
-assert_contains  "page children"          "Child One"      "${CLI[@]}" page children 123
-assert_contains  "page descendants"       "Child One"      "${CLI[@]}" page descendants 123
-assert_contains  "search by text"         "Welcome"        "${CLI[@]}" search --text welcome
-assert_contains  "search raw cql"         "Welcome"        "${CLI[@]}" search 'type = page'
-assert_contains  "space list"             "ENG"            "${CLI[@]}" space list
-assert_contains  "space list table"       "ENG"            "${CLI[@]}" space list --format table
-assert_contains  "space get"              "Engineering"    "${CLI[@]}" space get ENG
-assert_contains  "comment list"           "First comment"  "${CLI[@]}" comment list 123
-assert_contains  "comment add"            "new-comment"    "${CLI[@]}" comment add 123 --body "looks good"
-assert_contains  "page create"            "new-page"       "${CLI[@]}" page create --space ENG --title "Spec" --body "<p>hi</p>"
-assert_contains  "page create dry-run"    '"dry_run": true' \
-                                          "${CLI[@]}" page create --space ENG --title "X" --body "<p>x</p>" --dry-run
-assert_contains  "page create markdown"   "<h1>Title</h1>" \
-                                          "${CLI[@]}" page create --space ENG --title "MD" --body-format markdown --body "# Title" --dry-run
-assert_contains  "page update"            '"number": 3'    "${CLI[@]}" page update 123 --title "Renamed" --version 2
-assert_exit      "page update conflict -> 11" 11           "${CLI[@]}" page update 409 --title "X"
-assert_exit      "page delete needs --yes -> 2" 2          "${CLI[@]}" page delete 123 </dev/null
-assert_contains  "page delete --yes"      "trashed"        "${CLI[@]}" page delete 123 --yes
-assert_contains  "page move dry-run"      '"dry_run": true' \
-                                          "${CLI[@]}" page move 123 --target-parent 201 --dry-run
-assert_contains  "page move"              '"id"'           "${CLI[@]}" page move 123 --target-parent 201
-assert_contains  "page copy"              "new-page"       "${CLI[@]}" page copy 123 --title "Copy of Welcome"
-assert_contains  "attachment list"        "spec.txt"       "${CLI[@]}" attachment list 123
-assert_contains  "attachment download"    "attachment payload" \
-                                          "${CLI[@]}" attachment download att1 --output -
-assert_contains  "fields projection"      '"id"'           "${CLI[@]}" page get 123 --fields id,title
+assert_contains  "version"                   "bitbucket-cli"  "${CLI[@]}" version
+assert_contains  "doctor healthy"            '"healthy": true' "${CLI[@]}" doctor
+assert_contains  "doctor reports update"     '"available": true' "${CLI[@]}" doctor
+assert_contains  "doctor --no-update-check"  '"healthy": true' \
+                                             "${CLI[@]}" doctor --no-update-check
+assert_contains  "repo list"                 "demo"           "${CLI[@]}" repo list --workspace PROJ
+assert_contains  "repo get"                  "demo"           "${CLI[@]}" repo get PROJ/demo
+assert_contains  "repo clone-url https"      "bitbucket.example.com/scm" \
+                                             "${CLI[@]}" repo clone-url PROJ/demo --protocol https
+assert_contains  "pr list"                   "Add login flow" "${CLI[@]}" pr list --repo PROJ/demo
+assert_contains  "pr get summary"            "Add login flow" "${CLI[@]}" pr get PROJ/demo/1
+assert_contains  "pr get diff"               "@@ -1 +1 @@"    "${CLI[@]}" pr get PROJ/demo/1 --scope diff
+assert_contains  "pr diff command"           "@@ -1 +1 @@"    "${CLI[@]}" pr diff PROJ/demo/1
+assert_contains  "pr commits"                "aaaa111"        "${CLI[@]}" pr commits PROJ/demo/1
+assert_contains  "pr activity"               "Looks good"     "${CLI[@]}" pr activity PROJ/demo/1
+assert_contains  "comment list"              "Looks good"     "${CLI[@]}" comment list --pr PROJ/demo/1
+assert_contains  "comment add"               "added"          "${CLI[@]}" comment add --pr PROJ/demo/1 --content "added"
+assert_contains  "pr approve"                '"approved": true' "${CLI[@]}" pr approve PROJ/demo/1
+assert_contains  "pr unapprove"              '"approved": false' "${CLI[@]}" pr unapprove PROJ/demo/1
+assert_contains  "branch list"               "main"           "${CLI[@]}" branch list --repo PROJ/demo
+assert_contains  "commit list"               "aaaa111"        "${CLI[@]}" commit list --repo PROJ/demo
+assert_contains  "commit get"                "aaaa111"        "${CLI[@]}" commit get --repo PROJ/demo aaaa111
+assert_contains  "pr create dry-run"         '"method": "POST"' \
+                                             "${CLI[@]}" pr create --repo PROJ/demo --source feature/x --target main --title "X" --dry-run
+assert_contains  "fields projection"         '"id"'           "${CLI[@]}" pr get PROJ/demo/1 --fields id,title
 SKILL_DIR="$(mktemp -d)"
-assert_contains  "skill install"          '"installed"' \
-                                          "${CLI[@]}" skill install --dir "$SKILL_DIR"
-assert_contains  "skill install --agent codex" '"codex"' \
-                                          env HOME="$(mktemp -d)" "${CLI[@]}" skill install --agent codex
-assert_contains  "skill uninstall"        '"removed"' \
-                                          "${CLI[@]}" skill uninstall --dir "$SKILL_DIR"
-assert_contains  "skill uninstall (repeat)" '"not_installed"' \
-                                          "${CLI[@]}" skill uninstall --dir "$SKILL_DIR"
-assert_contains  "skill show"             "name: bitbucket" "${CLI[@]}" skill show
-assert_exit      "missing page -> 6"      6                "${CLI[@]}" page get 404
-assert_exit      "bad flag -> 2"          2                "${CLI[@]}" page get 123 --bogus
+assert_contains  "skill install"             '"installed"' \
+                                             "${CLI[@]}" skill install --dir "$SKILL_DIR"
+assert_contains  "skill uninstall"           '"removed"' \
+                                             "${CLI[@]}" skill uninstall --dir "$SKILL_DIR"
+assert_contains  "skill show"                "name: bitbucket" "${CLI[@]}" skill show
+assert_exit      "missing PR -> 6"           6                "${CLI[@]}" pr get PROJ/demo/404
+assert_exit      "bad flag -> 2"             2                "${CLI[@]}" pr get PROJ/demo/1 --bogus
+assert_exit      "pr merge needs --yes -> 2" 2                "${CLI[@]}" pr merge PROJ/demo/1 </dev/null
 
 echo "==> multi-context checks"
 TMPCFG2="$(mktemp -d)"
@@ -158,10 +146,10 @@ assert_exit      "delete last context -> 2"   2              "${CLI2[@]}" config
 
 if [[ "${BITBUCKET_E2E_LIVE:-0}" == "1" ]]; then
   echo "==> live read-only checks (real server from .env)"
-  unset BITBUCKET_SERVER BITBUCKET_FLAVOR BITBUCKET_PERSONAL_ACCESS_TOKEN
+  unset BITBUCKET_SERVER BITBUCKET_FLAVOR BITBUCKET_PERSONAL_ACCESS_TOKEN BITBUCKET_RELEASE_API
   LIVECLI=("$BIN" --config "$(mktemp -d)")
-  assert_ok "live doctor"     "${LIVECLI[@]}" doctor
-  assert_ok "live space list" "${LIVECLI[@]}" space list --limit 1
+  assert_ok "live doctor"        "${LIVECLI[@]}" doctor
+  assert_ok "live whoami"        "${LIVECLI[@]}" whoami
 fi
 
 echo

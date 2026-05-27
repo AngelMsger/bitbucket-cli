@@ -52,7 +52,7 @@ func TestNormalizeUsername(t *testing.T) {
 func TestFileContextCaseInsensitive(t *testing.T) {
 	t.Parallel()
 	f := File{Contexts: []NamedContext{
-		{Name: "Cloud", BaseURL: "https://acme.atlassian.net/wiki"},
+		{Name: "Cloud", BaseURL: "https://api.bitbucket.org"},
 		{Name: "default", BaseURL: "https://kms.example.com"},
 	}}
 	for _, lookup := range []string{"cloud", "Cloud", "CLOUD", "cLoUd"} {
@@ -77,7 +77,7 @@ func TestAssembleContextResultNormalizesNameAndEmailUsername(t *testing.T) {
 	t.Parallel()
 	got := assembleContextResult(contextPicks{
 		Name:     "  Cloud  ",
-		BaseURL:  "https://acme.atlassian.net/wiki",
+		BaseURL:  "https://api.bitbucket.org",
 		Flavor:   FlavorCloud,
 		Scheme:   SchemeBasic,
 		Username: "Alice@Acme.COM",
@@ -98,7 +98,7 @@ func TestAssembleContextResultPreservesNonEmailUsernameCasing(t *testing.T) {
 	t.Parallel()
 	got := assembleContextResult(contextPicks{
 		Name:     "DC",
-		BaseURL:  "https://wiki.acme.corp",
+		BaseURL:  "https://bitbucket.acme.corp",
 		Flavor:   FlavorDataCenter,
 		Scheme:   SchemeBasic,
 		Username: "AliceJ",
