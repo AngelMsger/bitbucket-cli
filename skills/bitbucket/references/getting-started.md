@@ -10,9 +10,11 @@ bitbucket-cli config init --pretty
 ```
 
 The TUI walks through: base URL → flavor detection → auth scheme → credential
-entry → keychain storage choice. It writes `~/.bitbucket/config.yaml`; secrets
-go to the OS keychain (`service="bitbucket-cli"`), or to
-`~/.bitbucket/credentials` (mode 0600) when no keychain is available.
+entry → keychain storage choice. It writes `~/.angelmsger/bitbucket/config.yaml`
+(or, on legacy installs that still have a `~/.bitbucket/config.yaml`, that
+location); secrets go to the OS keychain (`service="bitbucket-cli"`), or to a
+`credentials` file inside the same directory (mode 0600) when no keychain is
+available.
 
 ## Environment-driven setup
 
@@ -42,6 +44,8 @@ The `slug` field of each workspace entry is what every other command's
 
 ## Contexts
 
-`~/.bitbucket/config.yaml` supports named contexts, one per Bitbucket instance.
+The resolved config file (`~/.angelmsger/bitbucket/config.yaml`, falling back
+to `~/.bitbucket/config.yaml`) supports named contexts, one per Bitbucket
+instance.
 Switch with `--use-context <name>` for one invocation, or rerun
 `config init --use-context <name>` to set up another.

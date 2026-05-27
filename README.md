@@ -110,7 +110,8 @@ bitbucket-cli pr merge   myws/myrepo/42 --strategy squash --yes
 ## Configuration
 
 Settings resolve in precedence order (highest first): CLI flags → environment
-variables (`BITBUCKET_*`) → `.env` → `~/.bitbucket/config.yaml` → defaults. See
+variables (`BITBUCKET_*`) → `.env` → `~/.angelmsger/bitbucket/config.yaml`
+(legacy fallback `~/.bitbucket/config.yaml`) → defaults. See
 `.env.example` for the full list. Secrets are stored in the OS keychain (with a
 `0600` file fallback) and never written to the config file.
 

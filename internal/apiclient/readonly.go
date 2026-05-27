@@ -28,7 +28,7 @@ func blocked(op string) *cerrors.CLIError {
 		WithNextSteps(
 			"Add --allow-writes to the command line",
 			"unset BITBUCKET_CLI_READ_ONLY",
-			"Set defaults.read_only=false in ~/.bitbucket/config.yaml",
+			"Set defaults.read_only=false in ~/.angelmsger/bitbucket/config.yaml (or ~/.bitbucket/config.yaml on legacy installs)",
 		)
 }
 

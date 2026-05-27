@@ -39,7 +39,9 @@ A session-level switch that blocks every mutating client method (and
 `pr fetch/checkout --exec`) before any HTTP request is sent. Enable it by
 either:
 
-- `defaults.read_only: true` in `~/.bitbucket/config.yaml`, or
+- `defaults.read_only: true` in `~/.angelmsger/bitbucket/config.yaml` (the
+  legacy `~/.bitbucket/config.yaml` location is still honored when only it
+  exists), or
 - `BITBUCKET_CLI_READ_ONLY=1` in the environment.
 
 Blocked operations return a structured error:
@@ -53,7 +55,7 @@ Blocked operations return a structured error:
     "next_steps": [
       "Add --allow-writes to the command line",
       "unset BITBUCKET_CLI_READ_ONLY",
-      "Set defaults.read_only=false in ~/.bitbucket/config.yaml"
+      "Set defaults.read_only=false in ~/.angelmsger/bitbucket/config.yaml"
     ]
   }
 }

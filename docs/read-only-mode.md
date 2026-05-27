@@ -52,7 +52,7 @@ client method (and `pr fetch/checkout --exec`, which would shell out to
 Either set it in config:
 
 ```yaml
-# ~/.bitbucket/config.yaml
+# ~/.angelmsger/bitbucket/config.yaml  (legacy: ~/.bitbucket/config.yaml)
 defaults:
   read_only: true
 ```
@@ -78,7 +78,7 @@ $ bitbucket-cli pr approve myws/myrepo/42
     "next_steps": [
       "Add --allow-writes to the command line",
       "unset BITBUCKET_CLI_READ_ONLY",
-      "Set defaults.read_only=false in ~/.bitbucket/config.yaml"
+      "Set defaults.read_only=false in ~/.angelmsger/bitbucket/config.yaml"
     ],
     "retryable": false
   }

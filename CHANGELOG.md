@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **Default config location moved to `~/.angelmsger/bitbucket/`.** New
+  installs and `config init` now write `config.yaml` (and the
+  credentials fallback file) under `~/.angelmsger/bitbucket/`, grouping
+  every angelmsger CLI under one shared dotfile root. The legacy
+  `~/.bitbucket/` directory is still honored — if it has a `config.yaml`
+  and the new location does not, the CLI reads and writes there as
+  before, so existing installations keep working without a migration
+  step. To migrate manually:
+  `mkdir -p ~/.angelmsger && mv ~/.bitbucket ~/.angelmsger/bitbucket`.
+  Keychain entries are unaffected (the service key has not changed).
+
 ## [0.3.0] - 2026-05-27
 
 ### Added

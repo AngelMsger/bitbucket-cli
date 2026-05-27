@@ -138,7 +138,8 @@ Defaults { Format, PageSize, Timeout, MaxRetries, Workspace, ReadOnly }
 ### 4.2 Sources and precedence
 
 Highest → lowest: CLI flags > environment variables (`BITBUCKET_*`) >
-`.env` file > `~/.bitbucket/config.yaml` > built-in defaults. Each
+`.env` file > `~/.angelmsger/bitbucket/config.yaml` (or the legacy
+`~/.bitbucket/config.yaml` when only that exists) > built-in defaults. Each
 layer is a sparse `Config`; non-zero fields override lower layers.
 Provenance is recorded per-field so `config show --explain` can report
 it.
@@ -170,8 +171,11 @@ Environment variable mapping:
 
 Secrets are never persisted to `config.yaml`. `config init` stores them
 in the OS keychain (`go-keyring`, service `bitbucket-cli`, account
-`<host>:<scheme>`); on failure it falls back to
-`~/.bitbucket/credentials` (file 0600, dir 0700).
+`<host>:<scheme>`); on failure it falls back to a `credentials` file
+inside the resolved config directory (file 0600, dir 0700) —
+`~/.angelmsger/bitbucket/credentials` by default, or
+`~/.bitbucket/credentials` when the CLI is running against the legacy
+location.
 
 ### 4.4 The `init` wizard
 
