@@ -156,6 +156,7 @@ JSON with structured errors.</p>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
+        <tr><td><code>--allow-writes</code></td><td><code>false</code></td><td>override read-only mode (defaults.read_only / BITBUCKET_CLI_READ_ONLY) for this invocation</td></tr>
         <tr><td><code>--base-url</code></td><td></td><td>Bitbucket site URL (overrides config)</td></tr>
         <tr><td><code>--config</code></td><td></td><td>config directory (default ~/.bitbucket)</td></tr>
         <tr><td><code>--fields</code></td><td></td><td>comma-separated dot-path fields to keep</td></tr>
@@ -242,6 +243,7 @@ JSON with structured errors.</p>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
+        <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>preview the HTTP request without sending it</td></tr>
         <tr><td><code>--repo</code></td><td></td><td>&lt;workspace&gt;/&lt;repo&gt;</td></tr>
         <tr><td><code>--yes</code></td><td><code>false</code></td><td>confirm the deletion</td></tr>
         </tbody>
@@ -304,6 +306,7 @@ JSON with structured errors.</p>
         <tbody>
         <tr><td><code>--content</code></td><td></td><td>comment body (Markdown)</td></tr>
         <tr><td><code>--content-file</code></td><td></td><td>read content from this file</td></tr>
+        <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>preview the HTTP request without sending it</td></tr>
         <tr><td><code>--inline</code></td><td></td><td>inline anchor as &lt;path&gt;:&lt;line&gt;</td></tr>
         <tr><td><code>--pr</code></td><td></td><td>&lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt; or PR URL</td></tr>
         <tr><td><code>--reply-to</code></td><td><code>0</code></td><td>reply to this comment ID</td></tr>
@@ -321,6 +324,7 @@ JSON with structured errors.</p>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
+        <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>preview the HTTP request without sending it</td></tr>
         <tr><td><code>--pr</code></td><td></td><td>&lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt; or PR URL</td></tr>
         <tr><td><code>--yes</code></td><td><code>false</code></td><td>confirm the deletion</td></tr>
         </tbody>
@@ -356,6 +360,7 @@ JSON with structured errors.</p>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
         <tr><td><code>--content</code></td><td></td><td>new content (Markdown)</td></tr>
+        <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>preview the HTTP request without sending it</td></tr>
         <tr><td><code>--pr</code></td><td></td><td>&lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt; or PR URL</td></tr>
         </tbody>
       </table>
@@ -608,9 +613,15 @@ a single command with the global --use-context flag instead.</p>
     <section class="cmd" id="bitbucket-cli-pr-approve">
       <h2>bitbucket-cli pr approve</h2>
       <p class="short">Approve a PR</p>
-      <pre>bitbucket-cli pr approve &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt;</pre>
+      <pre>bitbucket-cli pr approve &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt; [flags]</pre>
       
-      
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>preview the HTTP request without sending it</td></tr>
+        </tbody>
+      </table>
       
     </section>
     
@@ -681,6 +692,7 @@ a single command with the global --use-context flag instead.</p>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
+        <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>preview the HTTP request without sending it</td></tr>
         <tr><td><code>--message</code></td><td></td><td>decline message</td></tr>
         <tr><td><code>--yes</code></td><td><code>false</code></td><td>confirm declining</td></tr>
         </tbody>
@@ -821,6 +833,7 @@ participant) require --workspace; --role author works globally via the user&#39;
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
+        <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>preview the HTTP request without sending it</td></tr>
         <tr><td><code>--withdraw</code></td><td><code>false</code></td><td>withdraw a previous request-changes vote</td></tr>
         </tbody>
       </table>
@@ -848,9 +861,15 @@ participant) require --workspace; --role author works globally via the user&#39;
     <section class="cmd" id="bitbucket-cli-pr-unapprove">
       <h2>bitbucket-cli pr unapprove</h2>
       <p class="short">Withdraw an approval</p>
-      <pre>bitbucket-cli pr unapprove &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt;</pre>
+      <pre>bitbucket-cli pr unapprove &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt; [flags]</pre>
       
-      
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>preview the HTTP request without sending it</td></tr>
+        </tbody>
+      </table>
       
     </section>
     
@@ -864,6 +883,7 @@ participant) require --workspace; --role author works globally via the user&#39;
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
         <tr><td><code>--description</code></td><td></td><td>new description</td></tr>
+        <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>preview the HTTP request without sending it</td></tr>
         <tr><td><code>--reviewer</code></td><td><code>[]</code></td><td>replace reviewer list (repeatable)</td></tr>
         <tr><td><code>--title</code></td><td></td><td>new title</td></tr>
         </tbody>
@@ -923,6 +943,7 @@ participant) require --workspace; --role author works globally via the user&#39;
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
+        <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>preview the HTTP request without sending it</td></tr>
         <tr><td><code>--yes</code></td><td><code>false</code></td><td>confirm the deletion</td></tr>
         </tbody>
       </table>

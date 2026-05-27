@@ -1,5 +1,37 @@
 # Changelog
 
+## [Unreleased]
+
+## [0.3.0] - 2026-05-27
+
+### Added
+
+- **`--dry-run` on every mutating command.** `bitbucket-cli pr update`,
+  `pr approve`, `pr unapprove`, `pr request-changes`, `pr decline`,
+  `comment add`, `comment update`, `comment delete`, `branch delete`, and
+  `repo delete` now accept `--dry-run` (the existing `pr create`,
+  `pr merge`, `branch create`, `repo create` flags are unchanged). Every
+  preview goes through a single `Client.DescribeWrite(ctx, op)` path that
+  shares the same build helper as the live write, so the previewed HTTP
+  request can never diverge from the one that would be sent. Four new
+  `DescribeWrite` cases — `DeleteRepoReq`, `RequestChangesReq`,
+  `UpdatePRCommentReq`, `DeletePRCommentReq` — round out coverage of the
+  full mutating surface.
+- **Read-only mode.** A session-level safety switch that blocks every
+  mutating client method before any HTTP request is sent, and also gates
+  `pr fetch/checkout --exec` (which mutates the local git worktree).
+  Enable it via `defaults.read_only: true` in `~/.bitbucket/config.yaml`
+  or `BITBUCKET_CLI_READ_ONLY=1` in the environment. Blocked operations
+  return a structured `READONLY_BLOCKED` error (`category=permission`,
+  exit code 5) whose `next_steps[0]` is `--allow-writes`. The new
+  root-level `--allow-writes` persistent flag overrides the posture for
+  a single invocation, so
+  `BITBUCKET_CLI_READ_ONLY=1 bitbucket-cli --allow-writes pr approve <ref>`
+  is the documented escape hatch. `--dry-run` remains usable under
+  read-only — `DescribeWrite` sends no HTTP, so the wrapper passes it
+  through unchanged. CLI self-configuration (`config init`, `auth login`,
+  `skill install`, `file get --output`) is intentionally out of scope.
+
 ## [0.2.0] - 2026-05-27
 
 ### Features

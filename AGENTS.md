@@ -73,6 +73,50 @@ paths that should include a discovery hint are asserted on (see
 `scripts/e2e.sh`'s `repo list hint` check). New "missing input" errors
 should grow a matching assertion.
 
+## Safety modes — `--dry-run` and read-only posture
+
+Two orthogonal protections guard every operation that mutates remote state
+*or* local user state (`pr fetch/checkout --exec`):
+
+1. **`--dry-run`** is a per-command flag on every mutating command. It must
+   resolve the request via `Client.DescribeWrite(ctx, op)` and emit the
+   resulting `WriteRequestPlan{Method, URL, Payload}` instead of sending the
+   HTTP request. Use the shared `emitDryRun(s, client, ctx, op)` helper —
+   never re-implement the dispatch inline. Every write request type that
+   reaches a command must also have a `DescribeWrite` case; the read path
+   (build helper) must be the same code path the live write uses so the
+   preview cannot drift from the actual request.
+2. **Read-only posture** is a session-level switch: `defaults.read_only`
+   in the config file, or `BITBUCKET_CLI_READ_ONLY` in the environment.
+   When active, `appState.newClient()` wraps the client in
+   `apiclient.NewReadOnly(...)`, which returns a structured
+   `READONLY_BLOCKED` (`category=permission`) error from every mutating
+   method *before* any HTTP request is sent. `--allow-writes` (root
+   persistent flag) overrides the posture for one invocation. Local-only
+   side effects that mutate user state outside the CLI's own configuration
+   — `pr fetch/checkout --exec` shelling out to `git` — MUST also check
+   `appState.readOnly()` before executing.
+
+When you add a new mutating method on `Client`:
+
+- Add the method override on `readOnlyClient` in `internal/apiclient/readonly.go`
+  so the wrapper actually blocks it.
+- Add a `DescribeWrite` case (`internal/apiclient/pulls_write.go`) + a
+  `--dry-run` branch on the calling command.
+- Add an e2e assertion for both the `--dry-run` happy path and the
+  `READONLY_BLOCKED` rejection (see `scripts/e2e.sh`).
+- Add a row to the wrapper's table test in
+  `internal/apiclient/readonly_test.go`.
+
+`--dry-run` must *not* be blocked by read-only mode — `DescribeWrite` sends
+no HTTP and is the right tool to inspect what a write would look like under
+a read-only session. The wrapper intentionally does not override it.
+
+CLI self-configuration (`config init`, `auth login|logout`, `skill install`,
+`file get --output`) is **out of scope** for read-only mode. Read-only
+protects the remote service and the user's working tree; it must not block
+the CLI from managing its own state.
+
 ## Documentation — keep it current
 
 - **Actively maintain the docs.** When a change affects architecture,

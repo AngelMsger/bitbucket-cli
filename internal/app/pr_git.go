@@ -99,6 +99,16 @@ func runOrPrintGit(s *appState, cmds []gitCmd, execIt bool) error {
 			"hint":     "re-run with --exec to actually run these (must be inside a git checkout).",
 		})
 	}
+	if s.readOnly() {
+		return cerrors.New(cerrors.CategoryPermission, "READONLY_BLOCKED",
+			"--exec blocked: read-only mode is enabled").
+			WithHint("Drop --exec to just print the git command, or re-run with --allow-writes.").
+			WithNextSteps(
+				"Re-run without --exec (the command will be printed but not run)",
+				"Add --allow-writes to permit this invocation",
+				"unset BITBUCKET_CLI_READ_ONLY",
+			)
+	}
 	if err := ensureGitWorktree(); err != nil {
 		return err
 	}

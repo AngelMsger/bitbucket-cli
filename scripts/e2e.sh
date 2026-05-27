@@ -150,6 +150,44 @@ assert_exit      "missing PR -> 6"           6                "${CLI[@]}" pr get
 assert_exit      "bad flag -> 2"             2                "${CLI[@]}" pr get PROJ/demo/1 --bogus
 assert_exit      "pr merge needs --yes -> 2" 2                "${CLI[@]}" pr merge PROJ/demo/1 </dev/null
 
+# --dry-run additions for v0.3 (every mutating command must accept --dry-run).
+assert_contains  "pr update --dry-run"       '"method": "PUT"' \
+                                             "${CLI[@]}" pr update PROJ/demo/1 --title "new title" --dry-run
+assert_contains  "pr approve --dry-run"      '"method": "POST"' \
+                                             "${CLI[@]}" pr approve PROJ/demo/1 --dry-run
+assert_contains  "pr unapprove --dry-run"    '"method": "DELETE"' \
+                                             "${CLI[@]}" pr unapprove PROJ/demo/1 --dry-run
+assert_contains  "pr decline --dry-run"      '"method": "POST"' \
+                                             "${CLI[@]}" pr decline PROJ/demo/1 --dry-run
+assert_contains  "pr merge --dry-run"        '"method": "POST"' \
+                                             "${CLI[@]}" pr merge PROJ/demo/1 --dry-run
+assert_contains  "comment add --dry-run"     '"method": "POST"' \
+                                             "${CLI[@]}" comment add --pr PROJ/demo/1 --content "x" --dry-run
+assert_contains  "branch create --dry-run"   '"method"'        \
+                                             "${CLI[@]}" branch create feat-x --repo PROJ/demo --from-ref main --dry-run
+assert_contains  "branch delete --dry-run"   '"method": "DELETE"' \
+                                             "${CLI[@]}" branch delete feat-x --repo PROJ/demo --dry-run
+assert_contains  "repo delete --dry-run"     '"method": "DELETE"' \
+                                             "${CLI[@]}" repo delete PROJ/demo --dry-run
+
+# Read-only mode: env BITBUCKET_CLI_READ_ONLY blocks writes; --allow-writes
+# overrides it; --dry-run remains usable.
+RO_ENV=(env BITBUCKET_CLI_READ_ONLY=1)
+assert_err_contains "read-only blocks pr approve"    "READONLY_BLOCKED" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" pr approve PROJ/demo/1
+assert_err_contains "read-only error names --allow-writes" "--allow-writes" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" pr approve PROJ/demo/1
+assert_exit         "read-only exit category=permission -> 5" 5 \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" pr approve PROJ/demo/1
+assert_contains     "read-only + --dry-run still previews" '"method": "POST"' \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" pr approve PROJ/demo/1 --dry-run
+assert_contains     "--allow-writes overrides read-only"   '"approved": true' \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" --allow-writes pr approve PROJ/demo/1
+assert_err_contains "read-only blocks pr fetch --exec"     "READONLY_BLOCKED" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" pr fetch PROJ/demo/1 --exec
+assert_contains     "read-only allows pr fetch (print-only)" "git fetch" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" pr fetch PROJ/demo/1
+
 echo "==> multi-context checks"
 TMPCFG2="$(mktemp -d)"
 cat >"$TMPCFG2/config.yaml" <<EOF

@@ -127,3 +127,14 @@ func confirm(prompt string) bool {
 	// In auto / scripted contexts we never block on stdin; require --yes.
 	return false
 }
+
+// emitDryRun resolves a write request into the HTTP request it would send and
+// emits that plan instead of performing the write. It is the shared entry
+// point for every command's `--dry-run` branch.
+func emitDryRun(s *appState, client apiclient.Client, ctx context.Context, op any) error {
+	plan, err := client.DescribeWrite(ctx, op)
+	if err != nil {
+		return err
+	}
+	return s.emit(plan)
+}

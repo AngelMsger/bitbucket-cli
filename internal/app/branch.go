@@ -108,11 +108,7 @@ func newBranchCreateCmd(s *appState) *cobra.Command {
 				return err
 			}
 			if dryRun {
-				plan, err := client.DescribeWrite(ctx, req)
-				if err != nil {
-					return err
-				}
-				return s.emit(plan)
+				return emitDryRun(s, client, ctx, req)
 			}
 			b, err := client.CreateBranch(ctx, req)
 			if err != nil {
@@ -131,16 +127,12 @@ func newBranchCreateCmd(s *appState) *cobra.Command {
 
 func newBranchDeleteCmd(s *appState) *cobra.Command {
 	var repoArg string
-	var yes bool
+	var yes, dryRun bool
 	cmd := &cobra.Command{
 		Use:   "delete <name>",
 		Short: "Delete a branch",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if !yes {
-				return cerrors.New(cerrors.CategoryUsage, "NEEDS_YES",
-					"pass --yes to confirm deletion")
-			}
 			ref, err := resolveRepoRef(repoArg, defaultWorkspace(s, ""))
 			if err != nil {
 				return err
@@ -151,7 +143,15 @@ func newBranchDeleteCmd(s *appState) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := client.DeleteBranch(ctx, apiclient.DeleteBranchReq{Repo: ref, Name: args[0]}); err != nil {
+			req := apiclient.DeleteBranchReq{Repo: ref, Name: args[0]}
+			if dryRun {
+				return emitDryRun(s, client, ctx, req)
+			}
+			if !yes {
+				return cerrors.New(cerrors.CategoryUsage, "NEEDS_YES",
+					"pass --yes to confirm deletion (or --dry-run to preview)")
+			}
+			if err := client.DeleteBranch(ctx, req); err != nil {
 				return err
 			}
 			return s.emit(map[string]any{"deleted": args[0]})
@@ -159,6 +159,7 @@ func newBranchDeleteCmd(s *appState) *cobra.Command {
 	}
 	cmd.Flags().StringVar(&repoArg, "repo", "", "<workspace>/<repo>")
 	cmd.Flags().BoolVar(&yes, "yes", false, "confirm the deletion")
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "preview the HTTP request without sending it")
 	_ = cmd.MarkFlagRequired("repo")
 	return cmd
 }

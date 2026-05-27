@@ -320,8 +320,42 @@ func (c *apiClient) DescribeWrite(ctx context.Context, op any) (WriteRequestPlan
 		m, p := c.buildDeleteBranch(v)
 		return WriteRequestPlan{Method: m, URL: c.baseURL + p}, nil
 	case AddPRCommentReq:
+		if err := checkRepoRef(v.Repo); err != nil {
+			return WriteRequestPlan{}, err
+		}
 		m, p, body := c.buildAddPRComment(v)
 		return WriteRequestPlan{Method: m, URL: c.baseURL + p, Payload: body}, nil
+	case UpdatePRCommentReq:
+		m, p, body, err := c.buildUpdatePRComment(ctx, v)
+		if err != nil {
+			return WriteRequestPlan{}, err
+		}
+		return WriteRequestPlan{Method: m, URL: c.baseURL + p, Payload: body}, nil
+	case DeletePRCommentReq:
+		m, p, err := c.buildDeletePRComment(ctx, v)
+		if err != nil {
+			return WriteRequestPlan{}, err
+		}
+		return WriteRequestPlan{Method: m, URL: c.baseURL + p}, nil
+	case DeleteRepoReq:
+		if err := checkRepoRef(v.Repo); err != nil {
+			return WriteRequestPlan{}, err
+		}
+		return WriteRequestPlan{Method: "DELETE", URL: c.baseURL + c.repoPath(v.Repo)}, nil
+	case RequestChangesReq:
+		if err := checkRepoRef(v.Repo); err != nil {
+			return WriteRequestPlan{}, err
+		}
+		if c.flavor != FlavorCloud {
+			return WriteRequestPlan{}, cerrors.New(cerrors.CategoryUsage, "PR_REQ_CHANGES_DC",
+				"request-changes is only available on Bitbucket Cloud").
+				WithHint("On Data Center, decline the PR or post a comment to request changes.")
+		}
+		m := "POST"
+		if !v.Request {
+			m = "DELETE"
+		}
+		return WriteRequestPlan{Method: m, URL: c.baseURL + c.prPath(v.Repo, v.ID) + "/request-changes"}, nil
 	}
 	return WriteRequestPlan{}, cerrors.New(cerrors.CategoryInternal, "UNSUPPORTED_WRITE",
 		"DescribeWrite called with an unsupported op type")

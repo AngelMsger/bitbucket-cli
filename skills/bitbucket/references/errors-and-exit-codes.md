@@ -23,6 +23,7 @@ The process exit code matches the category:
 | 2    | `usage`        | A flag/argument was malformed (e.g. bad PR ref, missing `--yes`).                |
 | 3    | `config`       | Configuration is missing or invalid; run `config init` or set env vars.          |
 | 4    | `auth`         | 401/403 from Bitbucket. Refresh the token or revisit `auth login`.               |
+| 5    | `permission`   | 403 from Bitbucket, **or** `READONLY_BLOCKED` from local read-only mode.         |
 | 6    | `not_found`    | 404 — the workspace, repo, PR, branch or commit does not exist for this user.    |
 | 7    | `rate_limit`   | 429 — back off; `retryable=true`.                                                |
 | 8    | `network`      | DNS/TLS/socket failure; `retryable=true`.                                        |
@@ -40,6 +41,10 @@ The process exit code matches the category:
   the current directory is not inside a git checkout. `cd` into a local clone
   of the repo first, or drop `--exec` to keep the print-only behaviour.
 - **`rate_limit`** → wait the retry-after window then re-run.
+- **`permission` `READONLY_BLOCKED`** → the current session is in read-only
+  mode (`defaults.read_only` or `BITBUCKET_CLI_READ_ONLY=1`). To send the
+  write anyway, add `--allow-writes` to the command line; to preview the
+  request without sending, add `--dry-run`. See `safety-modes.md`.
 
 ## Diagnostic mode
 

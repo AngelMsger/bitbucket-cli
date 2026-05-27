@@ -65,6 +65,7 @@ func newCommentAddCmd(s *appState) *cobra.Command {
 	var (
 		prArg, content, contentFile, inline string
 		replyTo                             int
+		dryRun                              bool
 	)
 	cmd := &cobra.Command{
 		Use:   "add",
@@ -109,6 +110,9 @@ func newCommentAddCmd(s *appState) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if dryRun {
+				return emitDryRun(s, client, ctx, req)
+			}
 			cm, err := client.AddPRComment(ctx, req)
 			if err != nil {
 				return err
@@ -122,12 +126,14 @@ func newCommentAddCmd(s *appState) *cobra.Command {
 	f.StringVar(&contentFile, "content-file", "", "read content from this file")
 	f.StringVar(&inline, "inline", "", "inline anchor as <path>:<line>")
 	f.IntVar(&replyTo, "reply-to", 0, "reply to this comment ID")
+	f.BoolVar(&dryRun, "dry-run", false, "preview the HTTP request without sending it")
 	_ = cmd.MarkFlagRequired("pr")
 	return cmd
 }
 
 func newCommentUpdateCmd(s *appState) *cobra.Command {
 	var prArg, content string
+	var dryRun bool
 	cmd := &cobra.Command{
 		Use:   "update <comment-id>",
 		Short: "Edit a comment",
@@ -147,9 +153,13 @@ func newCommentUpdateCmd(s *appState) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			cm, err := client.UpdatePRComment(ctx, apiclient.UpdatePRCommentReq{
+			req := apiclient.UpdatePRCommentReq{
 				Repo: ref, PRID: prID, ID: id, Content: content,
-			})
+			}
+			if dryRun {
+				return emitDryRun(s, client, ctx, req)
+			}
+			cm, err := client.UpdatePRComment(ctx, req)
 			if err != nil {
 				return err
 			}
@@ -158,6 +168,7 @@ func newCommentUpdateCmd(s *appState) *cobra.Command {
 	}
 	cmd.Flags().StringVar(&prArg, "pr", "", "<workspace>/<repo>/<id> or PR URL")
 	cmd.Flags().StringVar(&content, "content", "", "new content (Markdown)")
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "preview the HTTP request without sending it")
 	_ = cmd.MarkFlagRequired("pr")
 	_ = cmd.MarkFlagRequired("content")
 	return cmd
@@ -165,16 +176,12 @@ func newCommentUpdateCmd(s *appState) *cobra.Command {
 
 func newCommentDeleteCmd(s *appState) *cobra.Command {
 	var prArg string
-	var yes bool
+	var yes, dryRun bool
 	cmd := &cobra.Command{
 		Use:   "delete <comment-id>",
 		Short: "Delete a comment",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if !yes {
-				return cerrors.New(cerrors.CategoryUsage, "NEEDS_YES",
-					"pass --yes to confirm deletion")
-			}
 			ref, prID, err := resolvePRRef(prArg, apiclient.RepoRef{})
 			if err != nil {
 				return err
@@ -189,9 +196,15 @@ func newCommentDeleteCmd(s *appState) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := client.DeletePRComment(ctx, apiclient.DeletePRCommentReq{
-				Repo: ref, PRID: prID, ID: id,
-			}); err != nil {
+			req := apiclient.DeletePRCommentReq{Repo: ref, PRID: prID, ID: id}
+			if dryRun {
+				return emitDryRun(s, client, ctx, req)
+			}
+			if !yes {
+				return cerrors.New(cerrors.CategoryUsage, "NEEDS_YES",
+					"pass --yes to confirm deletion (or --dry-run to preview)")
+			}
+			if err := client.DeletePRComment(ctx, req); err != nil {
 				return err
 			}
 			return s.emit(map[string]any{"deleted": id})
@@ -199,6 +212,7 @@ func newCommentDeleteCmd(s *appState) *cobra.Command {
 	}
 	cmd.Flags().StringVar(&prArg, "pr", "", "<workspace>/<repo>/<id> or PR URL")
 	cmd.Flags().BoolVar(&yes, "yes", false, "confirm the deletion")
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "preview the HTTP request without sending it")
 	_ = cmd.MarkFlagRequired("pr")
 	return cmd
 }

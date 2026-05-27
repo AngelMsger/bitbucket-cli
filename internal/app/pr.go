@@ -224,11 +224,7 @@ func newPRCreateCmd(s *appState) *cobra.Command {
 				return err
 			}
 			if dryRun {
-				plan, err := client.DescribeWrite(ctx, req)
-				if err != nil {
-					return err
-				}
-				return s.emit(plan)
+				return emitDryRun(s, client, ctx, req)
 			}
 			pr, err := client.CreatePR(ctx, req)
 			if err != nil {
@@ -255,6 +251,7 @@ func newPRUpdateCmd(s *appState) *cobra.Command {
 	var (
 		title, description string
 		reviewers          []string
+		dryRun             bool
 	)
 	cmd := &cobra.Command{
 		Use:   "update <workspace>/<repo>/<id>",
@@ -275,6 +272,9 @@ func newPRUpdateCmd(s *appState) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if dryRun {
+				return emitDryRun(s, client, ctx, req)
+			}
 			pr, err := client.UpdatePR(ctx, req)
 			if err != nil {
 				return err
@@ -286,6 +286,7 @@ func newPRUpdateCmd(s *appState) *cobra.Command {
 	f.StringVar(&title, "title", "", "new title")
 	f.StringVar(&description, "description", "", "new description")
 	f.StringSliceVar(&reviewers, "reviewer", nil, "replace reviewer list (repeatable)")
+	f.BoolVar(&dryRun, "dry-run", false, "preview the HTTP request without sending it")
 	return cmd
 }
 
@@ -396,28 +397,34 @@ func newPRActivityCmd(s *appState) *cobra.Command {
 }
 
 func newPRApproveCmd(s *appState) *cobra.Command {
-	return &cobra.Command{
+	var dryRun bool
+	cmd := &cobra.Command{
 		Use:   "approve <workspace>/<repo>/<id>",
 		Short: "Approve a PR",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return togglePRApproval(s, args[0], true)
+			return togglePRApproval(s, args[0], true, dryRun)
 		},
 	}
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "preview the HTTP request without sending it")
+	return cmd
 }
 
 func newPRUnapproveCmd(s *appState) *cobra.Command {
-	return &cobra.Command{
+	var dryRun bool
+	cmd := &cobra.Command{
 		Use:   "unapprove <workspace>/<repo>/<id>",
 		Short: "Withdraw an approval",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return togglePRApproval(s, args[0], false)
+			return togglePRApproval(s, args[0], false, dryRun)
 		},
 	}
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "preview the HTTP request without sending it")
+	return cmd
 }
 
-func togglePRApproval(s *appState, arg string, approve bool) error {
+func togglePRApproval(s *appState, arg string, approve, dryRun bool) error {
 	ref, id, err := resolvePRRef(arg, apiclient.RepoRef{})
 	if err != nil {
 		return err
@@ -428,14 +435,18 @@ func togglePRApproval(s *appState, arg string, approve bool) error {
 	if err != nil {
 		return err
 	}
-	if err := client.ApprovePR(ctx, apiclient.ApprovePRReq{Repo: ref, ID: id, Approve: approve}); err != nil {
+	req := apiclient.ApprovePRReq{Repo: ref, ID: id, Approve: approve}
+	if dryRun {
+		return emitDryRun(s, client, ctx, req)
+	}
+	if err := client.ApprovePR(ctx, req); err != nil {
 		return err
 	}
 	return s.emit(map[string]any{"approved": approve, "pr": map[string]any{"repo": ref, "id": id}})
 }
 
 func newPRRequestChangesCmd(s *appState) *cobra.Command {
-	var withdraw bool
+	var withdraw, dryRun bool
 	cmd := &cobra.Command{
 		Use:   "request-changes <workspace>/<repo>/<id>",
 		Short: "Cast (or withdraw) a request-changes vote (Cloud only)",
@@ -451,28 +462,29 @@ func newPRRequestChangesCmd(s *appState) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := client.RequestPRChanges(ctx, apiclient.RequestChangesReq{Repo: ref, ID: id, Request: !withdraw}); err != nil {
+			req := apiclient.RequestChangesReq{Repo: ref, ID: id, Request: !withdraw}
+			if dryRun {
+				return emitDryRun(s, client, ctx, req)
+			}
+			if err := client.RequestPRChanges(ctx, req); err != nil {
 				return err
 			}
 			return s.emit(map[string]any{"requested_changes": !withdraw, "pr": map[string]any{"repo": ref, "id": id}})
 		},
 	}
 	cmd.Flags().BoolVar(&withdraw, "withdraw", false, "withdraw a previous request-changes vote")
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "preview the HTTP request without sending it")
 	return cmd
 }
 
 func newPRDeclineCmd(s *appState) *cobra.Command {
 	var message string
-	var yes bool
+	var yes, dryRun bool
 	cmd := &cobra.Command{
 		Use:   "decline <workspace>/<repo>/<id>",
 		Short: "Decline (close without merging) a PR",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if !yes {
-				return cerrors.New(cerrors.CategoryUsage, "NEEDS_YES",
-					"pass --yes to confirm declining the PR")
-			}
 			ref, id, err := resolvePRRef(args[0], apiclient.RepoRef{})
 			if err != nil {
 				return err
@@ -483,7 +495,15 @@ func newPRDeclineCmd(s *appState) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			pr, err := client.DeclinePR(ctx, apiclient.DeclinePRReq{Repo: ref, ID: id, Message: message})
+			req := apiclient.DeclinePRReq{Repo: ref, ID: id, Message: message}
+			if dryRun {
+				return emitDryRun(s, client, ctx, req)
+			}
+			if !yes {
+				return cerrors.New(cerrors.CategoryUsage, "NEEDS_YES",
+					"pass --yes to confirm declining the PR (or --dry-run to preview)")
+			}
+			pr, err := client.DeclinePR(ctx, req)
 			if err != nil {
 				return err
 			}
@@ -492,6 +512,7 @@ func newPRDeclineCmd(s *appState) *cobra.Command {
 	}
 	cmd.Flags().StringVar(&message, "message", "", "decline message")
 	cmd.Flags().BoolVar(&yes, "yes", false, "confirm declining")
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "preview the HTTP request without sending it")
 	return cmd
 }
 
@@ -521,11 +542,7 @@ func newPRMergeCmd(s *appState) *cobra.Command {
 				return err
 			}
 			if dryRun {
-				plan, err := client.DescribeWrite(ctx, req)
-				if err != nil {
-					return err
-				}
-				return s.emit(plan)
+				return emitDryRun(s, client, ctx, req)
 			}
 			if !yes {
 				return cerrors.New(cerrors.CategoryUsage, "NEEDS_YES",

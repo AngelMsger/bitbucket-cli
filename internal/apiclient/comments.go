@@ -123,46 +123,75 @@ func (c *apiClient) buildAddPRComment(req AddPRCommentReq) (method, path string,
 
 // UpdatePRComment edits an existing PR comment.
 func (c *apiClient) UpdatePRComment(ctx context.Context, req UpdatePRCommentReq) (*Comment, error) {
-	if err := checkRepoRef(req.Repo); err != nil {
+	method, path, payload, err := c.buildUpdatePRComment(ctx, req)
+	if err != nil {
 		return nil, err
 	}
-	path := c.prPath(req.Repo, req.PRID) + "/comments/" + strconv.Itoa(req.ID)
 	if c.flavor == FlavorCloud {
-		body := map[string]any{"content": map[string]string{"raw": req.Content}}
 		var raw cloudComment
-		if err := c.doJSON(ctx, "PUT", path, nil, body, &raw); err != nil {
+		if err := c.doJSON(ctx, method, path, nil, payload, &raw); err != nil {
 			return nil, err
 		}
 		cm := mapCloudComment(req.PRID, raw)
 		return &cm, nil
 	}
-	// DC requires fetching the current version first.
-	var current dcComment
-	if err := c.getJSON(ctx, path, nil, &current); err != nil {
-		return nil, err
-	}
-	body := map[string]any{"text": req.Content, "version": current.Version}
 	var raw dcComment
-	if err := c.doJSON(ctx, "PUT", path, nil, body, &raw); err != nil {
+	if err := c.doJSON(ctx, method, path, nil, payload, &raw); err != nil {
 		return nil, err
 	}
 	cm := mapDCComment(req.PRID, raw)
 	return &cm, nil
 }
 
+// buildUpdatePRComment assembles the HTTP call for editing a PR comment.
+// On Data Center it performs a read-only GET to learn the current version
+// (the GET is safe under --dry-run).
+func (c *apiClient) buildUpdatePRComment(ctx context.Context, req UpdatePRCommentReq) (method, path string, payload any, err error) {
+	if rerr := checkRepoRef(req.Repo); rerr != nil {
+		return "", "", nil, rerr
+	}
+	method = "PUT"
+	path = c.prPath(req.Repo, req.PRID) + "/comments/" + strconv.Itoa(req.ID)
+	if c.flavor == FlavorCloud {
+		payload = map[string]any{"content": map[string]string{"raw": req.Content}}
+		return
+	}
+	// DC requires fetching the current version first.
+	var current dcComment
+	if gerr := c.getJSON(ctx, path, nil, &current); gerr != nil {
+		err = gerr
+		return
+	}
+	payload = map[string]any{"text": req.Content, "version": current.Version}
+	return
+}
+
 // DeletePRComment removes a PR comment.
 func (c *apiClient) DeletePRComment(ctx context.Context, req DeletePRCommentReq) error {
-	if err := checkRepoRef(req.Repo); err != nil {
+	method, path, err := c.buildDeletePRComment(ctx, req)
+	if err != nil {
 		return err
 	}
-	path := c.prPath(req.Repo, req.PRID) + "/comments/" + strconv.Itoa(req.ID)
+	return c.doJSON(ctx, method, path, nil, nil, nil)
+}
+
+// buildDeletePRComment assembles the HTTP call for deleting a PR comment.
+// On Data Center it performs a read-only GET to learn the current version
+// (the GET is safe under --dry-run).
+func (c *apiClient) buildDeletePRComment(ctx context.Context, req DeletePRCommentReq) (method, path string, err error) {
+	if rerr := checkRepoRef(req.Repo); rerr != nil {
+		return "", "", rerr
+	}
+	method = "DELETE"
+	path = c.prPath(req.Repo, req.PRID) + "/comments/" + strconv.Itoa(req.ID)
 	if c.flavor == FlavorCloud {
-		return c.doJSON(ctx, "DELETE", path, nil, nil, nil)
+		return
 	}
-	// DC requires version=N as a query param.
 	var current dcComment
-	if err := c.getJSON(ctx, path, nil, &current); err != nil {
-		return err
+	if gerr := c.getJSON(ctx, path, nil, &current); gerr != nil {
+		err = gerr
+		return
 	}
-	return c.doJSON(ctx, "DELETE", path+"?version="+strconv.Itoa(current.Version), nil, nil, nil)
+	path += "?version=" + strconv.Itoa(current.Version)
+	return
 }

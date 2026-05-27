@@ -17,6 +17,7 @@ var envBindings = map[string]string{
 	"BITBUCKET_API_TOKEN":             fieldAPIToken,
 	"BITBUCKET_TOKEN":                 fieldPAT,
 	"BITBUCKET_DEFAULT_WORKSPACE":     fieldWorkspace,
+	"BITBUCKET_CLI_READ_ONLY":         fieldReadOnly,
 }
 
 // layerFromVars converts a name->value map into a layer map. Empty values are

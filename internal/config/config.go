@@ -9,6 +9,7 @@ package config
 
 import (
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/angelmsger/bitbucket-cli/pkg/constants"
@@ -66,6 +67,10 @@ type Defaults struct {
 	// (Data Center) used when commands omit one. Overridable per invocation
 	// via --workspace or BITBUCKET_DEFAULT_WORKSPACE.
 	Workspace string `yaml:"workspace,omitempty"`
+	// ReadOnly blocks every mutating client method and every local side
+	// effect (e.g. `pr fetch --exec`). Settable from the config file, from
+	// BITBUCKET_CLI_READ_ONLY, or temporarily overridden via --allow-writes.
+	ReadOnly bool `yaml:"read_only,omitempty"`
 }
 
 // Secrets holds credentials observed in non-file layers. Empty fields mean the
@@ -103,6 +108,7 @@ const (
 	fieldTimeout        = "defaults.timeout"
 	fieldMaxRetries     = "defaults.max_retries"
 	fieldWorkspace      = "defaults.workspace"
+	fieldReadOnly       = "defaults.read_only"
 	// Secret field keys (never persisted to the YAML file).
 	fieldPAT      = "secret.pat"
 	fieldPassword = "secret.password"
@@ -137,9 +143,24 @@ func configFromMap(m map[string]string) Config {
 			Timeout:    durationOr(m[fieldTimeout], constants.DefaultTimeout),
 			MaxRetries: atoiOr(m[fieldMaxRetries], constants.DefaultMaxRetries),
 			Workspace:  m[fieldWorkspace],
+			ReadOnly:   boolOr(m[fieldReadOnly], false),
 		},
 	}
 	return c
+}
+
+// boolOr parses a flag-style truthy string. "1", "true", "yes", "on" count as
+// true; everything else (including empty) yields the fallback.
+func boolOr(s string, fallback bool) bool {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "":
+		return fallback
+	case "1", "true", "yes", "on":
+		return true
+	case "0", "false", "no", "off":
+		return false
+	}
+	return fallback
 }
 
 // contextConfig builds a Config from a NamedContext plus the built-in runtime

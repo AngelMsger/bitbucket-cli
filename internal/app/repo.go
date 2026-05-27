@@ -161,11 +161,7 @@ func newRepoCreateCmd(s *appState) *cobra.Command {
 				return err
 			}
 			if dryRun {
-				plan, err := client.DescribeWrite(ctx, req)
-				if err != nil {
-					return err
-				}
-				return s.emit(plan)
+				return emitDryRun(s, client, ctx, req)
 			}
 			r, err := client.CreateRepository(ctx, req)
 			if err != nil {
@@ -184,16 +180,12 @@ func newRepoCreateCmd(s *appState) *cobra.Command {
 }
 
 func newRepoDeleteCmd(s *appState) *cobra.Command {
-	var yes bool
+	var yes, dryRun bool
 	cmd := &cobra.Command{
 		Use:   "delete <workspace>/<repo> | <url>",
 		Short: "Delete a repository (irreversible)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if !yes {
-				return cerrors.New(cerrors.CategoryUsage, "NEEDS_YES",
-					"repo delete is destructive; pass --yes to confirm")
-			}
 			ref, err := resolveRepoRef(args[0], defaultWorkspace(s, ""))
 			if err != nil {
 				return err
@@ -204,13 +196,22 @@ func newRepoDeleteCmd(s *appState) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := client.DeleteRepository(ctx, apiclient.DeleteRepoReq{Repo: ref}); err != nil {
+			req := apiclient.DeleteRepoReq{Repo: ref}
+			if dryRun {
+				return emitDryRun(s, client, ctx, req)
+			}
+			if !yes {
+				return cerrors.New(cerrors.CategoryUsage, "NEEDS_YES",
+					"repo delete is destructive; pass --yes to confirm (or --dry-run to preview)")
+			}
+			if err := client.DeleteRepository(ctx, req); err != nil {
 				return err
 			}
 			return s.emit(map[string]any{"deleted": ref})
 		},
 	}
 	cmd.Flags().BoolVar(&yes, "yes", false, "confirm the deletion")
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "preview the HTTP request without sending it")
 	return cmd
 }
 
