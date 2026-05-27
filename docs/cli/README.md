@@ -84,6 +84,7 @@ is published at <https://angelmsger.github.io/bitbucket-cli/cli/>.
 | [`bitbucket-cli pr fetch`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-fetch) | Print (or run, with --exec) git fetch for a PR's source ref |
 | [`bitbucket-cli pr files`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-files) | List changed files in a PR (diffstat: path / status / added / removed) |
 | [`bitbucket-cli pr get`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-get) | Show a pull request |
+| [`bitbucket-cli pr inbox`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-inbox) | List PRs involving me across repositories (--role reviewer by default) |
 | [`bitbucket-cli pr list`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-list) | List pull requests in a repository |
 | [`bitbucket-cli pr merge`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-merge) | Merge a PR |
 | [`bitbucket-cli pr request-changes`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-request-changes) | Cast (or withdraw) a request-changes vote (Cloud only) |

@@ -204,6 +204,17 @@ func routes() http.Handler {
 		})
 	})
 
+	// v0.2.1: cross-repo PR inbox.
+	mux.HandleFunc("GET /rest/api/1.0/dashboard/pull-requests", func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, map[string]any{
+			"values":     []any{pr(7, "Wire payment retry", "OPEN")},
+			"size":       1,
+			"limit":      25,
+			"start":      0,
+			"isLastPage": true,
+		})
+	})
+
 	mux.HandleFunc("GET /releases/latest", func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, map[string]any{"tag_name": "v99.0.0", "html_url": "https://example/releases"})
 	})

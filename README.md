@@ -82,6 +82,10 @@ Re-run it after upgrading the CLI to keep the Skill version-matched.
 bitbucket-cli config init --pretty   # interactive TUI setup (recommended for humans)
 bitbucket-cli doctor                 # verify configuration and connectivity
 
+# Find what to review (cross-repo "PRs awaiting my review")
+bitbucket-cli pr inbox --role reviewer                          # DC: dashboard call; Cloud: add --workspace
+bitbucket-cli pr inbox --role author                            # PRs I authored
+
 # Review a PR (diffstat-first → per-file diff → optional local fetch)
 bitbucket-cli pr status myws/myrepo/42                          # mergeable? conflicts? CI? reviewers?
 bitbucket-cli pr files  myws/myrepo/42                          # per-file diffstat, sorted by churn
@@ -112,6 +116,7 @@ variables (`BITBUCKET_*`) → `.env` → `~/.bitbucket/config.yaml` → defaults
 | Command | Purpose |
 |---------|---------|
 | `pr list` / `pr get` | list pull requests; show details (`--scope summary/full/commits/activity`) |
+| `pr inbox` | cross-repo "PRs involving me" (`--role reviewer/author/participant`, `--state ...`) — single dashboard call on DC; on Cloud, `--workspace` required for reviewer/participant |
 | `pr status` | aggregated merge readiness: mergeable, conflicts, reviewers, CI builds |
 | `pr files` | per-file diffstat (`path`/`status`/`added`/`removed`), sorted by churn |
 | `pr diff` | unified diff; `--path` scopes to one file |

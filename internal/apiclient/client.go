@@ -30,6 +30,7 @@ type Client interface {
 	DeleteRepository(ctx context.Context, req DeleteRepoReq) error
 
 	ListPRs(ctx context.Context, opt PRListOpts) (ListResult[PullRequest], error)
+	ListMyPRs(ctx context.Context, opt MyPRListOpts) (ListResult[PullRequest], error)
 	GetPR(ctx context.Context, opt GetPROpts) (*PullRequest, error)
 	GetPRDiff(ctx context.Context, repo RepoRef, id int) (string, error)
 	ListPRCommits(ctx context.Context, opt PRListOpts) (ListResult[Commit], error)

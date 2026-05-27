@@ -441,3 +441,19 @@ type TreeOpts struct {
 	Path  string
 	Depth int // 0 = unlimited
 }
+
+// MyPRListOpts narrows a cross-repo "PRs involving me" listing.
+//
+// Role values: "REVIEWER" (default) | "AUTHOR" | "PARTICIPANT".
+// State values: "OPEN" (default) | "MERGED" | "DECLINED" | "ALL".
+//
+// Workspace is optional on Data Center (the dashboard endpoint searches every
+// project the user can see) and required on Cloud when Role == "REVIEWER" —
+// Cloud has no global reviewer index, so the CLI fans out across the repos
+// in the named workspace.
+type MyPRListOpts struct {
+	ListOpts
+	Role      string
+	State     string
+	Workspace string
+}

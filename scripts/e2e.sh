@@ -118,6 +118,7 @@ assert_contains  "pr status has builds"      "SUCCESSFUL"     "${CLI[@]}" pr sta
 assert_contains  "pr threads"                "Looks good"     "${CLI[@]}" pr threads PROJ/demo/1
 assert_contains  "pr fetch print-only"       "git fetch"      "${CLI[@]}" pr fetch PROJ/demo/1
 assert_contains  "pr checkout print-only"    "git checkout"   "${CLI[@]}" pr checkout PROJ/demo/1
+assert_contains  "pr inbox (DC dashboard)"   "Wire payment retry" "${CLI[@]}" pr inbox --role reviewer
 assert_contains  "fields projection"         '"id"'           "${CLI[@]}" pr get PROJ/demo/1 --fields id,title
 SKILL_DIR="$(mktemp -d)"
 assert_contains  "skill install"             '"installed"' \

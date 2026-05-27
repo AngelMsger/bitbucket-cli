@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- `bitbucket-cli pr inbox` lists PRs involving the authenticated user across
+  repositories. Data Center uses the `/dashboard/pull-requests` endpoint in
+  a single call; Bitbucket Cloud uses `/2.0/pullrequests/<uuid>` for
+  `--role author` and fans out across the repos under `--workspace` for
+  `--role reviewer` / `--role participant` (Cloud has no global reviewer
+  index). `--state OPEN | MERGED | DECLINED | ALL` filters the results.
+
 ## v0.2.0 — PR review closure with local codebase
 
 Adds the four capabilities a coding agent (Claude Code etc.) needs to drive

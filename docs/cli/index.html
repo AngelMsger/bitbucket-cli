@@ -86,6 +86,7 @@
       <a href="#bitbucket-cli-pr-fetch">bitbucket-cli pr fetch</a>
       <a href="#bitbucket-cli-pr-files">bitbucket-cli pr files</a>
       <a href="#bitbucket-cli-pr-get">bitbucket-cli pr get</a>
+      <a href="#bitbucket-cli-pr-inbox">bitbucket-cli pr inbox</a>
       <a href="#bitbucket-cli-pr-list">bitbucket-cli pr list</a>
       <a href="#bitbucket-cli-pr-merge">bitbucket-cli pr merge</a>
       <a href="#bitbucket-cli-pr-request-changes">bitbucket-cli pr request-changes</a>
@@ -718,6 +719,32 @@ a single command with the global --use-context flag instead.</p>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
         <tr><td><code>--scope</code></td><td><code>summary</code></td><td>summary | full | diff | commits | activity</td></tr>
+        </tbody>
+      </table>
+      
+    </section>
+    
+    <section class="cmd" id="bitbucket-cli-pr-inbox">
+      <h2>bitbucket-cli pr inbox</h2>
+      <p class="short">List PRs involving me across repositories (--role reviewer by default)</p>
+      <pre>bitbucket-cli pr inbox [flags]</pre>
+      <p class="long">List pull requests involving the authenticated user across every accessible
+repository.
+
+Data Center uses the dashboard endpoint — a single call covers every project.
+Bitbucket Cloud has no global reviewer index, so --role reviewer (and --role
+participant) require --workspace; --role author works globally via the user&#39;s
+`/pullrequests/&lt;uuid&gt;` endpoint.</p>
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--all</code></td><td><code>false</code></td><td>fetch every page of results</td></tr>
+        <tr><td><code>--cursor</code></td><td></td><td>start from this pagination cursor (the &#39;next&#39; of a prior page)</td></tr>
+        <tr><td><code>--limit</code></td><td><code>0</code></td><td>page size (default from config)</td></tr>
+        <tr><td><code>--role</code></td><td><code>reviewer</code></td><td>reviewer | author | participant</td></tr>
+        <tr><td><code>--state</code></td><td><code>OPEN</code></td><td>OPEN | MERGED | DECLINED | ALL</td></tr>
+        <tr><td><code>--workspace</code></td><td></td><td>Cloud workspace to scope reviewer / participant queries to (ignored on Data Center)</td></tr>
         </tbody>
       </table>
       

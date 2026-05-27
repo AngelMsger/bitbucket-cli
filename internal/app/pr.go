@@ -17,7 +17,7 @@ func newPRCmd(s *appState) *cobra.Command {
 		Short: "Drive Bitbucket pull requests (list, review, merge)",
 	}
 	cmd.AddCommand(
-		newPRListCmd(s), newPRGetCmd(s), newPRCreateCmd(s), newPRUpdateCmd(s),
+		newPRListCmd(s), newPRInboxCmd(s), newPRGetCmd(s), newPRCreateCmd(s), newPRUpdateCmd(s),
 		newPRDiffCmd(s), newPRCommitsCmd(s), newPRActivityCmd(s),
 		newPRFilesCmd(s), newPRThreadsCmd(s), newPRStatusCmd(s),
 		newPRFetchCmd(s), newPRCheckoutCmd(s),
@@ -77,6 +77,56 @@ func newPRListCmd(s *appState) *cobra.Command {
 	f.StringVar(&target, "target", "", "filter by destination branch")
 	f.StringVar(&query, "query", "", "server-side filter (Cloud `q=`)")
 	addListFlags(cmd, &limit, &all, &cursor)
+	return cmd
+}
+
+func newPRInboxCmd(s *appState) *cobra.Command {
+	var (
+		role, state, workspace string
+		limit                  int
+		all                    bool
+		cursor                 string
+	)
+	cmd := &cobra.Command{
+		Use:   "inbox",
+		Short: "List PRs involving me across repositories (--role reviewer by default)",
+		Long: "List pull requests involving the authenticated user across every accessible\n" +
+			"repository.\n\n" +
+			"Data Center uses the dashboard endpoint — a single call covers every project.\n" +
+			"Bitbucket Cloud has no global reviewer index, so --role reviewer (and --role\n" +
+			"participant) require --workspace; --role author works globally via the user's\n" +
+			"`/pullrequests/<uuid>` endpoint.",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			ws := defaultWorkspace(s, workspace)
+			ctx, cancel := cmdContext(s)
+			defer cancel()
+			client, err := s.newClient(ctx)
+			if err != nil {
+				return err
+			}
+			fetch := func(c string) (apiclient.ListResult[apiclient.PullRequest], error) {
+				return client.ListMyPRs(ctx, apiclient.MyPRListOpts{
+					ListOpts:  apiclient.ListOpts{Limit: limit, Cursor: c},
+					Role:      role,
+					State:     state,
+					Workspace: ws,
+				})
+			}
+			items, info, err := collectPage(fetch, cursor, all)
+			if err != nil {
+				return err
+			}
+			return s.emitList(items, info)
+		},
+	}
+	f := cmd.Flags()
+	f.StringVar(&role, "role", "reviewer", "reviewer | author | participant")
+	f.StringVar(&state, "state", "OPEN", "OPEN | MERGED | DECLINED | ALL")
+	f.StringVar(&workspace, "workspace", "",
+		"Cloud workspace to scope reviewer / participant queries to (ignored on Data Center)")
+	addListFlags(cmd, &limit, &all, &cursor)
+	enumComplete(cmd, "role", "reviewer", "author", "participant")
+	enumComplete(cmd, "state", "OPEN", "MERGED", "DECLINED", "ALL")
 	return cmd
 }
 

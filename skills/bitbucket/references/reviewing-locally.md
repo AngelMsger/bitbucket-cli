@@ -4,6 +4,22 @@ This is the recommended flow for a coding agent (Claude Code etc.) reviewing
 a Bitbucket PR while it has read access to a local checkout of the repo. It
 budgets remote calls and context tokens by going coarse → fine.
 
+## Finding what to review
+
+When the agent doesn't already have a specific PR in hand, start with the
+cross-repo inbox:
+
+```sh
+bitbucket-cli pr inbox                        # default: --role reviewer --state OPEN
+bitbucket-cli pr inbox --role author          # PRs I authored
+bitbucket-cli pr inbox --workspace myws       # required on Cloud for --role reviewer
+```
+
+On Data Center this hits `/rest/api/1.0/dashboard/pull-requests` and is a
+single API call. On Bitbucket Cloud `--role reviewer` requires `--workspace`
+(Cloud has no global reviewer index — the CLI fans out across repos in the
+named workspace); `--role author` works globally without `--workspace`.
+
 ## The decision tree
 
 ```
