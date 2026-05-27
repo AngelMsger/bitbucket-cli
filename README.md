@@ -165,16 +165,9 @@ single-server config files are read unchanged.
 
 ## Related
 
-Need to write up the change you just reviewed? Pair this with
+Working in Confluence too? See
 **[confluence-cli](https://github.com/angelmsger/confluence-cli)** — the sister
-CLI that reads, searches and edits Confluence pages from the same terminal.
-Same design philosophy (agent-first JSON, structured errors, `--dry-run` on
-every write, optional read-only mode, companion Skill), and it shares the
-`~/.angelmsger/` config root, so one credential store covers both.
-
-A natural pipeline: **bitbucket-cli** reviews and merges the PR →
-**confluence-cli** writes up the change in the team wiki, all without leaving
-the terminal.
+CLI from the same author, same agent-first design.
 
 ## Development
 
