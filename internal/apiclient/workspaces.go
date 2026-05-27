@@ -12,8 +12,8 @@ import (
 // `bitbucket-cli workspace list` — any other command's `--workspace <slug>`
 // argument refers to one of the values returned here.
 //
-//   Cloud: GET /2.0/workspaces?role=...&q=name~"..."
-//   DC:    GET /rest/api/1.0/projects?name=...&permission=PROJECT_READ
+//	Cloud: GET /2.0/workspaces?role=...&q=name~"..."
+//	DC:    GET /rest/api/1.0/projects?name=...&permission=PROJECT_READ
 func (c *apiClient) ListWorkspaces(ctx context.Context, opt WorkspaceListOpts) (ListResult[Workspace], error) {
 	limit := c.limitOf(opt.ListOpts)
 	if c.flavor == FlavorCloud {
@@ -38,7 +38,9 @@ func (c *apiClient) ListWorkspaces(ctx context.Context, opt WorkspaceListOpts) (
 				Type      string `json:"type"`
 				CreatedOn string `json:"created_on"`
 				Links     struct {
-					HTML struct{ Href string `json:"href"` } `json:"html"`
+					HTML struct {
+						Href string `json:"href"`
+					} `json:"html"`
 				} `json:"links"`
 			} `json:"values"`
 			Next string `json:"next"`
@@ -105,8 +107,9 @@ func (c *apiClient) ListWorkspaces(ctx context.Context, opt WorkspaceListOpts) (
 }
 
 // GetWorkspace returns a single workspace / project by slug or key.
-//   Cloud: GET /2.0/workspaces/{slug}
-//   DC:    GET /rest/api/1.0/projects/{key}
+//
+//	Cloud: GET /2.0/workspaces/{slug}
+//	DC:    GET /rest/api/1.0/projects/{key}
 func (c *apiClient) GetWorkspace(ctx context.Context, slug string) (*Workspace, error) {
 	if slug == "" {
 		return nil, cerrors.New(cerrors.CategoryUsage, "WORKSPACE_NO_SLUG",
@@ -120,7 +123,9 @@ func (c *apiClient) GetWorkspace(ctx context.Context, slug string) (*Workspace, 
 			Type      string `json:"type"`
 			CreatedOn string `json:"created_on"`
 			Links     struct {
-				HTML struct{ Href string `json:"href"` } `json:"html"`
+				HTML struct {
+					Href string `json:"href"`
+				} `json:"html"`
 			} `json:"links"`
 		}
 		if err := c.getJSON(ctx, c.apiBase()+"/workspaces/"+url.PathEscape(slug), nil, &raw); err != nil {

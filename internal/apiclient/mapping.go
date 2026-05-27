@@ -24,12 +24,12 @@ func (l cloudLinks) href(key string) string {
 }
 
 type cloudUser struct {
-	Type        string `json:"type"`
-	AccountID   string `json:"account_id"`
-	UUID        string `json:"uuid"`
-	DisplayName string `json:"display_name"`
-	Nickname    string `json:"nickname"`
-	Username    string `json:"username"`
+	Type        string     `json:"type"`
+	AccountID   string     `json:"account_id"`
+	UUID        string     `json:"uuid"`
+	DisplayName string     `json:"display_name"`
+	Nickname    string     `json:"nickname"`
+	Username    string     `json:"username"`
 	Links       cloudLinks `json:"links"`
 }
 
@@ -68,8 +68,10 @@ type cloudRepo struct {
 		Name string `json:"name"`
 	} `json:"workspace"`
 	Links struct {
-		HTML  struct{ Href string `json:"href"` } `json:"html"`
-		Clone []cloudRepoCloneLink                 `json:"clone"`
+		HTML struct {
+			Href string `json:"href"`
+		} `json:"html"`
+		Clone []cloudRepoCloneLink `json:"clone"`
 	} `json:"links"`
 }
 
@@ -152,25 +154,27 @@ func mapCloudParticipants(ps []cloudParticipant) []Participant {
 }
 
 type cloudPR struct {
-	ID                int                `json:"id"`
-	Title             string             `json:"title"`
-	Description       string             `json:"description"`
-	State             string             `json:"state"`
-	Author            cloudUser          `json:"author"`
-	Source            cloudPRRef         `json:"source"`
-	Destination       cloudPRRef         `json:"destination"`
-	Reviewers         []cloudUser        `json:"reviewers"`
-	Participants      []cloudParticipant `json:"participants"`
-	CommentCount      int                `json:"comment_count"`
-	TaskCount         int                `json:"task_count"`
-	CreatedOn         string             `json:"created_on"`
-	UpdatedOn         string             `json:"updated_on"`
-	ClosedOn          string             `json:"closed_on"`
-	MergeCommit       struct {
+	ID           int                `json:"id"`
+	Title        string             `json:"title"`
+	Description  string             `json:"description"`
+	State        string             `json:"state"`
+	Author       cloudUser          `json:"author"`
+	Source       cloudPRRef         `json:"source"`
+	Destination  cloudPRRef         `json:"destination"`
+	Reviewers    []cloudUser        `json:"reviewers"`
+	Participants []cloudParticipant `json:"participants"`
+	CommentCount int                `json:"comment_count"`
+	TaskCount    int                `json:"task_count"`
+	CreatedOn    string             `json:"created_on"`
+	UpdatedOn    string             `json:"updated_on"`
+	ClosedOn     string             `json:"closed_on"`
+	MergeCommit  struct {
 		Hash string `json:"hash"`
 	} `json:"merge_commit"`
 	Links struct {
-		HTML struct{ Href string `json:"href"` } `json:"html"`
+		HTML struct {
+			Href string `json:"href"`
+		} `json:"html"`
 	} `json:"links"`
 }
 
@@ -246,7 +250,9 @@ type cloudCommit struct {
 		Hash string `json:"hash"`
 	} `json:"parents"`
 	Links struct {
-		HTML struct{ Href string `json:"href"` } `json:"html"`
+		HTML struct {
+			Href string `json:"href"`
+		} `json:"html"`
 	} `json:"links"`
 }
 
@@ -282,20 +288,22 @@ type cloudCommentInline struct {
 }
 
 type cloudComment struct {
-	ID      int       `json:"id"`
+	ID      int `json:"id"`
 	Content struct {
 		Raw  string `json:"raw"`
 		HTML string `json:"html"`
 	} `json:"content"`
-	User      cloudUser           `json:"user"`
-	Inline    *cloudCommentInline `json:"inline"`
-	Parent    *struct {
+	User   cloudUser           `json:"user"`
+	Inline *cloudCommentInline `json:"inline"`
+	Parent *struct {
 		ID int `json:"id"`
 	} `json:"parent"`
 	CreatedOn string `json:"created_on"`
 	UpdatedOn string `json:"updated_on"`
 	Links     struct {
-		HTML struct{ Href string `json:"href"` } `json:"html"`
+		HTML struct {
+			Href string `json:"href"`
+		} `json:"html"`
 	} `json:"links"`
 	Deleted bool `json:"deleted"`
 }
@@ -414,7 +422,7 @@ type dcRepoList struct {
 }
 
 type dcPRRef struct {
-	ID           string `json:"id"`           // e.g. refs/heads/main
+	ID           string `json:"id"` // e.g. refs/heads/main
 	DisplayID    string `json:"displayId"`
 	LatestCommit string `json:"latestCommit"`
 	Repository   dcRepo `json:"repository"`
@@ -437,21 +445,21 @@ type dcReviewer struct {
 }
 
 type dcPR struct {
-	ID           int           `json:"id"`
-	Version      int           `json:"version"`
-	Title        string        `json:"title"`
-	Description  string        `json:"description"`
-	State        string        `json:"state"`
-	Open         bool          `json:"open"`
-	Closed       bool          `json:"closed"`
-	CreatedDate  int64         `json:"createdDate"`
-	UpdatedDate  int64         `json:"updatedDate"`
-	ClosedDate   int64         `json:"closedDate"`
-	FromRef      dcPRRef       `json:"fromRef"`
-	ToRef        dcPRRef       `json:"toRef"`
-	Author       dcReviewer    `json:"author"`
-	Reviewers    []dcReviewer  `json:"reviewers"`
-	Participants []dcReviewer  `json:"participants"`
+	ID           int          `json:"id"`
+	Version      int          `json:"version"`
+	Title        string       `json:"title"`
+	Description  string       `json:"description"`
+	State        string       `json:"state"`
+	Open         bool         `json:"open"`
+	Closed       bool         `json:"closed"`
+	CreatedDate  int64        `json:"createdDate"`
+	UpdatedDate  int64        `json:"updatedDate"`
+	ClosedDate   int64        `json:"closedDate"`
+	FromRef      dcPRRef      `json:"fromRef"`
+	ToRef        dcPRRef      `json:"toRef"`
+	Author       dcReviewer   `json:"author"`
+	Reviewers    []dcReviewer `json:"reviewers"`
+	Participants []dcReviewer `json:"participants"`
 	Properties   struct {
 		CommentCount int `json:"commentCount"`
 	} `json:"properties"`
@@ -508,11 +516,11 @@ type dcPRList struct {
 }
 
 type dcBranch struct {
-	ID              string `json:"id"`
-	DisplayID       string `json:"displayId"`
-	Type            string `json:"type"`
-	LatestCommit    string `json:"latestCommit"`
-	IsDefault       bool   `json:"isDefault"`
+	ID           string `json:"id"`
+	DisplayID    string `json:"displayId"`
+	Type         string `json:"type"`
+	LatestCommit string `json:"latestCommit"`
+	IsDefault    bool   `json:"isDefault"`
 }
 
 func mapDCBranch(b dcBranch) Branch {
@@ -533,12 +541,12 @@ type dcBranchList struct {
 }
 
 type dcCommit struct {
-	ID                 string   `json:"id"`
-	DisplayID          string   `json:"displayId"`
-	Message            string   `json:"message"`
-	AuthorTimestamp    int64    `json:"authorTimestamp"`
-	Author             dcUser   `json:"author"`
-	Parents            []struct {
+	ID              string `json:"id"`
+	DisplayID       string `json:"displayId"`
+	Message         string `json:"message"`
+	AuthorTimestamp int64  `json:"authorTimestamp"`
+	Author          dcUser `json:"author"`
+	Parents         []struct {
 		ID string `json:"id"`
 	} `json:"parents"`
 }
@@ -578,12 +586,12 @@ type dcCommentAnchor struct {
 }
 
 type dcComment struct {
-	ID          int             `json:"id"`
-	Version     int             `json:"version"`
-	Text        string          `json:"text"`
-	Author      dcUser          `json:"author"`
-	CreatedDate int64           `json:"createdDate"`
-	UpdatedDate int64           `json:"updatedDate"`
+	ID          int              `json:"id"`
+	Version     int              `json:"version"`
+	Text        string           `json:"text"`
+	Author      dcUser           `json:"author"`
+	CreatedDate int64            `json:"createdDate"`
+	UpdatedDate int64            `json:"updatedDate"`
 	Anchor      *dcCommentAnchor `json:"anchor"`
 }
 
@@ -611,11 +619,11 @@ func mapDCComment(prID int, c dcComment) Comment {
 }
 
 type dcActivity struct {
-	ID            int       `json:"id"`
-	CreatedDate   int64     `json:"createdDate"`
-	User          dcUser    `json:"user"`
-	Action        string    `json:"action"`
-	CommentAction string    `json:"commentAction"`
+	ID            int        `json:"id"`
+	CreatedDate   int64      `json:"createdDate"`
+	User          dcUser     `json:"user"`
+	Action        string     `json:"action"`
+	CommentAction string     `json:"commentAction"`
 	Comment       *dcComment `json:"comment"`
 }
 

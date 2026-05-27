@@ -7,17 +7,18 @@ import (
 )
 
 // CheckPRMerge returns the server-side pre-merge verdict.
-//   DC:    direct endpoint, GET /pull-requests/{id}/merge
-//   Cloud: no dedicated endpoint; derived from the PR's state, conflict flag
-//          on the PR detail, and reviewer required-approvals (best-effort).
+//
+//	DC:    direct endpoint, GET /pull-requests/{id}/merge
+//	Cloud: no dedicated endpoint; derived from the PR's state, conflict flag
+//	       on the PR detail, and reviewer required-approvals (best-effort).
 func (c *apiClient) CheckPRMerge(ctx context.Context, repo RepoRef, id int) (*MergeCheck, error) {
 	if err := checkRepoRef(repo); err != nil {
 		return nil, err
 	}
 	if c.flavor != FlavorCloud {
 		var raw struct {
-			CanMerge   bool `json:"canMerge"`
-			Conflicted bool `json:"conflicted"`
+			CanMerge   bool   `json:"canMerge"`
+			Conflicted bool   `json:"conflicted"`
 			Outcome    string `json:"outcome"`
 			Vetoes     []struct {
 				SummaryMessage  string `json:"summaryMessage"`
@@ -59,8 +60,9 @@ func (c *apiClient) CheckPRMerge(ctx context.Context, repo RepoRef, id int) (*Me
 }
 
 // ListCommitStatuses returns CI / build statuses attached to a commit.
-//   Cloud: GET /2.0/repositories/{ws}/{slug}/commit/{hash}/statuses
-//   DC:    GET /rest/build-status/1.0/commits/{hash}
+//
+//	Cloud: GET /2.0/repositories/{ws}/{slug}/commit/{hash}/statuses
+//	DC:    GET /rest/build-status/1.0/commits/{hash}
 func (c *apiClient) ListCommitStatuses(ctx context.Context, repo RepoRef, hash string) (ListResult[BuildStatus], error) {
 	if err := checkRepoRef(repo); err != nil {
 		return ListResult[BuildStatus]{}, err

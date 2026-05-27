@@ -72,7 +72,7 @@ type UserListOpts struct {
 // Tag is a normalized repository tag.
 type Tag struct {
 	Name    string `json:"name"`
-	Target  string `json:"target,omitempty"`  // commit hash
+	Target  string `json:"target,omitempty"` // commit hash
 	Date    string `json:"date,omitempty"`
 	Message string `json:"message,omitempty"`
 }
@@ -123,12 +123,12 @@ type Branch struct {
 
 // Commit is a normalized commit.
 type Commit struct {
-	Hash      string   `json:"hash"`
-	Message   string   `json:"message,omitempty"`
-	Author    string   `json:"author,omitempty"`
-	Date      string   `json:"date,omitempty"`
-	Parents   []string `json:"parents,omitempty"`
-	URL       string   `json:"url,omitempty"`
+	Hash    string   `json:"hash"`
+	Message string   `json:"message,omitempty"`
+	Author  string   `json:"author,omitempty"`
+	Date    string   `json:"date,omitempty"`
+	Parents []string `json:"parents,omitempty"`
+	URL     string   `json:"url,omitempty"`
 }
 
 // PRRef is the source / destination of a pull request.
@@ -141,9 +141,9 @@ type PRRef struct {
 // Participant is a reviewer / participant on a PR.
 type Participant struct {
 	User     User   `json:"user"`
-	Role     string `json:"role,omitempty"`     // REVIEWER / PARTICIPANT
+	Role     string `json:"role,omitempty"` // REVIEWER / PARTICIPANT
 	Approved bool   `json:"approved,omitempty"`
-	State    string `json:"state,omitempty"`    // approved / changes_requested / null
+	State    string `json:"state,omitempty"` // approved / changes_requested / null
 }
 
 // PullRequest is a normalized Bitbucket pull request.
@@ -191,12 +191,12 @@ type Comment struct {
 
 // Activity is one entry in a PR's activity stream.
 type Activity struct {
-	Kind      string  `json:"kind"` // comment / approval / update / merge / decline
-	Actor     User    `json:"actor"`
-	When      string  `json:"when,omitempty"`
-	Comment   *Comment `json:"comment,omitempty"`
-	Approved  bool    `json:"approved,omitempty"`
-	State     string  `json:"state,omitempty"`
+	Kind     string   `json:"kind"` // comment / approval / update / merge / decline
+	Actor    User     `json:"actor"`
+	When     string   `json:"when,omitempty"`
+	Comment  *Comment `json:"comment,omitempty"`
+	Approved bool     `json:"approved,omitempty"`
+	State    string   `json:"state,omitempty"`
 }
 
 // ListResult is one page of a paginated listing. Next is an opaque cursor for
@@ -253,13 +253,13 @@ type GetPROpts struct {
 
 // CreatePRReq is a request to open a new PR.
 type CreatePRReq struct {
-	Repo            RepoRef
-	Title           string
-	Description     string
-	Source          string // source branch
-	SourceRepo      string // optional, defaults to Repo for non-fork PRs
-	Destination     string // target branch; empty -> repo default branch
-	Reviewers       []string
+	Repo              RepoRef
+	Title             string
+	Description       string
+	Source            string // source branch
+	SourceRepo        string // optional, defaults to Repo for non-fork PRs
+	Destination       string // target branch; empty -> repo default branch
+	Reviewers         []string
 	CloseSourceBranch bool
 }
 
@@ -314,11 +314,11 @@ type ListPRCommentsOpts struct {
 
 // AddPRCommentReq creates a comment (general or inline) on a PR.
 type AddPRCommentReq struct {
-	Repo     RepoRef
-	PRID     int
-	Content  string
-	Inline   *InlineAnchor // nil = general comment
-	ReplyTo  int           // 0 = top-level comment
+	Repo    RepoRef
+	PRID    int
+	Content string
+	Inline  *InlineAnchor // nil = general comment
+	ReplyTo int           // 0 = top-level comment
 }
 
 // UpdatePRCommentReq edits a comment's content.

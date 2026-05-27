@@ -12,8 +12,9 @@ import (
 // ListPRFiles returns the per-file diffstat of a PR — purely metadata, no
 // patch bytes. Use this before fetching individual file diffs to budget
 // context.
-//   Cloud: GET /2.0/repositories/{ws}/{slug}/pullrequests/{id}/diffstat
-//   DC:    GET /rest/api/1.0/projects/{key}/repos/{slug}/pull-requests/{id}/changes
+//
+//	Cloud: GET /2.0/repositories/{ws}/{slug}/pullrequests/{id}/diffstat
+//	DC:    GET /rest/api/1.0/projects/{key}/repos/{slug}/pull-requests/{id}/changes
 func (c *apiClient) ListPRFiles(ctx context.Context, repo RepoRef, id int) (ListResult[Diffstat], error) {
 	if err := checkRepoRef(repo); err != nil {
 		return ListResult[Diffstat]{}, err
@@ -67,10 +68,10 @@ func (c *apiClient) ListPRFiles(ctx context.Context, repo RepoRef, id int) (List
 			SrcPath *struct {
 				ToString string `json:"toString"`
 			} `json:"srcPath"`
-			Type        string `json:"type"`    // ADD | MODIFY | DELETE | RENAME | COPY
-			NodeType    string `json:"nodeType"`
-			Executable  bool   `json:"executable"`
-			ContentID   string `json:"contentId"`
+			Type       string `json:"type"` // ADD | MODIFY | DELETE | RENAME | COPY
+			NodeType   string `json:"nodeType"`
+			Executable bool   `json:"executable"`
+			ContentID  string `json:"contentId"`
 		} `json:"values"`
 		IsLastPage bool `json:"isLastPage"`
 		Size       int  `json:"size"`
@@ -97,8 +98,9 @@ func (c *apiClient) ListPRFiles(ctx context.Context, repo RepoRef, id int) (List
 }
 
 // GetPRDiffByPath returns the unified diff for a single file in a PR.
-//   Cloud: GET /2.0/.../pullrequests/{id}/diff?path=<path>
-//   DC:    GET /rest/api/1.0/.../pull-requests/{id}/diff/{path}
+//
+//	Cloud: GET /2.0/.../pullrequests/{id}/diff?path=<path>
+//	DC:    GET /rest/api/1.0/.../pull-requests/{id}/diff/{path}
 func (c *apiClient) GetPRDiffByPath(ctx context.Context, repo RepoRef, id int, p string) (string, error) {
 	if err := checkRepoRef(repo); err != nil {
 		return "", err

@@ -45,8 +45,9 @@ func (c *apiClient) reposPath(workspace string) string {
 }
 
 // prSegment is the URL segment used for pull requests under a repository.
-//   Cloud:       "pullrequests"
-//   Data Center: "pull-requests"
+//
+//	Cloud:       "pullrequests"
+//	Data Center: "pull-requests"
 func (c *apiClient) prSegment() string {
 	if c.flavor == FlavorCloud {
 		return "pullrequests"
@@ -65,8 +66,9 @@ func (c *apiClient) prsPath(ref RepoRef) string {
 }
 
 // branchesPath returns the path of the branch collection.
-//   Cloud:       /repositories/{ws}/{repo}/refs/branches
-//   Data Center: /projects/{key}/repos/{repo}/branches
+//
+//	Cloud:       /repositories/{ws}/{repo}/refs/branches
+//	Data Center: /projects/{key}/repos/{repo}/branches
 func (c *apiClient) branchesPath(ref RepoRef) string {
 	if c.flavor == FlavorCloud {
 		return c.repoPath(ref) + "/refs/branches"
@@ -186,8 +188,9 @@ func (c *apiClient) prMergePath(ref RepoRef, id int) string {
 }
 
 // commitStatusesPath is the per-commit CI / build status endpoint.
-//   Cloud: /2.0/repositories/{ws}/{slug}/commit/{hash}/statuses
-//   DC:    /rest/build-status/1.0/commits/{hash}  (NOTE: a different rest plugin)
+//
+//	Cloud: /2.0/repositories/{ws}/{slug}/commit/{hash}/statuses
+//	DC:    /rest/build-status/1.0/commits/{hash}  (NOTE: a different rest plugin)
 func (c *apiClient) commitStatusesPath(ref RepoRef, hash string) string {
 	if c.flavor == FlavorCloud {
 		return c.repoPath(ref) + "/commit/" + hash + "/statuses"

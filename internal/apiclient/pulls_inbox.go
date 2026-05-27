@@ -117,7 +117,7 @@ func (c *apiClient) cloudListMyPRs(ctx context.Context, opt MyPRListOpts, role, 
 	if opt.Workspace == "" {
 		return ListResult[PullRequest]{}, cerrors.New(cerrors.CategoryUsage, "INBOX_NO_WORKSPACE",
 			"Bitbucket Cloud requires --workspace for `pr inbox --role reviewer` (and --role participant)").
-			WithHint("Cloud has no global reviewer index. Pass --workspace <ws> to scope " +
+			WithHint("Cloud has no global reviewer index. Pass --workspace <ws> to scope "+
 				"the search to one workspace.").
 			WithNextSteps(
 				"bitbucket-cli workspace list   # discover available workspaces",

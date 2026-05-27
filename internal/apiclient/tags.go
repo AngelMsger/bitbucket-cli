@@ -8,8 +8,9 @@ import (
 )
 
 // ListTags returns the tags of a repository.
-//   Cloud: GET /2.0/repositories/{ws}/{slug}/refs/tags
-//   DC:    GET /rest/api/1.0/projects/{key}/repos/{slug}/tags
+//
+//	Cloud: GET /2.0/repositories/{ws}/{slug}/refs/tags
+//	DC:    GET /rest/api/1.0/projects/{key}/repos/{slug}/tags
 func (c *apiClient) ListTags(ctx context.Context, opt TagListOpts) (ListResult[Tag], error) {
 	if err := checkRepoRef(opt.Repo); err != nil {
 		return ListResult[Tag]{}, err
@@ -97,8 +98,9 @@ func (c *apiClient) ListTags(ctx context.Context, opt TagListOpts) (ListResult[T
 }
 
 // GetTag returns a single tag by name.
-//   Cloud: GET /2.0/repositories/{ws}/{slug}/refs/tags/{name}
-//   DC:    GET /rest/api/1.0/projects/{key}/repos/{slug}/tags/{name}
+//
+//	Cloud: GET /2.0/repositories/{ws}/{slug}/refs/tags/{name}
+//	DC:    GET /rest/api/1.0/projects/{key}/repos/{slug}/tags/{name}
 func (c *apiClient) GetTag(ctx context.Context, repo RepoRef, name string) (*Tag, error) {
 	if err := checkRepoRef(repo); err != nil {
 		return nil, err

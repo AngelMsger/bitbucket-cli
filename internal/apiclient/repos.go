@@ -118,10 +118,10 @@ func (c *apiClient) buildCreateRepo(req CreateRepoReq) (method, path string, pay
 	}
 	path = c.reposPath(req.Workspace)
 	payload = map[string]any{
-		"name":          defaultStr(req.Name, req.Slug),
-		"scmId":         "git",
-		"description":   req.Description,
-		"public":        !req.Private,
+		"name":        defaultStr(req.Name, req.Slug),
+		"scmId":       "git",
+		"description": req.Description,
+		"public":      !req.Private,
 	}
 	return
 }

@@ -13,8 +13,9 @@ import (
 )
 
 // ListFiles enumerates entries directly under opt.Path at opt.Ref.
-//   Cloud: GET /2.0/repositories/{ws}/{slug}/src/{ref}/{path}?format=meta
-//   DC:    GET /rest/api/1.0/projects/{key}/repos/{slug}/files/{path}?at={ref}
+//
+//	Cloud: GET /2.0/repositories/{ws}/{slug}/src/{ref}/{path}?format=meta
+//	DC:    GET /rest/api/1.0/projects/{key}/repos/{slug}/files/{path}?at={ref}
 //
 // Bitbucket DC's `/files` endpoint returns only file paths (not directories
 // or sizes), so the resulting FileEntry instances have Type="file" and Size=0
@@ -91,8 +92,9 @@ func (c *apiClient) ListFiles(ctx context.Context, opt FileListOpts) (ListResult
 }
 
 // GetFile fetches the raw bytes of a single file at opt.Ref.
-//   Cloud: GET /2.0/repositories/{ws}/{slug}/src/{ref}/{path}        (raw body)
-//   DC:    GET /rest/api/1.0/projects/{key}/repos/{slug}/raw/{path}?at={ref}
+//
+//	Cloud: GET /2.0/repositories/{ws}/{slug}/src/{ref}/{path}        (raw body)
+//	DC:    GET /rest/api/1.0/projects/{key}/repos/{slug}/raw/{path}?at={ref}
 func (c *apiClient) GetFile(ctx context.Context, opt FileGetOpts) (*FileContent, error) {
 	if err := checkRepoRef(opt.Repo); err != nil {
 		return nil, err

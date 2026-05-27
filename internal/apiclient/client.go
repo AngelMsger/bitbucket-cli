@@ -229,7 +229,7 @@ func decodeJSON(body []byte, out any) error {
 		}
 		return cerrors.Wrap(err, cerrors.CategoryParse, "DECODE",
 			fmt.Sprintf("could not decode the server response: %v", err)).
-			WithHint("The server's JSON did not match what bitbucket-cli expected; "+
+			WithHint("The server's JSON did not match what bitbucket-cli expected; " +
 				"this is likely a client bug, not a failed request.").
 			WithNextSteps("Report it with this snippet: " + snippet)
 	}

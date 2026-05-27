@@ -169,8 +169,8 @@ func (c *apiClient) ListPRActivity(ctx context.Context, opt PRListOpts) (ListRes
 		var raw struct {
 			Values []struct {
 				Update *struct {
-					State string    `json:"state"`
-					Date  string    `json:"date"`
+					State  string    `json:"state"`
+					Date   string    `json:"date"`
 					Author cloudUser `json:"author"`
 				} `json:"update"`
 				Approval *struct {

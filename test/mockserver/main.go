@@ -367,4 +367,9 @@ func atoi(s string) int {
 }
 
 func itoa(n int) string { return fmt.Sprintf("%d", n) }
-func min(a, b int) int  { if a < b { return a }; return b }
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}

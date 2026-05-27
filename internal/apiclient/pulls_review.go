@@ -7,8 +7,9 @@ import (
 )
 
 // ApprovePR toggles an approval on a PR.
-//   Cloud:       POST/DELETE .../approve
-//   Data Center: POST/DELETE .../approve
+//
+//	Cloud:       POST/DELETE .../approve
+//	Data Center: POST/DELETE .../approve
 func (c *apiClient) ApprovePR(ctx context.Context, req ApprovePRReq) error {
 	if err := checkRepoRef(req.Repo); err != nil {
 		return err

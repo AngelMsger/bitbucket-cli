@@ -222,14 +222,14 @@ func TestRunWizardAddPreservesOthers(t *testing.T) {
 		}},
 	}
 	d, _ := newPlainTest(strings.Join([]string{
-		"add",                                // action
-		"staging",                            // new context name
+		"add",                                   // action
+		"staging",                               // new context name
 		"https://bitbucket-staging.example.com", // base URL
-		"cloud",                              // flavor
-		"basic",                              // scheme
-		"qa@acme.com",                        // username
-		"staging-token",                      // token
-		"n",                                  // add another
+		"cloud",                                 // flavor
+		"basic",                                 // scheme
+		"qa@acme.com",                           // username
+		"staging-token",                         // token
+		"n",                                     // add another
 	}, "\n") + "\n")
 
 	result, err := RunWizard(d, WizardHooks{}, WizardInputs{Existing: existing})
@@ -277,11 +277,11 @@ func TestRunWizardAutoDetectedCloudDefaultsToBasic(t *testing.T) {
 	t.Parallel()
 	d, out := newPlainTest(strings.Join([]string{
 		"https://api.bitbucket.org", // base URL
-		"",                                // flavor — accept default (auto)
-		"",                                // scheme — accept default (should be basic post-detection)
-		"alice@acme.com",                  // username (only asked when basic)
-		"sekret",                          // API token
-		"n",                               // add another?
+		"",                          // flavor — accept default (auto)
+		"",                          // scheme — accept default (should be basic post-detection)
+		"alice@acme.com",            // username (only asked when basic)
+		"sekret",                    // API token
+		"n",                         // add another?
 	}, "\n") + "\n")
 
 	hooks := WizardHooks{
@@ -306,10 +306,10 @@ func TestRunWizardExplicitCloudDefaultsToBasic(t *testing.T) {
 	t.Parallel()
 	d, out := newPlainTest(strings.Join([]string{
 		"https://api.bitbucket.org", // base URL
-		"cloud",                           // flavor
-		"",                                // scheme — accept default
-		"alice@acme.com",                  // username
-		"sekret",                          // token
+		"cloud",                     // flavor
+		"",                          // scheme — accept default
+		"alice@acme.com",            // username
+		"sekret",                    // token
 		"n",
 	}, "\n") + "\n")
 
@@ -328,9 +328,9 @@ func TestRunWizardDataCenterDefaultsToPAT(t *testing.T) {
 	t.Parallel()
 	d, out := newPlainTest(strings.Join([]string{
 		"https://bitbucket.acme.corp", // base URL
-		"datacenter",             // flavor
-		"",                       // scheme — accept default (PAT)
-		"pat-tok",                // PAT
+		"datacenter",                  // flavor
+		"",                            // scheme — accept default (PAT)
+		"pat-tok",                     // PAT
 		"n",
 	}, "\n") + "\n")
 

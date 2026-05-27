@@ -10,10 +10,10 @@ import (
 // ListUsers enumerates users the current credentials can see — the discovery
 // path for `--reviewer` / `--author` style flags.
 //
-//   Cloud: GET /2.0/workspaces/{workspace}/members?pagelen=N&q=...
-//          (Cloud has no global user index; the closest is workspace
-//          membership, so opt.Workspace is required.)
-//   DC:    GET /rest/api/1.0/users?filter=...&start=N&limit=M
+//	Cloud: GET /2.0/workspaces/{workspace}/members?pagelen=N&q=...
+//	       (Cloud has no global user index; the closest is workspace
+//	       membership, so opt.Workspace is required.)
+//	DC:    GET /rest/api/1.0/users?filter=...&start=N&limit=M
 func (c *apiClient) ListUsers(ctx context.Context, opt UserListOpts) (ListResult[User], error) {
 	limit := c.limitOf(opt.ListOpts)
 	if c.flavor == FlavorCloud {
@@ -76,8 +76,9 @@ func (c *apiClient) ListUsers(ctx context.Context, opt UserListOpts) (ListResult
 }
 
 // GetUser fetches a single user by selector.
-//   Cloud: GET /2.0/users/{selector}  — selector is "{uuid}" or account_id.
-//   DC:    GET /rest/api/1.0/users/{slug}
+//
+//	Cloud: GET /2.0/users/{selector}  — selector is "{uuid}" or account_id.
+//	DC:    GET /rest/api/1.0/users/{slug}
 func (c *apiClient) GetUser(ctx context.Context, selector string) (*User, error) {
 	if selector == "" {
 		return nil, cerrors.New(cerrors.CategoryUsage, "USER_NO_SELECTOR",

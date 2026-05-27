@@ -73,7 +73,7 @@ func newUserListCmd(s *appState) *cobra.Command {
 			}
 			fetch := func(c string) (apiclient.ListResult[apiclient.User], error) {
 				return client.ListUsers(ctx, apiclient.UserListOpts{
-					ListOpts: apiclient.ListOpts{Limit: limit, Cursor: c},
+					ListOpts:  apiclient.ListOpts{Limit: limit, Cursor: c},
 					Workspace: ws, Query: query,
 				})
 			}
