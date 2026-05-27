@@ -18,6 +18,8 @@ use it. Write commands support `--dry-run`, and destructive ones require `--yes`
 
 📖 **Documentation site:** <https://AngelMsger.github.io/bitbucket-cli/>
 
+![bitbucket-cli — drive Bitbucket from your terminal](docs/image.png)
+
 ## Features
 
 - **Cloud & Data Center** — one flavor-agnostic client; the backend (Cloud REST 2.0 or
