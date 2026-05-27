@@ -119,7 +119,10 @@ func (c *apiClient) cloudListMyPRs(ctx context.Context, opt MyPRListOpts, role, 
 			"Bitbucket Cloud requires --workspace for `pr inbox --role reviewer` (and --role participant)").
 			WithHint("Cloud has no global reviewer index. Pass --workspace <ws> to scope " +
 				"the search to one workspace.").
-			WithNextSteps("bitbucket-cli pr inbox --workspace <ws> --role reviewer")
+			WithNextSteps(
+				"bitbucket-cli workspace list   # discover available workspaces",
+				"bitbucket-cli pr inbox --workspace <ws> --role reviewer",
+			)
 	}
 
 	// Fan-out: list every repo in the workspace, then per-repo q-filtered PR query.

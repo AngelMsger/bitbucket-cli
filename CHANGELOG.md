@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- `bitbucket-cli workspace list` / `workspace get` enumerate the Bitbucket
+  workspaces (Cloud) / projects (Data Center) the current credentials can see
+  — the universe of values every other command's `--workspace` flag accepts.
+  Error messages that previously told users to "Pass --workspace <name>" now
+  also point at `bitbucket-cli workspace list`.
 - `bitbucket-cli pr inbox` lists PRs involving the authenticated user across
   repositories. Data Center uses the `/dashboard/pull-requests` endpoint in
   a single call; Bitbucket Cloud uses `/2.0/pullrequests/<uuid>` for

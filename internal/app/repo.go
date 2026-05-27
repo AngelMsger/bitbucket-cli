@@ -34,7 +34,11 @@ func newRepoListCmd(s *appState) *cobra.Command {
 			if ws == "" {
 				return cerrors.New(cerrors.CategoryUsage, "REPO_NO_WORKSPACE",
 					"a workspace is required").
-					WithNextSteps("Pass --workspace <name>", "Set BITBUCKET_DEFAULT_WORKSPACE")
+					WithNextSteps(
+						"bitbucket-cli workspace list   # discover available workspaces / projects",
+						"Pass --workspace <slug>",
+						"Set BITBUCKET_DEFAULT_WORKSPACE",
+					)
 			}
 			ctx, cancel := cmdContext(s)
 			defer cancel()

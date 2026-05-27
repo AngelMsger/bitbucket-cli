@@ -39,6 +39,26 @@ func routes() http.Handler {
 		writeJSON(w, map[string]any{"version": "8.19.0", "buildNumber": "0", "displayName": "Bitbucket"})
 	})
 
+	// Workspace / project discovery.
+	mux.HandleFunc("GET /rest/api/1.0/projects", func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, map[string]any{
+			"values": []any{
+				map[string]any{
+					"key": "PROJ", "name": "Demo project", "id": 1,
+					"description": "Demo", "public": false, "type": "NORMAL",
+					"links": map[string]any{"self": []any{map[string]string{"href": "https://bitbucket.example.com/projects/PROJ"}}},
+				},
+			},
+			"size": 1, "limit": 25, "start": 0, "isLastPage": true,
+		})
+	})
+	mux.HandleFunc("GET /rest/api/1.0/projects/{key}", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, map[string]any{
+			"key": r.PathValue("key"), "name": "Demo project", "id": 1,
+			"description": "Demo", "public": false, "type": "NORMAL",
+		})
+	})
+
 	mux.HandleFunc("GET /rest/api/1.0/projects/{key}/repos", func(w http.ResponseWriter, r *http.Request) {
 		key := r.PathValue("key")
 		writeJSON(w, map[string]any{

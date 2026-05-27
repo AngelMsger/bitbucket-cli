@@ -38,6 +38,17 @@ assert_contains() {
   fi
 }
 
+# assert_err_contains <description> <needle> <command...>  (captures stderr too)
+assert_err_contains() {
+  local desc="$1" needle="$2"; shift 2
+  out="$("$@" 2>&1)"
+  if [[ "$out" == *"$needle"* ]]; then
+    pass "$desc"
+  else
+    fail "$desc (combined output did not contain '$needle')"
+  fi
+}
+
 # assert_exit <description> <expected-code> <command...>
 assert_exit() {
   local desc="$1" want="$2"; shift 2
@@ -119,6 +130,11 @@ assert_contains  "pr threads"                "Looks good"     "${CLI[@]}" pr thr
 assert_contains  "pr fetch print-only"       "git fetch"      "${CLI[@]}" pr fetch PROJ/demo/1
 assert_contains  "pr checkout print-only"    "git checkout"   "${CLI[@]}" pr checkout PROJ/demo/1
 assert_contains  "pr inbox (DC dashboard)"   "Wire payment retry" "${CLI[@]}" pr inbox --role reviewer
+assert_contains  "workspace list"            "PROJ"           "${CLI[@]}" workspace list
+assert_contains  "workspace get"             "Demo project"   "${CLI[@]}" workspace get PROJ
+# Hint surfaces workspace discovery when --workspace is missing.
+assert_err_contains "repo list hint"         "workspace list" \
+                                             env -u BITBUCKET_DEFAULT_WORKSPACE "${CLI[@]}" repo list
 assert_contains  "fields projection"         '"id"'           "${CLI[@]}" pr get PROJ/demo/1 --fields id,title
 SKILL_DIR="$(mktemp -d)"
 assert_contains  "skill install"             '"installed"' \

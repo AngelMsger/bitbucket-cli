@@ -24,6 +24,9 @@ type Client interface {
 
 	CurrentUser(ctx context.Context) (*User, error)
 
+	ListWorkspaces(ctx context.Context, opt WorkspaceListOpts) (ListResult[Workspace], error)
+	GetWorkspace(ctx context.Context, slug string) (*Workspace, error)
+
 	ListRepositories(ctx context.Context, opt RepoListOpts) (ListResult[Repository], error)
 	GetRepository(ctx context.Context, ref RepoRef) (*Repository, error)
 	CreateRepository(ctx context.Context, req CreateRepoReq) (*Repository, error)

@@ -29,9 +29,13 @@ go to the OS keychain (`service="bitbucket-cli"`), or to
 ## Verify
 
 ```sh
-bitbucket-cli doctor      # DNS, TLS, API ping, auth probe
-bitbucket-cli whoami      # confirms the active identity
+bitbucket-cli doctor          # DNS, TLS, API ping, auth probe
+bitbucket-cli whoami          # confirms the active identity
+bitbucket-cli workspace list  # discover the workspaces (Cloud) / projects (DC) you can see
 ```
+
+The `slug` field of each workspace entry is what every other command's
+`--workspace` flag (and `BITBUCKET_DEFAULT_WORKSPACE`) accepts.
 
 `bitbucket-cli auth login` re-stores credentials for an existing context.
 `bitbucket-cli auth logout` deletes them.

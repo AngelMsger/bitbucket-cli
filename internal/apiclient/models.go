@@ -38,6 +38,28 @@ type RepoRef struct {
 	Slug      string `json:"slug"`
 }
 
+// Workspace is a normalized Bitbucket workspace (Cloud) / project (DC). The
+// `Slug` field is the universal identifier `--workspace` flags accept across
+// the CLI: a Cloud workspace slug or a DC project key.
+type Workspace struct {
+	Slug        string `json:"slug"`
+	Name        string `json:"name,omitempty"`
+	UUID        string `json:"uuid,omitempty"`
+	Type        string `json:"type,omitempty"` // PUBLIC | PRIVATE  (DC) or owner type (Cloud)
+	Description string `json:"description,omitempty"`
+	URL         string `json:"url,omitempty"`
+	CreatedAt   string `json:"created_at,omitempty"`
+}
+
+// WorkspaceListOpts narrows a workspace listing.
+type WorkspaceListOpts struct {
+	ListOpts
+	// Role (Cloud only): "owner" | "collaborator" | "member".
+	Role string
+	// Query is a server-side name substring filter.
+	Query string
+}
+
 // Repository is a normalized Bitbucket repository.
 type Repository struct {
 	UUID          string   `json:"uuid,omitempty"`

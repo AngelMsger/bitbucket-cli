@@ -81,6 +81,7 @@ Re-run it after upgrading the CLI to keep the Skill version-matched.
 ```bash
 bitbucket-cli config init --pretty   # interactive TUI setup (recommended for humans)
 bitbucket-cli doctor                 # verify configuration and connectivity
+bitbucket-cli workspace list         # discover the workspaces / projects you can see
 
 # Find what to review (cross-repo "PRs awaiting my review")
 bitbucket-cli pr inbox --role reviewer                          # DC: dashboard call; Cloud: add --workspace
@@ -115,6 +116,7 @@ variables (`BITBUCKET_*`) → `.env` → `~/.bitbucket/config.yaml` → defaults
 
 | Command | Purpose |
 |---------|---------|
+| `workspace list` / `workspace get` | discover workspaces (Cloud) / projects (DC) — the values `--workspace` accepts elsewhere |
 | `pr list` / `pr get` | list pull requests; show details (`--scope summary/full/commits/activity`) |
 | `pr inbox` | cross-repo "PRs involving me" (`--role reviewer/author/participant`, `--state ...`) — single dashboard call on DC; on Cloud, `--workspace` required for reviewer/participant |
 | `pr status` | aggregated merge readiness: mergeable, conflicts, reviewers, CI builds |

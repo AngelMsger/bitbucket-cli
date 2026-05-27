@@ -13,7 +13,11 @@ func (c *apiClient) ListRepositories(ctx context.Context, opt RepoListOpts) (Lis
 	if opt.Workspace == "" {
 		return ListResult[Repository]{}, cerrors.New(cerrors.CategoryUsage, "REPO_NO_WORKSPACE",
 			"a workspace (Cloud) or project key (Data Center) is required to list repositories").
-			WithNextSteps("Pass --workspace <name>", "Set BITBUCKET_DEFAULT_WORKSPACE in your env or config")
+			WithNextSteps(
+				"bitbucket-cli workspace list   # discover available workspaces / projects",
+				"Pass --workspace <slug>",
+				"Set BITBUCKET_DEFAULT_WORKSPACE in your env or config",
+			)
 	}
 	limit := c.limitOf(opt.ListOpts)
 	q := c.queryWithLimit(opt.Cursor, limit)

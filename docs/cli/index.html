@@ -120,6 +120,12 @@
       <div class="side-title">whoami</div>
       <a href="#bitbucket-cli-whoami">bitbucket-cli whoami</a>
       </div>
+    <div class="side-group">
+      <div class="side-title">workspace</div>
+      <a href="#bitbucket-cli-workspace">bitbucket-cli workspace</a>
+      <a href="#bitbucket-cli-workspace-get">bitbucket-cli workspace get</a>
+      <a href="#bitbucket-cli-workspace-list">bitbucket-cli workspace list</a>
+      </div>
     
   </aside>
   <main class="cli-main">
@@ -1031,6 +1037,45 @@ from each one found.</p>
       
       
       <h3>Examples</h3><pre>  bitbucket-cli whoami</pre>
+    </section>
+    
+    <section class="cmd" id="bitbucket-cli-workspace">
+      <h2>bitbucket-cli workspace<span class="group-tag">command group</span></h2>
+      <p class="short">List and inspect Bitbucket workspaces (Cloud) / projects (DC)</p>
+      <pre>bitbucket-cli workspace</pre>
+      
+      
+      
+    </section>
+    
+    <section class="cmd" id="bitbucket-cli-workspace-get">
+      <h2>bitbucket-cli workspace get</h2>
+      <p class="short">Show details of a single workspace / project</p>
+      <pre>bitbucket-cli workspace get &lt;slug&gt;</pre>
+      
+      
+      
+    </section>
+    
+    <section class="cmd" id="bitbucket-cli-workspace-list">
+      <h2>bitbucket-cli workspace list</h2>
+      <p class="short">List every workspace / project the current credentials can see</p>
+      <pre>bitbucket-cli workspace list [flags]</pre>
+      <p class="long">List every Bitbucket workspace (Cloud) or project (Data Center) the
+authenticated user can see. The `slug` field of each entry is what every
+other command&#39;s --workspace flag expects.</p>
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--all</code></td><td><code>false</code></td><td>fetch every page of results</td></tr>
+        <tr><td><code>--cursor</code></td><td></td><td>start from this pagination cursor (the &#39;next&#39; of a prior page)</td></tr>
+        <tr><td><code>--limit</code></td><td><code>0</code></td><td>page size (default from config)</td></tr>
+        <tr><td><code>--query</code></td><td></td><td>filter by name substring</td></tr>
+        <tr><td><code>--role</code></td><td></td><td>filter by role (Cloud only): owner | collaborator | member</td></tr>
+        </tbody>
+      </table>
+      
     </section>
     
   </main>

@@ -81,6 +81,7 @@ func newRootCmd() *cobra.Command {
 
 	root.AddCommand(
 		newRepoCmd(state),
+		newWorkspaceCmd(state),
 		newPRCmd(state),
 		newFileCmd(state),
 		newCommentCmd(state),
