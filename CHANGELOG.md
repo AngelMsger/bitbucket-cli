@@ -2,6 +2,31 @@
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-06-04
+
+### Added
+
+- **Comment resolution & task status.** PR comments now carry `resolved` and
+  `task` fields. Cloud derives `resolved` from the comment's `resolution`
+  object; Data Center from `state == "RESOLVED"`, and `task` from
+  `severity == "BLOCKER"` (Cloud tasks live on a separate endpoint and are not
+  surfaced yet). `comment list` gains `--unresolved` and `--tasks` filters.
+- **Single-thread targeting on `pr threads`.** `pr threads <ref>` gains
+  `--unresolved` (drop resolved threads) and `--comment <id>` (return only the
+  thread containing that comment, whether it is the root or a reply; unknown ids
+  return a `not_found` error with a discovery hint). Threads now expose a
+  `resolved` field mirroring their root comment.
+
+### Skill
+
+- New `responding-to-review-comments.md` reference: a triage workflow for PR
+  authors addressing received feedback — start from a specified PR (ref/URL) or a
+  single comment id (inbox as discovery fallback), locate the code (local
+  checkout preferred for real verification), judge whether the comment is valid,
+  propose a fix + verification, and draft a reply. Read-only analysis by default;
+  post replies only after confirmation. Wired into `SKILL.md`; skill bumped to
+  `0.5.0`.
+
 ## [0.4.0] - 2026-05-28
 
 ### Changed

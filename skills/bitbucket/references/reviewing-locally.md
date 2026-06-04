@@ -4,6 +4,10 @@ This is the recommended flow for a coding agent (Claude Code etc.) reviewing
 a Bitbucket PR while it has read access to a local checkout of the repo. It
 budgets remote calls and context tokens by going coarse → fine.
 
+> Addressing feedback on your *own* PR instead of producing a review? See
+> `responding-to-review-comments.md` for the triage flow (locate code → judge
+> the comment → propose a fix + verification → draft a reply).
+
 ## Finding what to review
 
 When the agent doesn't already have a specific PR in hand, start with the

@@ -23,10 +23,12 @@ func newCommentCmd(s *appState) *cobra.Command {
 
 func newCommentListCmd(s *appState) *cobra.Command {
 	var (
-		prArg  string
-		limit  int
-		all    bool
-		cursor string
+		prArg      string
+		limit      int
+		all        bool
+		cursor     string
+		unresolved bool
+		tasks      bool
 	)
 	cmd := &cobra.Command{
 		Use:   "list",
@@ -52,10 +54,25 @@ func newCommentListCmd(s *appState) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if unresolved || tasks {
+				filtered := items[:0]
+				for _, c := range items {
+					if unresolved && c.Resolved {
+						continue
+					}
+					if tasks && !c.Task {
+						continue
+					}
+					filtered = append(filtered, c)
+				}
+				items = filtered
+			}
 			return s.emitList(items, info)
 		},
 	}
 	cmd.Flags().StringVar(&prArg, "pr", "", "<workspace>/<repo>/<id> or PR URL")
+	cmd.Flags().BoolVar(&unresolved, "unresolved", false, "only comments whose thread is not resolved")
+	cmd.Flags().BoolVar(&tasks, "tasks", false, "only comments that are actionable tasks")
 	addListFlags(cmd, &limit, &all, &cursor)
 	_ = cmd.MarkFlagRequired("pr")
 	return cmd

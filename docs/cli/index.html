@@ -345,6 +345,8 @@ JSON with structured errors.</p>
         <tr><td><code>--cursor</code></td><td></td><td>start from this pagination cursor (the &#39;next&#39; of a prior page)</td></tr>
         <tr><td><code>--limit</code></td><td><code>0</code></td><td>page size (default from config)</td></tr>
         <tr><td><code>--pr</code></td><td></td><td>&lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt; or PR URL</td></tr>
+        <tr><td><code>--tasks</code></td><td><code>false</code></td><td>only comments that are actionable tasks</td></tr>
+        <tr><td><code>--unresolved</code></td><td><code>false</code></td><td>only comments whose thread is not resolved</td></tr>
         </tbody>
       </table>
       
@@ -852,9 +854,16 @@ participant) require --workspace; --role author works globally via the user&#39;
     <section class="cmd" id="bitbucket-cli-pr-threads">
       <h2>bitbucket-cli pr threads</h2>
       <p class="short">List PR review threads grouped by file and anchor</p>
-      <pre>bitbucket-cli pr threads &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt;</pre>
+      <pre>bitbucket-cli pr threads &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt; [flags]</pre>
       
-      
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--comment</code></td><td><code>0</code></td><td>only the thread containing this comment id (root or reply)</td></tr>
+        <tr><td><code>--unresolved</code></td><td><code>false</code></td><td>only threads that are not resolved</td></tr>
+        </tbody>
+      </table>
       
     </section>
     

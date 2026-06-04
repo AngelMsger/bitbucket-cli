@@ -166,7 +166,7 @@ func (c *apiClient) ListPRThreads(ctx context.Context, repo RepoRef, id int) (Li
 		}
 		t, ok := threads[k]
 		if !ok {
-			t = &Thread{File: k.file}
+			t = &Thread{File: k.file, Resolved: root.Resolved}
 			if root.Inline != nil {
 				a := *root.Inline
 				t.Anchor = &a

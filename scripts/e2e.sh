@@ -38,6 +38,17 @@ assert_contains() {
   fi
 }
 
+# assert_not_contains <description> <needle> <command...>
+assert_not_contains() {
+  local desc="$1" needle="$2"; shift 2
+  out="$("$@" 2>/dev/null)"
+  if [[ "$out" != *"$needle"* ]]; then
+    pass "$desc"
+  else
+    fail "$desc (output unexpectedly contained '$needle')"
+  fi
+}
+
 # assert_err_contains <description> <needle> <command...>  (captures stderr too)
 assert_err_contains() {
   local desc="$1" needle="$2"; shift 2
@@ -127,6 +138,19 @@ assert_contains  "pr diff --path"            "+new"           "${CLI[@]}" pr dif
 assert_contains  "pr status mergeable=false" '"can_merge": false' "${CLI[@]}" pr status PROJ/demo/1
 assert_contains  "pr status has builds"      "SUCCESSFUL"     "${CLI[@]}" pr status PROJ/demo/1
 assert_contains  "pr threads"                "Looks good"     "${CLI[@]}" pr threads PROJ/demo/1
+# v0.4 — comment resolution / task status surfacing + filters
+assert_contains      "comment list resolved field" '"resolved": true'  "${CLI[@]}" comment list --pr PROJ/demo/1
+assert_contains      "comment list task field"     '"task": true'      "${CLI[@]}" comment list --pr PROJ/demo/1
+assert_not_contains  "comment list --unresolved drops resolved" "Already fixed" "${CLI[@]}" comment list --pr PROJ/demo/1 --unresolved
+assert_contains      "comment list --unresolved keeps open"     "Looks good"    "${CLI[@]}" comment list --pr PROJ/demo/1 --unresolved
+assert_contains      "comment list --tasks keeps task"          "Please rename" "${CLI[@]}" comment list --pr PROJ/demo/1 --tasks
+assert_not_contains  "comment list --tasks drops non-task"      "Looks good"    "${CLI[@]}" comment list --pr PROJ/demo/1 --tasks
+assert_not_contains  "pr threads --unresolved drops resolved"   "Already fixed" "${CLI[@]}" pr threads PROJ/demo/1 --unresolved
+assert_contains      "pr threads --unresolved keeps task thread" "Please rename" "${CLI[@]}" pr threads PROJ/demo/1 --unresolved
+assert_contains      "pr threads --comment selects thread"       "Please rename" "${CLI[@]}" pr threads PROJ/demo/1 --comment 9003
+assert_not_contains  "pr threads --comment excludes others"      "Looks good"    "${CLI[@]}" pr threads PROJ/demo/1 --comment 9003
+assert_exit          "pr threads --comment unknown -> 6" 6                        "${CLI[@]}" pr threads PROJ/demo/1 --comment 999999
+assert_err_contains  "pr threads --comment unknown hint" "pr threads"            "${CLI[@]}" pr threads PROJ/demo/1 --comment 999999
 assert_contains  "pr fetch print-only"       "git fetch"      "${CLI[@]}" pr fetch PROJ/demo/1
 assert_contains  "pr checkout print-only"    "git checkout"   "${CLI[@]}" pr checkout PROJ/demo/1
 assert_contains  "pr inbox (DC dashboard)"   "Wire payment retry" "${CLI[@]}" pr inbox --role reviewer

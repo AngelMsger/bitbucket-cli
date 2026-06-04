@@ -305,7 +305,10 @@ type cloudComment struct {
 			Href string `json:"href"`
 		} `json:"html"`
 	} `json:"links"`
-	Deleted bool `json:"deleted"`
+	Deleted    bool `json:"deleted"`
+	Resolution *struct {
+		Type string `json:"type"`
+	} `json:"resolution"`
 }
 
 func mapCloudComment(prID int, c cloudComment) Comment {
@@ -317,6 +320,7 @@ func mapCloudComment(prID int, c cloudComment) Comment {
 		URL:       c.Links.HTML.Href,
 		CreatedAt: c.CreatedOn,
 		UpdatedAt: c.UpdatedOn,
+		Resolved:  c.Resolution != nil,
 	}
 	if c.Parent != nil {
 		cm.ParentID = c.Parent.ID
@@ -593,6 +597,8 @@ type dcComment struct {
 	CreatedDate int64            `json:"createdDate"`
 	UpdatedDate int64            `json:"updatedDate"`
 	Anchor      *dcCommentAnchor `json:"anchor"`
+	State       string           `json:"state"`    // OPEN / RESOLVED / PENDING
+	Severity    string           `json:"severity"` // NORMAL / BLOCKER (BLOCKER == task)
 }
 
 func mapDCComment(prID int, c dcComment) Comment {
@@ -603,6 +609,8 @@ func mapDCComment(prID int, c dcComment) Comment {
 		PRID:      prID,
 		CreatedAt: epochToISO(c.CreatedDate),
 		UpdatedAt: epochToISO(c.UpdatedDate),
+		Resolved:  c.State == "RESOLVED",
+		Task:      c.Severity == "BLOCKER",
 	}
 	if c.Anchor != nil {
 		cm.Inline = &InlineAnchor{

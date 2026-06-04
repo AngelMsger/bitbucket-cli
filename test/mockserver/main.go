@@ -145,6 +145,17 @@ func routes() http.Handler {
 			"values": []any{
 				map[string]any{"id": 100, "action": "COMMENTED", "user": user(), "createdDate": 1, "comment": map[string]any{
 					"id": 9001, "text": "Looks good", "author": user(), "createdDate": 1, "version": 0,
+					"state": "OPEN", "severity": "NORMAL",
+				}},
+				map[string]any{"id": 102, "action": "COMMENTED", "user": user(), "createdDate": 3, "comment": map[string]any{
+					"id": 9002, "text": "Already fixed", "author": user(), "createdDate": 3, "version": 0,
+					"state": "RESOLVED", "severity": "NORMAL",
+					"anchor": map[string]any{"path": "src/app.go", "line": 10, "lineType": "CONTEXT", "fileType": "TO"},
+				}},
+				map[string]any{"id": 103, "action": "COMMENTED", "user": user(), "createdDate": 4, "comment": map[string]any{
+					"id": 9003, "text": "Please rename this", "author": user(), "createdDate": 4, "version": 0,
+					"state": "OPEN", "severity": "BLOCKER",
+					"anchor": map[string]any{"path": "src/app.go", "line": 20, "lineType": "ADDED", "fileType": "TO"},
 				}},
 				map[string]any{"id": 101, "action": "APPROVED", "user": user(), "createdDate": 2},
 			},

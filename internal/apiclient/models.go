@@ -187,6 +187,12 @@ type Comment struct {
 	URL       string        `json:"url,omitempty"`
 	CreatedAt string        `json:"created_at,omitempty"`
 	UpdatedAt string        `json:"updated_at,omitempty"`
+	// Resolved is true when the comment's thread has been marked resolved.
+	// Cloud: derived from the `resolution` object; DC: state == "RESOLVED".
+	Resolved bool `json:"resolved"`
+	// Task is true for actionable review tasks. DC: severity == "BLOCKER".
+	// (Cloud tasks live on a separate endpoint and are not surfaced yet.)
+	Task bool `json:"task,omitempty"`
 }
 
 // Activity is one entry in a PR's activity stream.
@@ -434,6 +440,8 @@ type Thread struct {
 	File     string        `json:"file,omitempty"`
 	Anchor   *InlineAnchor `json:"anchor,omitempty"`
 	Comments []Comment     `json:"comments"`
+	// Resolved mirrors the root comment's Resolved status for the thread.
+	Resolved bool `json:"resolved"`
 }
 
 // MergeCheck is the server-side pre-merge verdict for a PR.

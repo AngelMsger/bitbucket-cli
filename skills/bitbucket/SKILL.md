@@ -1,7 +1,7 @@
 ---
 name: bitbucket
-version: 0.3.1
-description: "Use Bitbucket as a code-hosting backend for coding agents. Browse repositories and source files at any ref, drive pull request review and merge workflows, see per-file diffs and diffstats, check mergeability and CI build status, fetch a PR into a local git checkout, post inline review comments, and preview every write with --dry-run or lock the session with read-only mode. Supports Bitbucket Cloud and Data Center / Server. Use when the user mentions Bitbucket, a PR or pull-request URL or ID, repository browsing, file content at a ref, code review, approve/decline/merge a PR, asks to read a diff, or wants a dry-run / read-only / safe-mode session."
+version: 0.5.0
+description: "Use Bitbucket as a code-hosting backend for coding agents. Browse repositories and source files at any ref, drive pull request review and merge workflows, see per-file diffs and diffstats, check mergeability and CI build status, fetch a PR into a local git checkout, post inline review comments, triage and respond to received review comments (with resolution / task status and --unresolved filters), and preview every write with --dry-run or lock the session with read-only mode. Supports Bitbucket Cloud and Data Center / Server. Use when the user mentions Bitbucket, a PR or pull-request URL or ID, repository browsing, file content at a ref, code review, responding to or addressing PR review comments, approve/decline/merge a PR, asks to read a diff, or wants a dry-run / read-only / safe-mode session."
 metadata:
   requires:
     bins: ["bitbucket-cli"]
@@ -43,6 +43,14 @@ contexts.
   files directly). Finish with `pr threads` to see inline discussions,
   `comment add --inline` to reply, and `pr approve` / `pr merge`. See
   `references/reviewing-locally.md` for the full decision tree.
+- **Respond to received review comments** — when the user is the PR *author*
+  addressing feedback. Usually they hand you a specific PR (ref or URL) — list its
+  open threads with `pr threads <ref> --unresolved`, or target a single thread the
+  user named with `pr threads <ref> --comment <id>`. (No PR in hand? Discover with
+  `pr inbox --role author`.) For each thread, locate the code (local checkout
+  preferred for real verification), judge whether the comment is valid, propose a
+  fix + verification, and draft a reply. Read-only analysis by default; post
+  replies only after confirmation. See `references/responding-to-review-comments.md`.
 - **Browse source at any ref** — `bitbucket-cli file list/get/tree` reads
   directories and files at a branch, tag or commit. See `references/files.md`.
 - **Comment** — `bitbucket-cli comment add --pr <ws>/<repo>/<id> --content "<text>"`,
