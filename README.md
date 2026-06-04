@@ -1,6 +1,7 @@
 # bitbucket-cli
 
 [![CI](https://github.com/AngelMsger/bitbucket-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/AngelMsger/bitbucket-cli/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/@angelmsger/bitbucket-cli.svg)](https://www.npmjs.com/package/@angelmsger/bitbucket-cli)
 [![Go version](https://img.shields.io/github/go-mod/go-version/AngelMsger/bitbucket-cli.svg)](go.mod)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Docs](https://img.shields.io/badge/docs-online-success.svg)](https://AngelMsger.github.io/bitbucket-cli/)
@@ -44,17 +45,50 @@ use it. Write commands support `--dry-run`, and destructive ones require `--yes`
 
 ## Installation
 
-### Install the CLI
+Install the CLI with npm, then take two short steps to finish setup — deploy
+the companion Skill, then (optionally) enable shell completion.
+
+### 1. Install the CLI — npm (recommended)
 
 ```bash
-go install github.com/angelmsger/bitbucket-cli/cmd/bitbucket-cli@latest   # go
-make install                                                              # from source
+npm install -g @angelmsger/bitbucket-cli
+```
+
+npm downloads the prebuilt binary for your platform, verifies its SHA-256
+checksum, and keeps upgrades one `npm update -g @angelmsger/bitbucket-cli`
+away.
+
+<details>
+<summary><strong>Other install methods</strong> — go install, source build, prebuilt binary</summary>
+
+```bash
+go install github.com/angelmsger/bitbucket-cli/cmd/bitbucket-cli@latest   # go 1.24+
+make install                                                              # from a source checkout
 ```
 
 Or download a prebuilt binary from the
-[Releases page](https://github.com/AngelMsger/bitbucket-cli/releases).
+[Releases page](https://github.com/AngelMsger/bitbucket-cli/releases). The full
+[installation guide](docs/installation.md) covers every method.
 
-### Shell completion (optional)
+</details>
+
+### 2. Deploy the companion Skill
+
+The `bitbucket` Skill is embedded in the binary; it teaches your coding agent
+(**Claude Code**, **Codex**) how to drive the CLI. `skill install` probes for
+installed agents and installs into each one found:
+
+```bash
+bitbucket-cli skill install            # auto-detect; install for each agent found
+bitbucket-cli skill install --agent codex
+bitbucket-cli skill uninstall          # remove it again
+```
+
+Re-run it after upgrading the CLI to keep the Skill version-matched. Details,
+including the `npx skills` workflow, are in
+[docs/installation.md](docs/installation.md#3-install-the-companion-skill).
+
+### 3. Enable shell completion (optional)
 
 `bitbucket-cli` completes subcommands and enum flag values. Load the completion
 script for your shell once:
@@ -64,19 +98,8 @@ source <(bitbucket-cli completion bash)                        # bash, current s
 bitbucket-cli completion zsh > "${fpath[1]}/_bitbucket-cli"    # zsh, persistent
 ```
 
-### Companion Skill (optional)
-
-The `bitbucket` Skill is embedded in the binary; deploy it for your coding agent.
-`skill install` probes for installed agents (**Claude Code**, **Codex**) and
-installs into each one found:
-
-```bash
-bitbucket-cli skill install            # auto-detect; install for each agent found
-bitbucket-cli skill install --agent codex
-bitbucket-cli skill uninstall          # remove it again
-```
-
-Re-run it after upgrading the CLI to keep the Skill version-matched.
+fish, PowerShell and persistent setup are covered in
+[docs/installation.md](docs/installation.md#2-enable-shell-completion).
 
 ## Quick start
 

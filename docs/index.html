@@ -74,9 +74,9 @@
         <h3>Commits &amp; comparisons</h3>
         <p>Walk commit history with <code>commit list</code>, look up a single hash with <code>commit get</code>, or list what is reachable from <em>to</em> but not <em>from</em> with <code>commit compare</code>.</p>
       </div>
-      <div class="card feat is-new">
+      <div class="card feat">
         <div class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4-8 4-8-4z"/><path d="M4 12l8 4 8-4"/><path d="M4 17l8 4 8-4"/></svg></div>
-        <h3>Multiple instances<span class="tag-new">new</span></h3>
+        <h3>Multiple instances</h3>
         <p>kubectl-style named contexts in one config file. Switch instance with <code>--use-context</code>; each context has its own credential.</p>
       </div>
       <div class="card feat">
@@ -89,19 +89,19 @@
         <h3>Secure credentials</h3>
         <p>Tokens live in the OS keychain, with a <code>0600</code> file fallback — never in the config file.</p>
       </div>
-      <div class="card feat is-new">
+      <div class="card feat">
         <div class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h12l4 4v12H4z"/><path d="M14 4v4h4"/><path d="M7 12h7M7 15h6M7 18h4"/></svg></div>
-        <h3>Browse files at any ref<span class="tag-new">v0.2</span></h3>
+        <h3>Browse files at any ref</h3>
         <p><code>file list / get / tree</code> read repository source at any branch, tag or commit — with optional line-range slicing. No local clone needed.</p>
       </div>
-      <div class="card feat is-new">
+      <div class="card feat">
         <div class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h10M4 18h6"/><circle cx="18" cy="18" r="3"/></svg></div>
-        <h3>Diffstat &amp; merge readiness<span class="tag-new">v0.2</span></h3>
+        <h3>Diffstat &amp; merge readiness</h3>
         <p><code>pr files</code> returns per-file change summary; <code>pr status</code> aggregates mergeability, conflicts, reviewers and CI build status.</p>
       </div>
-      <div class="card feat is-new">
+      <div class="card feat">
         <div class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l4-4 4 4"/><path d="M8 3v10"/><path d="M16 17l4 4 4-4" transform="translate(-4 -4)"/><path d="M16 21V11"/></svg></div>
-        <h3>Local git bridge<span class="tag-new">v0.2</span></h3>
+        <h3>Local git bridge</h3>
         <p><code>pr fetch</code> / <code>pr checkout</code> print the equivalent git commands; <code>--exec</code> runs them in your current checkout for fast local review.</p>
       </div>
       <div class="card feat">
@@ -118,28 +118,29 @@
     <div class="section-head">
       <span class="eyebrow">Install</span>
       <h2>Up and running in a minute</h2>
-      <p class="lead">Build from source today; prebuilt binaries follow.</p>
+      <p class="lead">Install with npm, then finish setup in two steps — deploy the Skill, then turn on shell completion.</p>
     </div>
     <div class="term">
       <div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="term-title">install</span></div>
-<pre><span class="c"># go install</span>
-go install github.com/angelmsger/bitbucket-cli/cmd/bitbucket-cli@latest
-
-<span class="c"># from a local checkout</span>
-make install</pre>
+<pre><span class="c"># recommended — fetches the prebuilt binary for your platform</span>
+npm install -g @angelmsger/bitbucket-cli</pre>
     </div>
-    <div class="grid grid-2" style="margin-top:28px">
+    <p style="margin-top:14px;color:var(--muted)">Other methods — <code>go install</code>, a source build, or a prebuilt binary from the
+      <a href="https://github.com/AngelMsger/bitbucket-cli/releases">Releases page</a> — are in the
+      <a href="https://github.com/AngelMsger/bitbucket-cli/blob/main/docs/installation.md">installation guide</a>.</p>
+    <p class="lead" style="margin-top:30px">Then finish setup:</p>
+    <div class="grid grid-2" style="margin-top:14px">
       <div class="card">
-        <h3>Shell completion</h3>
-        <p style="margin:6px 0 12px">Completes subcommands, flag values and live repository slugs. Load it once:</p>
-        <div class="term"><div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
-<pre><span class="p">$</span> source &lt;(bitbucket-cli completion bash)</pre></div>
-      </div>
-      <div class="card">
-        <h3>Companion Skill</h3>
+        <h3>1 · Companion Skill</h3>
         <p style="margin:6px 0 12px">A <code>bitbucket</code> Skill is embedded in the binary. It detects your coding agent — Claude Code, Codex — and installs for each:</p>
         <div class="term"><div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
 <pre><span class="p">$</span> bitbucket-cli skill install</pre></div>
+      </div>
+      <div class="card">
+        <h3>2 · Shell completion</h3>
+        <p style="margin:6px 0 12px">Completes subcommands, flag values and live repository slugs. Load it once:</p>
+        <div class="term"><div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+<pre><span class="p">$</span> source &lt;(bitbucket-cli completion bash)</pre></div>
       </div>
     </div>
   </div>

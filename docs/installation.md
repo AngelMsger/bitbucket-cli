@@ -10,9 +10,11 @@ This guide covers three things:
 
 ## 1. Install the CLI
 
-Pick whichever method suits you.
+**npm is the recommended way to install** — it downloads the prebuilt binary
+for your platform, verifies its checksum, and keeps upgrades a single
+`npm update -g` away. The *Other methods* below are alternatives.
 
-### npm
+### npm (recommended)
 
 ```bash
 npm install -g @angelmsger/bitbucket-cli
@@ -23,7 +25,11 @@ GitHub Release and verifies its SHA-256 checksum. If your npm setup disables
 install scripts (`--ignore-scripts`, some pnpm setups), the binary is fetched
 on first run instead.
 
-### go install
+### Other methods
+
+Prefer not to use npm? Any of these also work.
+
+#### go install
 
 ```bash
 go install github.com/angelmsger/bitbucket-cli/cmd/bitbucket-cli@latest
@@ -31,7 +37,7 @@ go install github.com/angelmsger/bitbucket-cli/cmd/bitbucket-cli@latest
 
 Installs into `go env GOBIN` (or `$GOPATH/bin`). Requires Go 1.24+.
 
-### Prebuilt binary
+#### Prebuilt binary
 
 Download the binary for your platform from the
 [Releases page](https://github.com/AngelMsger/bitbucket-cli/releases), verify
@@ -41,7 +47,7 @@ it against `checksums.txt`, then put it on your `PATH`:
 chmod +x bitbucket-cli-* && mv bitbucket-cli-* /usr/local/bin/bitbucket-cli
 ```
 
-### From source
+#### From source
 
 ```bash
 git clone https://github.com/AngelMsger/bitbucket-cli.git && cd bitbucket-cli
