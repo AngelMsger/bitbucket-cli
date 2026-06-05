@@ -10,10 +10,10 @@ func defaultGuidance(cat Category) (hint string, steps []string) {
 			[]string{"bitbucket-cli <command> --help"}
 	case CategoryConfig:
 		return "No usable configuration was found or it is invalid.",
-			[]string{"bitbucket-cli config init --pretty", "bitbucket-cli config show --explain"}
+			[]string{"bitbucket-cli config init", "bitbucket-cli config show --explain"}
 	case CategoryAuth:
 		return "The server rejected the credentials. The token may be expired or wrong.",
-			[]string{"bitbucket-cli auth status", "bitbucket-cli config init --pretty"}
+			[]string{"bitbucket-cli auth status", "bitbucket-cli config init"}
 	case CategoryPermission:
 		return "The credentials are valid but lack permission for this resource.",
 			[]string{"Verify the account can access the workspace, repository or PR in a browser."}

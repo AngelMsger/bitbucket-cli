@@ -34,7 +34,10 @@ The process exit code matches the category:
 ## Common recovery flows
 
 - **`auth`** → `bitbucket-cli auth logout && bitbucket-cli auth login` (or set
-  `BITBUCKET_TOKEN`).
+  `BITBUCKET_TOKEN`). Agents in a sandbox: the credential is usually the user's, just
+  unreadable from the sandbox — request elevation and retry rather than
+  re-initializing, and never run interactive `auth login` (no TTY → it errors). See
+  `getting-started.md` › "For agents and sandboxes".
 - **`not_found`** → confirm with `bitbucket-cli repo get <ref>` / `pr get <ref>`.
 - **`usage` on `pr decline`/`pr merge`/`pr delete`/`comment delete`** → add `--yes`.
 - **`usage` `NOT_A_GIT_WORKTREE` on `pr fetch --exec` / `pr checkout --exec`** →

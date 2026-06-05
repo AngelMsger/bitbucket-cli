@@ -2,6 +2,28 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **`auth login` fails fast without a TTY.** Rather than blocking on the secret
+  prompt when stdin is not an interactive terminal (a sandboxed agent, CI without a
+  PTY), it now returns a structured `AUTH_LOGIN_NEEDS_TTY` error that points at the
+  non-interactive paths — run it in a real terminal, or supply `BITBUCKET_*`
+  credentials via the environment.
+- **`--pretty` clarified as human-only.** The flag help now states it is for
+  interactive terminal use and that agents/scripts should omit it, and error
+  `next_steps` / hints no longer suggest `config init --pretty` — plain
+  `config init` is the non-TTY-safe form.
+
+### Skill
+
+- AI attribution guidance for agent writes: mark AI-authored PR comments (general,
+  inline, reply) and PR descriptions with a `[AI](…)` link back to `bitbucket-cli`,
+  written in the user's language.
+- New "For agents and sandboxes" guidance: reuse the user's existing config and
+  credentials, request elevation rather than giving up or re-initializing inside a
+  sandbox, and never run interactive `config init` / `auth login` or pass
+  `--pretty`. Skill bumped to `0.6.0`.
+
 ## [0.5.0] - 2026-06-04
 
 ### Added

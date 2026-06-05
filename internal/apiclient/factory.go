@@ -27,7 +27,7 @@ func Build(ctx context.Context, p BuildParams) (Client, Flavor, error) {
 	if p.BaseURL == "" {
 		return nil, FlavorAuto, cerrors.New(cerrors.CategoryConfig, "NO_BASE_URL",
 			"no Bitbucket server URL configured").
-			WithNextSteps("bitbucket-cli config init --pretty", "Set BITBUCKET_SERVER or pass --base-url.")
+			WithNextSteps("bitbucket-cli config init", "Set BITBUCKET_SERVER or pass --base-url.")
 	}
 	base := NormalizeBaseURL(p.BaseURL)
 

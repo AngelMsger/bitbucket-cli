@@ -59,7 +59,7 @@ func newAuthLoginCmd(s *appState) *cobra.Command {
 	return &cobra.Command{
 		Use:   "login",
 		Short: "Store a credential for the configured server",
-		Long:  "Prompt for a secret and store it securely. Run `config init --pretty` first if the server URL is not set.",
+		Long:  "Prompt for a secret and store it securely. Run `config init` first if the server URL is not set.",
 		Example: "  bitbucket-cli auth login\n" +
 			"  bitbucket-cli --use-context staging auth login",
 		RunE: func(cmd *cobra.Command, _ []string) error {
@@ -67,7 +67,15 @@ func newAuthLoginCmd(s *appState) *cobra.Command {
 			if cfg.BaseURL == "" {
 				return cerrors.New(cerrors.CategoryConfig, "NO_SERVER",
 					"no server URL configured").
-					WithNextSteps("bitbucket-cli config init --pretty")
+					WithNextSteps("bitbucket-cli config init")
+			}
+			// auth login is interactive: it prompts for a secret on stdin. With
+			// no terminal (a sandboxed agent, CI without a PTY) the read would
+			// block forever, so fail fast and point at the non-interactive paths.
+			if !stdinIsTTY() {
+				return cerrors.New(cerrors.CategoryConfig, "AUTH_LOGIN_NEEDS_TTY",
+					"auth login needs an interactive terminal to prompt for the secret").
+					WithHint("Run `bitbucket-cli auth login` yourself in a terminal, or provide credentials via environment variables (BITBUCKET_TOKEN / BITBUCKET_PERSONAL_ACCESS_TOKEN, or BITBUCKET_USERNAME + BITBUCKET_API_TOKEN / BITBUCKET_PASSWORD).")
 			}
 			r := bufio.NewReader(os.Stdin)
 			cred := auth.Credential{Scheme: cfg.Auth.Scheme, Username: cfg.Auth.Username}

@@ -47,7 +47,7 @@ func newDoctorCmd(s *appState) *cobra.Command {
 				return cerrors.New(cerrors.CategoryConfig, "DOCTOR_UNHEALTHY",
 					"one or more diagnostic checks failed").
 					WithNextSteps("Review the failing checks above.",
-						"bitbucket-cli config init --pretty")
+						"bitbucket-cli config init")
 			}
 			return nil
 		},
