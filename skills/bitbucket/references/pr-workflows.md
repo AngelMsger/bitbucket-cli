@@ -18,8 +18,12 @@ When the user pastes a PR URL or names `<workspace>/<repo>/<id>`:
    still available when you really want the whole patch.
 4. **Local fetch** — `bitbucket-cli pr fetch <ref>` (or `pr checkout`) prints
    the equivalent `git` commands; `--exec` runs them in your current checkout.
-   The PR's source ref ends up at `refs/remotes/origin/pr/<id>`. Bridging to a
-   local checkout is the cheapest way to read many large files.
+   It fetches the PR source ref (→ `refs/remotes/<remote>/pr/<id>`) **and the PR's
+   base branch**, picks the remote (`upstream` over `origin` when both exist), and
+   prints a ready-to-run `review_diff` that diffs against the merge-base. Bridging to
+   a local checkout is the cheapest way to read many large files — and the only way
+   to review against a correct base. See `reviewing-locally.md` ›
+   "Reviewing against the right base".
 5. **Commits / activity** — `pr commits` / `pr activity` enumerate the
    contained commits and the timeline (approvals, comments, state changes).
 

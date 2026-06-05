@@ -38,9 +38,10 @@ pr files   ─ diffstat: which files changed and how much?
     ├─ small / focused PR  ─→  pr diff --path <file>   (one call per interesting file)
     │
     └─ large PR / wants to grep
-                            ─→  pr fetch --exec        (brings PR to local refs/remotes/origin/pr/<id>)
+                            ─→  pr fetch --exec        (fetches PR source + base branch;
+                                                        prints the merge-base `review_diff`)
                                 pr checkout --exec     (switches to pr/<id> branch)
-                                <Read local files directly via the agent's filesystem tools>
+                                <Read local files / run the printed review_diff>
     │
     ▼
 pr threads ─ existing inline discussion, grouped by file/line
@@ -70,7 +71,9 @@ pr merge --strategy <merge_commit|squash|fast_forward> --yes
 3. **Per-file diff vs local read** — for files under ~200 lines of churn,
    `pr diff --path <p>` is cheapest. For larger changes, fetching the PR
    locally (`pr fetch --exec` + `pr checkout --exec`) lets the agent use its
-   filesystem tooling (Read, Grep) at full power.
+   filesystem tooling (Read, Grep) at full power. **Fetch brings the base
+   too** — see "Reviewing against the right base" below; never `git diff`
+   against a stale local branch.
 4. **`pr threads` before commenting** — see whether the question has already
    been asked / answered; reply with `--reply-to` instead of starting a new
    thread.
@@ -81,7 +84,30 @@ pr merge --strategy <merge_commit|squash|fast_forward> --yes
    it's wrong, so a bad number fails loudly rather than landing on the wrong line.
    See `commenting.md`.
 
-## Inputs the agent needs
+## Reviewing against the right base
+
+A PR is "what changed **relative to its base**". Reading the PR's files at their
+new state is not enough — to judge the change you must diff against the base the PR
+targets, and a stale local clone gets this wrong (extra or missing changes).
+
+`pr fetch` / `pr checkout` handle this for you:
+
+- They fetch **both** the PR source ref (→ `<remote>/pr/<id>`) **and the PR's base
+  branch** (its destination branch, looked up via the API), so the local merge-base
+  is correct. Override the base with `--base <branch>` (also lets the command run
+  offline).
+- They pick the remote: an explicit `--remote` wins, otherwise **`upstream` is
+  preferred over `origin`** when both exist. In a fork workflow `upstream` is the
+  canonical repo the PR was opened against — it carries the authoritative base
+  branch and the `refs/pull-requests/*` refs, so it is the accurate source; `origin`
+  (your fork) is often behind.
+- The JSON output includes `remote`, `source_ref`, `base_branch`, `base_ref`,
+  `base_commit`, and a ready-to-run **`review_diff`** — a triple-dot diff
+  (`git diff <remote>/<base>...<remote>/pr/<id>`) that shows exactly the PR's changes
+  against the merge-base, staying correct even as the base branch advances.
+
+So the local review flow is: `pr checkout --exec` → run the printed `review_diff`
+(or read files at `pr/<id>`) → never hand-pick a base or trust a stale `main`.
 
 - `BITBUCKET_DEFAULT_WORKSPACE` set (or `--workspace` on each call) so the
   agent doesn't have to repeat the workspace in every reference.

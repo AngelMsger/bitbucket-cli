@@ -2,6 +2,26 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`pr fetch` / `pr checkout` now fetch the PR's base branch too.** Alongside the
+  source ref they bring the PR's destination branch up to date (looked up via the
+  API, or `--base <branch>` to override / run offline), so a local review diffs
+  against the correct merge-base instead of a stale local branch. The output gains
+  `remote`, `source_ref`, `base_branch`, `base_ref`, `base_commit`, and a
+  ready-to-run `review_diff` (`git diff <remote>/<base>...<remote>/pr/<id>`).
+- **Remote auto-selection.** When `--remote` is not given, the commands prefer an
+  `upstream` remote over `origin` (in a fork workflow `upstream` is the canonical
+  repo carrying the authoritative base branch and PR refs); pass `--remote` to force
+  one.
+
+### Skill
+
+- `reviewing-locally.md` gains a "Reviewing against the right base" section, and the
+  decision tree / `pr-workflows.md` now point the agent at the fetched base and the
+  `review_diff` instead of diffing against a possibly-stale local branch. Skill
+  bumped to `0.8.0`.
+
 ## [0.6.0] - 2026-06-05
 
 ### Added
