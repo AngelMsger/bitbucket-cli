@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-06-05
+
 ### Added
 
 - **`pr fetch` / `pr checkout` now fetch the PR's base branch too.** Alongside the
