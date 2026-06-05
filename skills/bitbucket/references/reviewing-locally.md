@@ -46,7 +46,9 @@ pr files   ─ diffstat: which files changed and how much?
 pr threads ─ existing inline discussion, grouped by file/line
     │
     ▼
-comment add --inline <path>:<line>   ─ write inline feedback
+pr diff --path <f> --line-numbers    ─ read the exact NEW-file line number
+comment add --inline <path>:<line>   ─ write inline feedback (line = new-file line;
+                                        add --side old for a removed line)
 comment add --reply-to <id>           ─ continue an existing thread
     │
     ▼
@@ -72,6 +74,12 @@ pr merge --strategy <merge_commit|squash|fast_forward> --yes
 4. **`pr threads` before commenting** — see whether the question has already
    been asked / answered; reply with `--reply-to` instead of starting a new
    thread.
+5. **`pr diff --line-numbers` before an inline comment** — `--inline <path>:<line>`
+   wants the NEW-file (post-change) line number; read it from the right-hand gutter
+   instead of counting hunk offsets (the classic old-vs-new mix-up). The CLI
+   validates the number against the diff and errors with the commentable ranges if
+   it's wrong, so a bad number fails loudly rather than landing on the wrong line.
+   See `commenting.md`.
 
 ## Inputs the agent needs
 

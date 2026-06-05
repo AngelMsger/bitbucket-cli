@@ -171,8 +171,15 @@ type PullRequest struct {
 type InlineAnchor struct {
 	Path string `json:"path"`
 	Line int    `json:"line,omitempty"`
-	From int    `json:"from,omitempty"` // DC origin line for the LHS side
-	To   int    `json:"to,omitempty"`   // DC destination line for the RHS side
+	From int    `json:"from,omitempty"` // origin line for the LHS (old / pre-change) side
+	To   int    `json:"to,omitempty"`   // destination line for the RHS (new / post-change) side
+	// LineType / FileType carry the diff classification resolved from the unified
+	// diff (see ResolveInlineAnchor). They drive Data Center's anchor shape so an
+	// added line is posted as ADDED/TO and a removed line as REMOVED/FROM, rather
+	// than the old always-CONTEXT/TO guess. Empty on comments read back from the
+	// API unless the server supplied them.
+	LineType string `json:"line_type,omitempty"` // ADDED | REMOVED | CONTEXT
+	FileType string `json:"file_type,omitempty"` // TO | FROM
 }
 
 // Comment is a normalized PR or commit comment.

@@ -292,6 +292,7 @@ func newPRUpdateCmd(s *appState) *cobra.Command {
 
 func newPRDiffCmd(s *appState) *cobra.Command {
 	var path string
+	var lineNumbers bool
 	cmd := &cobra.Command{
 		Use:   "diff <workspace>/<repo>/<id>",
 		Short: "Print the unified diff of a PR (use --path to scope to one file)",
@@ -316,11 +317,17 @@ func newPRDiffCmd(s *appState) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if lineNumbers {
+				// Annotate with an "old new" gutter so the agent can read the exact
+				// new-file line number to pass to `comment add --inline <path>:<line>`.
+				diff = apiclient.AnnotateDiffWithLineNumbers(diff)
+			}
 			_, _ = fmt.Fprint(os.Stdout, diff)
 			return nil
 		},
 	}
 	cmd.Flags().StringVar(&path, "path", "", "restrict the diff to a single file path")
+	cmd.Flags().BoolVar(&lineNumbers, "line-numbers", false, "prefix each line with its old/new file line numbers (for picking --inline lines)")
 	return cmd
 }
 

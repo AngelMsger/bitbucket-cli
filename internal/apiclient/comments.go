@@ -104,13 +104,31 @@ func (c *apiClient) buildAddPRComment(req AddPRCommentReq) (method, path string,
 	// Data Center
 	body := map[string]any{"text": req.Content}
 	if req.Inline != nil {
+		// lineType / fileType come from ResolveInlineAnchor's diff classification;
+		// fall back to the historical CONTEXT/TO guess for an unresolved anchor.
+		fileType := req.Inline.FileType
+		if fileType == "" {
+			fileType = "TO"
+		}
+		lineType := req.Inline.LineType
+		if lineType == "" {
+			lineType = "CONTEXT"
+		}
 		anchor := map[string]any{
 			"path":     req.Inline.Path,
-			"lineType": "CONTEXT",
-			"fileType": "TO",
+			"lineType": lineType,
+			"fileType": fileType,
 		}
-		if req.Inline.Line > 0 {
-			anchor["line"] = req.Inline.Line
+		// Anchor on the side fileType names: the FROM line for the old side, the
+		// TO line for the new side, falling back to Line for an unresolved anchor.
+		line := req.Inline.Line
+		if fileType == "FROM" && req.Inline.From > 0 {
+			line = req.Inline.From
+		} else if fileType == "TO" && req.Inline.To > 0 {
+			line = req.Inline.To
+		}
+		if line > 0 {
+			anchor["line"] = line
 		}
 		body["anchor"] = anchor
 	}

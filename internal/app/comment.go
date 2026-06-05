@@ -80,9 +80,9 @@ func newCommentListCmd(s *appState) *cobra.Command {
 
 func newCommentAddCmd(s *appState) *cobra.Command {
 	var (
-		prArg, content, contentFile, inline string
-		replyTo                             int
-		dryRun                              bool
+		prArg, content, contentFile, inline, side string
+		replyTo                                   int
+		dryRun                                    bool
 	)
 	cmd := &cobra.Command{
 		Use:   "add",
@@ -104,8 +104,18 @@ func newCommentAddCmd(s *appState) *cobra.Command {
 				return cerrors.New(cerrors.CategoryUsage, "COMMENT_NO_BODY",
 					"comment content must not be empty")
 			}
+			ctx, cancel := cmdContext(s)
+			defer cancel()
+			client, err := s.newClient(ctx)
+			if err != nil {
+				return err
+			}
 			var anchor *apiclient.InlineAnchor
 			if inline != "" {
+				if side != "" && side != apiclient.DiffSideNew && side != apiclient.DiffSideOld {
+					return cerrors.New(cerrors.CategoryUsage, "BAD_SIDE",
+						"--side must be new (post-change) or old (pre-change)")
+				}
 				parts := strings.SplitN(inline, ":", 2)
 				if len(parts) != 2 {
 					return cerrors.New(cerrors.CategoryUsage, "BAD_INLINE",
@@ -116,16 +126,21 @@ func newCommentAddCmd(s *appState) *cobra.Command {
 					return cerrors.Wrap(perr, cerrors.CategoryUsage, "BAD_INLINE",
 						"--inline line is not numeric")
 				}
-				anchor = &apiclient.InlineAnchor{Path: parts[0], Line: line, To: line}
+				// Resolve the anchor against the file's own diff so the line lands on
+				// the requested side (new = post-change by default, old = pre-change)
+				// with the right ADDED/REMOVED/CONTEXT classification — rather than
+				// trusting a bare number that silently anchors to the wrong side.
+				diffText, derr := client.GetPRDiffByPath(ctx, ref, id, parts[0])
+				if derr != nil {
+					return derr
+				}
+				anchor, err = apiclient.ResolveInlineAnchor(diffText, parts[0], line, side)
+				if err != nil {
+					return err
+				}
 			}
 			req := apiclient.AddPRCommentReq{
 				Repo: ref, PRID: id, Content: content, Inline: anchor, ReplyTo: replyTo,
-			}
-			ctx, cancel := cmdContext(s)
-			defer cancel()
-			client, err := s.newClient(ctx)
-			if err != nil {
-				return err
 			}
 			if dryRun {
 				return emitDryRun(s, client, ctx, req)
@@ -141,7 +156,8 @@ func newCommentAddCmd(s *appState) *cobra.Command {
 	f.StringVar(&prArg, "pr", "", "<workspace>/<repo>/<id> or PR URL")
 	f.StringVar(&content, "content", "", "comment body (Markdown)")
 	f.StringVar(&contentFile, "content-file", "", "read content from this file")
-	f.StringVar(&inline, "inline", "", "inline anchor as <path>:<line>")
+	f.StringVar(&inline, "inline", "", "inline anchor as <path>:<line> (line is the new/post-change file line unless --side old)")
+	f.StringVar(&side, "side", "new", "diff side the --inline line refers to: new (post-change) or old (pre-change/removed)")
 	f.IntVar(&replyTo, "reply-to", 0, "reply to this comment ID")
 	f.BoolVar(&dryRun, "dry-run", false, "preview the HTTP request without sending it")
 	_ = cmd.MarkFlagRequired("pr")

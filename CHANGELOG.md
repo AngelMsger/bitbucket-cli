@@ -2,6 +2,27 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`pr diff --line-numbers`.** Annotates each diff line with its old/new file
+  line numbers in a gutter, so the exact NEW-file line for an inline comment can be
+  read off instead of counted from hunk offsets.
+- **`comment add --side new|old`.** Selects which diff side the `--inline` line
+  refers to (default `new` = post-change); `old` anchors a comment on a removed /
+  pre-change line.
+
+### Fixed
+
+- **Inline comments could land on the wrong line.** `comment add --inline
+  <path>:<line>` now resolves the line against the file's own diff: it classifies it
+  as added / removed / context and emits the correct anchor for both flavors, and
+  **errors with the commentable line ranges** when the number isn't on that side
+  instead of silently mis-placing the comment. This removes the old/new line-number
+  mix-up where a comment meant for new-file line N landed on old-file line N.
+- **Data Center inline `lineType` was always `CONTEXT`.** Comments on added or
+  removed lines now send `ADDED` / `REMOVED` with the matching `fileType`, so Data
+  Center anchors them correctly (added-line comments were previously mis-anchored).
+
 ### Changed
 
 - **`auth login` fails fast without a TTY.** Rather than blocking on the secret
@@ -22,7 +43,11 @@
 - New "For agents and sandboxes" guidance: reuse the user's existing config and
   credentials, request elevation rather than giving up or re-initializing inside a
   sandbox, and never run interactive `config init` / `auth login` or pass
-  `--pretty`. Skill bumped to `0.6.0`.
+  `--pretty`.
+- Inline-comment guidance rewritten around new-file line numbers: `--inline` line is
+  the NEW (post-change) file line; read it from `pr diff --line-numbers`; use
+  `--side old` for removed lines; wrong numbers now fail with the commentable ranges.
+  Skill bumped to `0.7.0`.
 
 ## [0.5.0] - 2026-06-04
 
