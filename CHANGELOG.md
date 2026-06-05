@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-06-05
+
 ### Added
 
 - **`pr diff --line-numbers`.** Annotates each diff line with its old/new file
