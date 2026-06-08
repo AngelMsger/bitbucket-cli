@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-06-08
+
 ### Fixed
 
 - **Inline comments and `pr diff` now work against Data Center instances that
