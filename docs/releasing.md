@@ -98,7 +98,7 @@ the result, or CI will fail.
 `docs/index.html` plus the markdown guides) to GitHub Pages on every push to
 `main` that touches `docs/`. Enable it once: repository Settings → Pages →
 Source → **GitHub Actions**. The site is served at
-<https://AngelMsger.github.io/bitbucket-cli/>.
+<https://angelmsger.github.io/bitbucket-cli/>.
 
 ## Release artifact contract
 

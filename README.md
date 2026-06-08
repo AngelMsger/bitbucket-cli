@@ -4,7 +4,7 @@
 [![npm](https://img.shields.io/npm/v/@angelmsger/bitbucket-cli.svg)](https://www.npmjs.com/package/@angelmsger/bitbucket-cli)
 [![Go version](https://img.shields.io/github/go-mod/go-version/AngelMsger/bitbucket-cli.svg)](go.mod)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Docs](https://img.shields.io/badge/docs-online-success.svg)](https://AngelMsger.github.io/bitbucket-cli/)
+[![Docs](https://img.shields.io/badge/docs-online-success.svg)](https://angelmsger.github.io/bitbucket-cli/)
 [![Bitbucket](https://img.shields.io/badge/Bitbucket-Cloud%20%26%20Data%20Center-0052CC.svg)](https://www.atlassian.com/software/bitbucket)
 
 > Drive Bitbucket from your terminal — built for coding agents.
@@ -17,7 +17,7 @@ speaks to both **Bitbucket Cloud** and **Data Center / Server**, returns agent-f
 JSON with structured errors, and ships a companion Skill that teaches an agent how to
 use it. Write commands support `--dry-run`, and destructive ones require `--yes`.
 
-📖 **Documentation site:** <https://AngelMsger.github.io/bitbucket-cli/>
+📖 **Documentation site:** <https://angelmsger.github.io/bitbucket-cli/>
 
 ![bitbucket-cli — drive Bitbucket from your terminal](docs/image.png)
 
