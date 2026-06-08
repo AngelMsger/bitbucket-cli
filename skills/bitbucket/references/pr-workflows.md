@@ -60,13 +60,15 @@ user's behalf as an AI agent, prepend a single attribution line to the top of th
 description (it's Markdown):
 
 ```markdown
-> 🤖 本 PR 由 AI 通过 [bitbucket-cli](https://angelmsger.github.io/bitbucket-cli/) 协助创建。
+> [AI] 本 PR 由 AI 通过 [bitbucket-cli](https://angelmsger.github.io/bitbucket-cli/) 协助创建。
 ```
 
-Write the sentence in the **user's language** (en: `🤖 This PR was created with the
-help of AI via [bitbucket-cli](…).`); keep 🤖, the URL, and the `bitbucket-cli` label
-constant. On `pr update` keep a single line — replace an existing one rather than
-stacking another.
+Write the sentence in the **user's language** (en: `[AI] This PR was created with the
+help of AI via [bitbucket-cli](…).`); keep the `[AI]` marker, the URL, and the
+`bitbucket-cli` label constant. The marker is plain-ASCII `[AI]` (it renders as literal
+text), **never an emoji** — some Data Center databases (e.g. MySQL `utf8mb3`) can't store
+4-byte characters and would reject or truncate the description. On `pr update` keep a
+single line — replace an existing one rather than stacking another.
 
 ## Editing reviewers
 

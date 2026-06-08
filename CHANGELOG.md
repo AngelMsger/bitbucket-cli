@@ -33,6 +33,10 @@
   by the link syntax and renders as a plain `AI`. The guidance now uses the
   double-bracket form `[[AI]](url)`, whose link text is literally `[AI]`, so the tag
   renders as a clickable **[AI]** with the brackets intact.
+- **The PR-description attribution banner no longer uses the 🤖 emoji.** Its prefix
+  is now the plain-ASCII `[AI]` marker. A leading 4-byte emoji could be rejected or
+  silently truncated by Data Center databases that aren't `utf8mb4` (e.g. MySQL
+  `utf8mb3`), potentially dropping the description body that followed it.
 - `commenting.md` corrects the line-number gutter example, documents
   `--commentable`, and adds a fallback rule: when anchoring fails with
   `DIFF_PARSE_FAILED` (a server/format incompatibility, not a bad number), stop
