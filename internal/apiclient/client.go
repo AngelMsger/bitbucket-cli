@@ -74,6 +74,7 @@ type Client interface {
 	// v0.2: PR file-level operations.
 	ListPRFiles(ctx context.Context, repo RepoRef, id int) (ListResult[Diffstat], error)
 	GetPRDiffByPath(ctx context.Context, repo RepoRef, id int, path string) (string, error)
+	GetPRFileDiffs(ctx context.Context, repo RepoRef, id int, path string) ([]FileDiff, error)
 	ListPRThreads(ctx context.Context, repo RepoRef, id int) (ListResult[Thread], error)
 
 	// v0.2: PR merge readiness + CI status.
@@ -138,26 +139,31 @@ func (c *apiClient) getJSON(ctx context.Context, path string, query url.Values, 
 	return c.doJSON(ctx, http.MethodGet, path, query, nil, out)
 }
 
-// getText performs a GET and returns the response body as a string. It is used
-// for endpoints that return raw text (e.g. unified diff).
-func (c *apiClient) getText(ctx context.Context, path string, query url.Values) (string, error) {
+// getDiffBody performs a GET against a diff endpoint and returns the response
+// body together with its Content-Type. Bitbucket serves the PR diff as either
+// unified-diff text or a JSON hunk model depending on the deployment, and some
+// Data Center instances ignore the Accept header entirely — so the caller must
+// inspect the actual content type rather than trust a requested format. We
+// advertise a preference for text but explicitly accept JSON so a JSON-only
+// server still returns 200 instead of 406.
+func (c *apiClient) getDiffBody(ctx context.Context, path string, query url.Values) (body, contentType string, err error) {
 	endpoint := c.absEndpoint(path, query)
-	req, err := http.NewRequest(http.MethodGet, endpoint, nil)
-	if err != nil {
-		return "", cerrors.Wrap(err, cerrors.CategoryUsage, "BAD_REQUEST", "failed to build request")
+	req, rerr := http.NewRequest(http.MethodGet, endpoint, nil)
+	if rerr != nil {
+		return "", "", cerrors.Wrap(rerr, cerrors.CategoryUsage, "BAD_REQUEST", "failed to build request")
 	}
-	req.Header.Set("Accept", "text/plain, */*")
-	resp, err := c.http.Do(ctx, req)
-	if err != nil {
-		return "", cerrors.Wrap(err, cerrors.CategoryNetwork, "NETWORK",
+	req.Header.Set("Accept", "text/plain, application/json")
+	resp, derr := c.http.Do(ctx, req)
+	if derr != nil {
+		return "", "", cerrors.Wrap(derr, cerrors.CategoryNetwork, "NETWORK",
 			fmt.Sprintf("request to %s failed", endpoint))
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 400 {
-		return "", c.httpError(resp)
+		return "", "", c.httpError(resp)
 	}
-	body, _ := io.ReadAll(resp.Body)
-	return string(body), nil
+	raw, _ := io.ReadAll(resp.Body)
+	return string(raw), resp.Header.Get("Content-Type"), nil
 }
 
 // doJSON performs an HTTP request and decodes a JSON response into out.

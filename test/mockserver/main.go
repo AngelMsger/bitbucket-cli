@@ -127,7 +127,15 @@ func routes() http.Handler {
 		}
 		writeJSON(w, pr(id, "Add login flow", "OPEN"))
 	})
-	mux.HandleFunc("GET "+prKey+"/{id}/diff", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("GET "+prKey+"/{id}/diff", func(w http.ResponseWriter, r *http.Request) {
+		// PR 2 emulates a Data Center instance that returns a JSON hunk model at
+		// the diff endpoint (ignoring Accept: text/plain) — the case that used to
+		// break inline comments. PR 1 keeps the plain-text path.
+		if r.PathValue("id") == "2" {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(jsonDiff("src/server.go")))
+			return
+		}
 		w.Header().Set("Content-Type", "text/plain")
 		_, _ = w.Write([]byte("--- a/src/server.go\n+++ b/src/server.go\n@@ -1 +1 @@\n-old\n+new\n"))
 	})
@@ -241,6 +249,11 @@ func routes() http.Handler {
 		})
 	})
 	mux.HandleFunc("GET "+prKey+"/{id}/diff/{path...}", func(w http.ResponseWriter, r *http.Request) {
+		if r.PathValue("id") == "2" {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(jsonDiff(r.PathValue("path"))))
+			return
+		}
 		w.Header().Set("Content-Type", "text/plain")
 		_, _ = w.Write([]byte("--- a/" + r.PathValue("path") + "\n+++ b/" + r.PathValue("path") + "\n@@ -1 +1 @@\n-old\n+new\n"))
 	})
@@ -364,6 +377,18 @@ func user() map[string]any {
 func writeJSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(v)
+}
+
+// jsonDiff returns a Bitbucket Data Center JSON hunk model for path: a hunk at
+// old/new line 10 removing one line and adding two (new lines 10 and 11). It
+// lets the e2e flow exercise the JSON diff path that text-only parsing missed.
+func jsonDiff(path string) string {
+	return `{"diffs":[{"source":{"toString":"` + path + `"},"destination":{"toString":"` + path + `"},` +
+		`"hunks":[{"sourceLine":10,"sourceSpan":2,"destinationLine":10,"destinationSpan":3,"segments":[` +
+		`{"type":"CONTEXT","lines":[{"source":10,"destination":10,"line":"old"}]},` +
+		`{"type":"REMOVED","lines":[{"source":11,"destination":11,"line":"old"}]},` +
+		`{"type":"ADDED","lines":[{"source":12,"destination":11,"line":"new"},{"source":12,"destination":12,"line":"new2"}]}` +
+		`]}]}]}`
 }
 
 func atoi(s string) int {

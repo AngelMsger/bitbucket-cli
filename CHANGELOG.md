@@ -2,6 +2,38 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **Inline comments and `pr diff` now work against Data Center instances that
+  return a JSON diff.** Some Bitbucket Data Center deployments serve the PR diff
+  endpoint as a JSON hunk model even when the CLI asks for `text/plain`. The diff
+  pipeline only understood unified-diff text, so against those servers every
+  `comment add --inline` failed with a misleading `INLINE_LINE_NOT_IN_DIFF` /
+  "no new-side lines are part of the diff", and `pr diff --line-numbers` printed
+  raw JSON. The CLI now parses whichever format the server returns into one
+  structured diff model (the segment type gives Data Center the authoritative
+  ADDED/REMOVED/CONTEXT classification, retiring the old CONTEXT guess), so inline
+  anchors resolve and `pr diff` renders readable text regardless of the wire
+  format.
+- **A diff the CLI cannot parse now fails as `DIFF_PARSE_FAILED`**, a
+  parse/compatibility error carrying a snippet of the response, instead of
+  masquerading as a bad inline line number — so an agent stops probing anchors and
+  falls back to a general comment.
+
+### Added
+
+- **`pr diff --commentable`** lists, per file, the new-side and old-side line
+  numbers that accept an inline comment, so valid `--inline <path>:<line>` anchors
+  can be picked up front instead of probed one at a time.
+
+### Skill
+
+- `commenting.md` corrects the line-number gutter example, documents
+  `--commentable`, and adds a fallback rule: when anchoring fails with
+  `DIFF_PARSE_FAILED` (a server/format incompatibility, not a bad number), stop
+  probing and post a general comment naming `path:line`. `reviewing-locally.md`
+  points at the same guidance.
+
 ## [0.7.0] - 2026-06-05
 
 ### Added

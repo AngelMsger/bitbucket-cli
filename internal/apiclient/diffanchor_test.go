@@ -31,7 +31,7 @@ index 1111111..2222222 100644
 `
 
 func TestResolveInlineAnchorNewSideAdded(t *testing.T) {
-	a, err := ResolveInlineAnchor(sampleDiff, "src/server.go", 261, DiffSideNew)
+	a, err := ResolveInlineAnchor(parseUnifiedFile(sampleDiff, "src/server.go"), 261, DiffSideNew)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -44,7 +44,7 @@ func TestResolveInlineAnchorNewSideAdded(t *testing.T) {
 }
 
 func TestResolveInlineAnchorNewSideContext(t *testing.T) {
-	a, err := ResolveInlineAnchor(sampleDiff, "src/server.go", 262, DiffSideNew)
+	a, err := ResolveInlineAnchor(parseUnifiedFile(sampleDiff, "src/server.go"), 262, DiffSideNew)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -54,7 +54,7 @@ func TestResolveInlineAnchorNewSideContext(t *testing.T) {
 }
 
 func TestResolveInlineAnchorOldSideRemoved(t *testing.T) {
-	a, err := ResolveInlineAnchor(sampleDiff, "src/server.go", 260, DiffSideOld)
+	a, err := ResolveInlineAnchor(parseUnifiedFile(sampleDiff, "src/server.go"), 260, DiffSideOld)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -67,7 +67,7 @@ func TestResolveInlineAnchorOldSideRemoved(t *testing.T) {
 }
 
 func TestResolveInlineAnchorDefaultSideIsNew(t *testing.T) {
-	a, err := ResolveInlineAnchor(sampleDiff, "src/server.go", 260, "")
+	a, err := ResolveInlineAnchor(parseUnifiedFile(sampleDiff, "src/server.go"), 260, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -78,7 +78,7 @@ func TestResolveInlineAnchorDefaultSideIsNew(t *testing.T) {
 }
 
 func TestResolveInlineAnchorLineNotInDiff(t *testing.T) {
-	_, err := ResolveInlineAnchor(sampleDiff, "src/server.go", 999, DiffSideNew)
+	_, err := ResolveInlineAnchor(parseUnifiedFile(sampleDiff, "src/server.go"), 999, DiffSideNew)
 	if err == nil {
 		t.Fatal("expected an error for a line outside the diff")
 	}
@@ -93,7 +93,7 @@ func TestResolveInlineAnchorLineNotInDiff(t *testing.T) {
 }
 
 func TestResolveInlineAnchorBadSide(t *testing.T) {
-	_, err := ResolveInlineAnchor(sampleDiff, "src/server.go", 260, "sideways")
+	_, err := ResolveInlineAnchor(parseUnifiedFile(sampleDiff, "src/server.go"), 260, "sideways")
 	if err == nil {
 		t.Fatal("expected an error for an invalid side")
 	}

@@ -135,6 +135,15 @@ assert_contains  "file get --range"          "line 2"         "${CLI[@]}" file g
 assert_contains  "file tree"                 "src/server.go"  "${CLI[@]}" file tree PROJ/demo --ref main
 assert_contains  "pr files (diffstat)"       "src/server.go"  "${CLI[@]}" pr files PROJ/demo/1
 assert_contains  "pr diff --path"            "+new"           "${CLI[@]}" pr diff PROJ/demo/1 --path src/server.go
+# PR 2 returns a Data Center JSON hunk model at the diff endpoint (Accept ignored).
+# The CLI must render it as readable unified-diff text, annotate it, expose the
+# commentable lines, and resolve an inline anchor against it.
+assert_contains  "pr diff JSON renders text"   "@@ -10,2 +10,3 @@" "${CLI[@]}" pr diff PROJ/demo/2
+assert_not_contains "pr diff JSON not raw"     '"destination"'     "${CLI[@]}" pr diff PROJ/demo/2
+assert_contains  "pr diff JSON --line-numbers" "11 +"              "${CLI[@]}" pr diff PROJ/demo/2 --path src/server.go --line-numbers
+assert_contains  "pr diff --commentable"       '"new_side"'        "${CLI[@]}" pr diff PROJ/demo/2 --path src/server.go --commentable
+assert_contains  "inline anchor on JSON diff"  '"method": "POST"' \
+                                             "${CLI[@]}" comment add --pr PROJ/demo/2 --inline src/server.go:11 --content "x" --dry-run
 assert_contains  "pr status mergeable=false" '"can_merge": false' "${CLI[@]}" pr status PROJ/demo/1
 assert_contains  "pr status has builds"      "SUCCESSFUL"     "${CLI[@]}" pr status PROJ/demo/1
 assert_contains  "pr threads"                "Looks good"     "${CLI[@]}" pr threads PROJ/demo/1

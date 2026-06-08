@@ -162,7 +162,7 @@ JSON with structured errors.</p>
         <tr><td><code>--fields</code></td><td></td><td>comma-separated dot-path fields to keep</td></tr>
         <tr><td><code>--flavor</code></td><td></td><td>backend flavor: cloud, datacenter or auto</td></tr>
         <tr><td><code>--format, -f</code></td><td></td><td>output format: json, table or ndjson</td></tr>
-        <tr><td><code>--pretty</code></td><td><code>false</code></td><td>human-friendly mode: interactive TUI in `config init`, colorized JSON elsewhere</td></tr>
+        <tr><td><code>--pretty</code></td><td><code>false</code></td><td>human-friendly mode for interactive terminal use only (agents/scripts should omit): TUI in `config init`, colorized JSON elsewhere; errors without a TTY</td></tr>
         <tr><td><code>--timeout</code></td><td></td><td>request timeout, e.g. 30s</td></tr>
         <tr><td><code>--use-context</code></td><td></td><td>use a named context for this invocation</td></tr>
         <tr><td><code>--verbose, -v</code></td><td><code>false</code></td><td>verbose diagnostics on stderr</td></tr>
@@ -184,7 +184,7 @@ JSON with structured errors.</p>
       <h2>bitbucket-cli auth login</h2>
       <p class="short">Store a credential for the configured server</p>
       <pre>bitbucket-cli auth login</pre>
-      <p class="long">Prompt for a secret and store it securely. Run `config init --pretty` first if the server URL is not set.</p>
+      <p class="long">Prompt for a secret and store it securely. Run `config init` first if the server URL is not set.</p>
       
       <h3>Examples</h3><pre>  bitbucket-cli auth login
   bitbucket-cli --use-context staging auth login</pre>
@@ -307,9 +307,10 @@ JSON with structured errors.</p>
         <tr><td><code>--content</code></td><td></td><td>comment body (Markdown)</td></tr>
         <tr><td><code>--content-file</code></td><td></td><td>read content from this file</td></tr>
         <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>preview the HTTP request without sending it</td></tr>
-        <tr><td><code>--inline</code></td><td></td><td>inline anchor as &lt;path&gt;:&lt;line&gt;</td></tr>
+        <tr><td><code>--inline</code></td><td></td><td>inline anchor as &lt;path&gt;:&lt;line&gt; (line is the new/post-change file line unless --side old)</td></tr>
         <tr><td><code>--pr</code></td><td></td><td>&lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt; or PR URL</td></tr>
         <tr><td><code>--reply-to</code></td><td><code>0</code></td><td>reply to this comment ID</td></tr>
+        <tr><td><code>--side</code></td><td><code>new</code></td><td>diff side the --inline line refers to: new (post-change) or old (pre-change/removed)</td></tr>
         </tbody>
       </table>
       
@@ -629,16 +630,17 @@ a single command with the global --use-context flag instead.</p>
     
     <section class="cmd" id="bitbucket-cli-pr-checkout">
       <h2>bitbucket-cli pr checkout</h2>
-      <p class="short">Print (or run, with --exec) git fetch &#43; checkout for a PR</p>
+      <p class="short">Print (or run, with --exec) git fetch (source &#43; base) &#43; checkout for a PR</p>
       <pre>bitbucket-cli pr checkout &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt; [flags]</pre>
       
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
+        <tr><td><code>--base</code></td><td></td><td>base branch to fetch (default: the PR&#39;s destination branch, looked up via the API)</td></tr>
         <tr><td><code>--branch</code></td><td><code>pr/%d</code></td><td>local branch name format; %d is replaced with the PR id</td></tr>
         <tr><td><code>--exec</code></td><td><code>false</code></td><td>actually run the git commands in the current working directory</td></tr>
-        <tr><td><code>--remote</code></td><td><code>origin</code></td><td>git remote name to fetch from</td></tr>
+        <tr><td><code>--remote</code></td><td></td><td>git remote to fetch from (default: upstream if present, else origin)</td></tr>
         </tbody>
       </table>
       
@@ -711,6 +713,8 @@ a single command with the global --use-context flag instead.</p>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
+        <tr><td><code>--commentable</code></td><td><code>false</code></td><td>list the new/old-side line numbers each file can carry an inline comment on</td></tr>
+        <tr><td><code>--line-numbers</code></td><td><code>false</code></td><td>prefix each line with its old/new file line numbers (for picking --inline lines)</td></tr>
         <tr><td><code>--path</code></td><td></td><td>restrict the diff to a single file path</td></tr>
         </tbody>
       </table>
@@ -719,15 +723,16 @@ a single command with the global --use-context flag instead.</p>
     
     <section class="cmd" id="bitbucket-cli-pr-fetch">
       <h2>bitbucket-cli pr fetch</h2>
-      <p class="short">Print (or run, with --exec) git fetch for a PR&#39;s source ref</p>
+      <p class="short">Print (or run, with --exec) git fetch for a PR&#39;s source ref and base branch</p>
       <pre>bitbucket-cli pr fetch &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt; [flags]</pre>
       
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
+        <tr><td><code>--base</code></td><td></td><td>base branch to fetch (default: the PR&#39;s destination branch, looked up via the API)</td></tr>
         <tr><td><code>--exec</code></td><td><code>false</code></td><td>actually run `git fetch` in the current working directory</td></tr>
-        <tr><td><code>--remote</code></td><td><code>origin</code></td><td>git remote name to fetch from</td></tr>
+        <tr><td><code>--remote</code></td><td></td><td>git remote to fetch from (default: upstream if present, else origin)</td></tr>
         </tbody>
       </table>
       

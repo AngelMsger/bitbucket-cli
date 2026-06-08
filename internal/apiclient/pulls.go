@@ -92,16 +92,63 @@ func (c *apiClient) GetPR(ctx context.Context, opt GetPROpts) (*PullRequest, err
 	return mapDCPR(opt.Repo, raw), nil
 }
 
-// GetPRDiff returns the unified diff text of a PR.
+// GetPRDiff returns the unified-diff text of a PR. When the server answers with
+// a JSON hunk model (common on Data Center) it is rendered back to unified-diff
+// text so the output is identical regardless of the wire format.
 func (c *apiClient) GetPRDiff(ctx context.Context, repo RepoRef, id int) (string, error) {
 	if err := checkRepoRef(repo); err != nil {
 		return "", err
 	}
-	// Both flavors expose a /diff endpoint on the PR. Cloud serves a unified
-	// diff as text/plain; Data Center serves JSON hunks at this path, but
-	// honors `Accept: text/plain` for a raw unified diff. The CLI requests
-	// text/plain in either case via the shared getText helper.
-	return c.getText(ctx, c.prPath(repo, id)+"/diff", nil)
+	return c.fetchDiffText(ctx, c.prPath(repo, id)+"/diff", nil)
+}
+
+// GetPRFileDiffs returns the structured diff model for a PR, scoped to a single
+// file when path is non-empty. It is the source of truth for inline-anchor
+// resolution: it understands both unified-diff text and Data Center's JSON hunk
+// model, so anchors resolve correctly whichever the server returned.
+func (c *apiClient) GetPRFileDiffs(ctx context.Context, repo RepoRef, id int, path string) ([]FileDiff, error) {
+	if err := checkRepoRef(repo); err != nil {
+		return nil, err
+	}
+	endpoint, query := c.prDiffEndpoint(repo, id, path)
+	body, ct, err := c.getDiffBody(ctx, endpoint, query)
+	if err != nil {
+		return nil, err
+	}
+	return parseDiff(body, ct)
+}
+
+// fetchDiffText fetches a diff endpoint and returns display-ready unified-diff
+// text, normalizing a JSON hunk model into text when needed.
+func (c *apiClient) fetchDiffText(ctx context.Context, endpoint string, query url.Values) (string, error) {
+	body, ct, err := c.getDiffBody(ctx, endpoint, query)
+	if err != nil {
+		return "", err
+	}
+	if !isJSONDiff(ct, body) {
+		return body, nil
+	}
+	files, perr := parseDCJSONDiff(body)
+	if perr != nil {
+		return "", errDiffParse(ct, body, perr)
+	}
+	return RenderUnifiedDiff(files), nil
+}
+
+// prDiffEndpoint builds the diff endpoint (and query) for a PR, scoped to a file
+// path when given. Cloud passes the path as a query parameter; Data Center puts
+// it in the URL.
+func (c *apiClient) prDiffEndpoint(repo RepoRef, id int, path string) (string, url.Values) {
+	base := c.prPath(repo, id) + "/diff"
+	if strings.TrimSpace(path) == "" {
+		return base, nil
+	}
+	if c.flavor == FlavorCloud {
+		q := url.Values{}
+		q.Set("path", path)
+		return base, q
+	}
+	return base + "/" + escapePath(path), nil
 }
 
 // ListPRCommits lists the commits included in a PR.

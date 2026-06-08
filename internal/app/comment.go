@@ -126,15 +126,25 @@ func newCommentAddCmd(s *appState) *cobra.Command {
 					return cerrors.Wrap(perr, cerrors.CategoryUsage, "BAD_INLINE",
 						"--inline line is not numeric")
 				}
-				// Resolve the anchor against the file's own diff so the line lands on
-				// the requested side (new = post-change by default, old = pre-change)
-				// with the right ADDED/REMOVED/CONTEXT classification — rather than
-				// trusting a bare number that silently anchors to the wrong side.
-				diffText, derr := client.GetPRDiffByPath(ctx, ref, id, parts[0])
+				// Resolve the anchor against the file's own structured diff so the
+				// line lands on the requested side (new = post-change by default, old
+				// = pre-change) with the right ADDED/REMOVED/CONTEXT classification —
+				// rather than trusting a bare number that silently anchors to the
+				// wrong side. GetPRFileDiffs understands both unified-diff text and
+				// Data Center's JSON hunk model, so this works whichever the server
+				// returns (a JSON body the CLI cannot read fails loudly as
+				// DIFF_PARSE_FAILED instead of masquerading as a bad line number).
+				files, derr := client.GetPRFileDiffs(ctx, ref, id, parts[0])
 				if derr != nil {
 					return derr
 				}
-				anchor, err = apiclient.ResolveInlineAnchor(diffText, parts[0], line, side)
+				fd := apiclient.FindFileDiff(files, parts[0])
+				if fd == nil {
+					return cerrors.New(cerrors.CategoryUsage, "INLINE_FILE_NOT_IN_DIFF",
+						"file "+parts[0]+" is not part of this PR's diff").
+						WithHint("check the path against `pr files`, or drop --inline and reference path:line in a general comment")
+				}
+				anchor, err = apiclient.ResolveInlineAnchor(fd, line, side)
 				if err != nil {
 					return err
 				}

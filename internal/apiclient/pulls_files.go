@@ -97,7 +97,8 @@ func (c *apiClient) ListPRFiles(ctx context.Context, repo RepoRef, id int) (List
 	return res, nil
 }
 
-// GetPRDiffByPath returns the unified diff for a single file in a PR.
+// GetPRDiffByPath returns the unified-diff text for a single file in a PR,
+// normalizing a JSON hunk model into text when the server returns one.
 //
 //	Cloud: GET /2.0/.../pullrequests/{id}/diff?path=<path>
 //	DC:    GET /rest/api/1.0/.../pull-requests/{id}/diff/{path}
@@ -109,13 +110,8 @@ func (c *apiClient) GetPRDiffByPath(ctx context.Context, repo RepoRef, id int, p
 		return "", cerrors.New(cerrors.CategoryUsage, "DIFF_NO_PATH",
 			"--path is required for per-file diff")
 	}
-	if c.flavor == FlavorCloud {
-		q := url.Values{}
-		q.Set("path", p)
-		return c.getText(ctx, c.prPath(repo, id)+"/diff", q)
-	}
-	// DC: the path is part of the URL.
-	return c.getText(ctx, c.prPath(repo, id)+"/diff/"+escapePath(p), nil)
+	endpoint, query := c.prDiffEndpoint(repo, id, p)
+	return c.fetchDiffText(ctx, endpoint, query)
 }
 
 // ListPRThreads regroups all PR comments into per-file inline threads plus a

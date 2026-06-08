@@ -293,6 +293,7 @@ func newPRUpdateCmd(s *appState) *cobra.Command {
 func newPRDiffCmd(s *appState) *cobra.Command {
 	var path string
 	var lineNumbers bool
+	var commentable bool
 	cmd := &cobra.Command{
 		Use:   "diff <workspace>/<repo>/<id>",
 		Short: "Print the unified diff of a PR (use --path to scope to one file)",
@@ -307,6 +308,16 @@ func newPRDiffCmd(s *appState) *cobra.Command {
 			client, err := s.newClient(ctx)
 			if err != nil {
 				return err
+			}
+			if commentable {
+				// List the line numbers each file can carry an inline comment on, so
+				// an agent picks valid `--inline <path>:<line>` anchors up front
+				// instead of probing them one at a time.
+				files, ferr := client.GetPRFileDiffs(ctx, ref, id, path)
+				if ferr != nil {
+					return ferr
+				}
+				return s.emit(commentableRanges(files))
 			}
 			var diff string
 			if path != "" {
@@ -328,7 +339,32 @@ func newPRDiffCmd(s *appState) *cobra.Command {
 	}
 	cmd.Flags().StringVar(&path, "path", "", "restrict the diff to a single file path")
 	cmd.Flags().BoolVar(&lineNumbers, "line-numbers", false, "prefix each line with its old/new file line numbers (for picking --inline lines)")
+	cmd.Flags().BoolVar(&commentable, "commentable", false, "list the new/old-side line numbers each file can carry an inline comment on")
 	return cmd
+}
+
+// fileCommentable reports the inline-commentable line ranges for one file.
+type fileCommentable struct {
+	Path string `json:"path"`
+	New  string `json:"new_side"` // commentable new/post-change line ranges
+	Old  string `json:"old_side"` // commentable old/pre-change line ranges
+}
+
+func commentableRanges(files []apiclient.FileDiff) []fileCommentable {
+	out := make([]fileCommentable, 0, len(files))
+	for i := range files {
+		f := &files[i]
+		p := f.NewPath
+		if p == "" {
+			p = f.OldPath
+		}
+		out = append(out, fileCommentable{
+			Path: p,
+			New:  apiclient.FormatLineRanges(apiclient.CommentableLines(f, apiclient.DiffSideNew)),
+			Old:  apiclient.FormatLineRanges(apiclient.CommentableLines(f, apiclient.DiffSideOld)),
+		})
+	}
+	return out
 }
 
 func newPRCommitsCmd(s *appState) *cobra.Command {

@@ -15,53 +15,6 @@ const (
 	DiffSideOld = "old"
 )
 
-// diffLine is one body line of a unified diff with its resolved old/new line
-// numbers. A number is 0 when the line does not exist on that side (an added
-// line has no old number; a removed line has no new number).
-type diffLine struct {
-	old  int
-	new  int
-	kind string // ADDED | REMOVED | CONTEXT
-}
-
-// parseUnifiedDiff walks a single-file unified diff and returns its body lines
-// (added / removed / context) carrying their old and new line numbers. File and
-// hunk headers seed the counters but are not emitted.
-func parseUnifiedDiff(diff string) []diffLine {
-	var out []diffLine
-	oldNo, newNo := 0, 0
-	inHunk := false
-	for _, line := range strings.Split(diff, "\n") {
-		switch {
-		case strings.HasPrefix(line, "@@"):
-			oldNo, newNo, inHunk = parseHunkHeader(line)
-			continue
-		case !inHunk:
-			// File headers (diff --git, index, ---, +++, etc.) before the first hunk.
-			continue
-		case line == "":
-			// Trailing artifact of splitting on the final newline (a real blank
-			// context line is " ", not ""). Never a numbered body line.
-			continue
-		case strings.HasPrefix(line, "\\"):
-			// "\ No newline at end of file" — metadata, no line number.
-			continue
-		case strings.HasPrefix(line, "+"):
-			out = append(out, diffLine{new: newNo, kind: "ADDED"})
-			newNo++
-		case strings.HasPrefix(line, "-"):
-			out = append(out, diffLine{old: oldNo, kind: "REMOVED"})
-			oldNo++
-		default:
-			// Context line (starts with a space, or a bare empty line inside a hunk).
-			out = append(out, diffLine{old: oldNo, new: newNo, kind: "CONTEXT"})
-			oldNo++
-			newNo++
-		}
-	}
-	return out
-}
-
 // parseHunkHeader reads "@@ -oldStart[,n] +newStart[,m] @@ ...". On a malformed
 // header it reports inHunk=false so subsequent lines are treated as headers.
 func parseHunkHeader(line string) (oldStart, newStart int, ok bool) {
@@ -93,13 +46,15 @@ func parseHunkRangeStart(field string, sign byte) (int, bool) {
 	return n, true
 }
 
-// ResolveInlineAnchor maps a (path, line, side) request against the unified diff
-// text of that file into a fully-classified InlineAnchor ready to post on either
-// flavor: From/To and FileType pick the side, LineType records ADDED/REMOVED/
-// CONTEXT so Data Center anchors correctly. side is "new" (default when empty)
-// or "old". It errors when line is not a commentable line on that side, listing
-// the available ranges so the caller can correct the number.
-func ResolveInlineAnchor(diff, path string, line int, side string) (*InlineAnchor, error) {
+// ResolveInlineAnchor maps a (line, side) request against a file's structured
+// diff into a fully-classified InlineAnchor ready to post on either flavor:
+// From/To and FileType pick the side, LineType records ADDED/REMOVED/CONTEXT so
+// Data Center anchors correctly. side is "new" (default when empty) or "old". It
+// errors when line is not a commentable line on that side, listing the available
+// ranges so the caller can correct the number. The model is the single source of
+// truth, so it works whether the diff arrived as unified-diff text or as Data
+// Center's JSON hunk model (see parseDiff).
+func ResolveInlineAnchor(fd *FileDiff, line int, side string) (*InlineAnchor, error) {
 	if side == "" {
 		side = DiffSideNew
 	}
@@ -107,21 +62,21 @@ func ResolveInlineAnchor(diff, path string, line int, side string) (*InlineAncho
 		return nil, cerrors.New(cerrors.CategoryUsage, "BAD_SIDE",
 			fmt.Sprintf("--side must be %q or %q, got %q", DiffSideNew, DiffSideOld, side))
 	}
+	path := fd.NewPath
+	if side == DiffSideOld && fd.OldPath != "" {
+		path = fd.OldPath
+	}
 
-	var available []int
-	for _, dl := range parseUnifiedDiff(diff) {
-		num := dl.new
+	available := CommentableLines(fd, side)
+	for _, dl := range fd.allLines() {
+		num := dl.New
 		if side == DiffSideOld {
-			num = dl.old
+			num = dl.Old
 		}
-		if num == 0 {
-			continue
-		}
-		available = append(available, num)
 		if num != line {
 			continue
 		}
-		a := &InlineAnchor{Path: path, Line: line, LineType: dl.kind}
+		a := &InlineAnchor{Path: path, Line: line, LineType: dl.Kind}
 		if side == DiffSideNew {
 			a.To = line
 			a.FileType = "TO"
@@ -140,6 +95,29 @@ func ResolveInlineAnchor(diff, path string, line int, side string) (*InlineAncho
 		fmt.Sprintf("line %d is not part of the diff for %s on the %s side", line, path, side)).
 		WithHint(hint + ". Use `pr diff --line-numbers --path " + path + "` to read the right number, or pass --side old for a removed line.")
 }
+
+// CommentableLines returns the line numbers that can carry an inline comment on
+// the given side, in ascending order. It is exposed so callers (e.g. the
+// `--commentable` view of `pr diff`) can list valid anchors up front instead of
+// probing them one by one.
+func CommentableLines(fd *FileDiff, side string) []int {
+	var out []int
+	for _, dl := range fd.allLines() {
+		num := dl.New
+		if side == DiffSideOld {
+			num = dl.Old
+		}
+		if num == 0 {
+			continue
+		}
+		out = append(out, num)
+	}
+	return out
+}
+
+// FormatLineRanges compresses a list of line numbers into "a-b, c, d-e" for
+// display, e.g. the commentable-line summary of `pr diff --commentable`.
+func FormatLineRanges(nums []int) string { return formatRanges(nums) }
 
 // formatRanges compresses a list of line numbers into "a-b, c, d-e".
 func formatRanges(nums []int) string {
