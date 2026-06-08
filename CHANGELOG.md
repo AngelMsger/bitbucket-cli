@@ -28,11 +28,17 @@
 
 ### Skill
 
+- **AI attribution now renders the `[AI]` tag with its brackets visible.** Comments
+  are CommonMark, where the previous single-bracket `[AI](url)` has its brackets eaten
+  by the link syntax and renders as a plain `AI`. The guidance now uses the
+  double-bracket form `[[AI]](url)`, whose link text is literally `[AI]`, so the tag
+  renders as a clickable **[AI]** with the brackets intact.
 - `commenting.md` corrects the line-number gutter example, documents
   `--commentable`, and adds a fallback rule: when anchoring fails with
   `DIFF_PARSE_FAILED` (a server/format incompatibility, not a bad number), stop
   probing and post a general comment naming `path:line`. `reviewing-locally.md`
   points at the same guidance.
+- Skill bumped to `0.9.0`.
 
 ## [0.7.0] - 2026-06-05
 

@@ -1,6 +1,6 @@
 ---
 name: bitbucket
-version: 0.8.0
+version: 0.9.0
 description: "Use Bitbucket as a code-hosting backend for coding agents. Browse repositories and source files at any ref, drive pull request review and merge workflows, see per-file diffs and diffstats, check mergeability and CI build status, fetch a PR into a local git checkout, post inline review comments, triage and respond to received review comments (with resolution / task status and --unresolved filters), and preview every write with --dry-run or lock the session with read-only mode. Supports Bitbucket Cloud and Data Center / Server. Use when the user mentions Bitbucket, a PR or pull-request URL or ID, repository browsing, file content at a ref, code review, responding to or addressing PR review comments, approve/decline/merge a PR, asks to read a diff, or wants a dry-run / read-only / safe-mode session."
 metadata:
   requires:
@@ -68,16 +68,20 @@ When you, as an AI agent, write to Bitbucket on the user's behalf, mark the cont
 AI-authored with a link back to the tool. This applies **only** to agent-driven
 writes — PR comments (`comment add`, incl. `--inline` / `--reply-to`) and PR
 descriptions (`pr create` / `pr update`) — never to anything a human authored.
-Bitbucket comments and PR descriptions are Markdown, so prefix with a Markdown link:
+
+Comments are CommonMark, where `[`/`]` are link syntax. Prefix with a clickable
+**`[AI]`** tag whose brackets stay visible by **doubling the outer brackets** —
+`[[AI]](url)`, **not** `[AI](url)` (the single-bracket form drops the brackets and
+renders a plain `AI`):
 
 ```sh
 bitbucket-cli comment add --pr myws/myrepo/42 \
-  --content "[AI](https://angelmsger.github.io/bitbucket-cli/) XXX 有 YYY 问题。"
+  --content "[[AI]](https://angelmsger.github.io/bitbucket-cli/) XXX 有 YYY 问题。"
 ```
 
-Write the rest of the text in the **user's language**; keep the `AI` label and the URL
-`https://angelmsger.github.io/bitbucket-cli/` constant. See
-`references/commenting.md` and `references/pr-workflows.md`.
+Write the rest of the text in the **user's language**; keep the `[AI]` label and the
+URL `https://angelmsger.github.io/bitbucket-cli/` constant. For PR descriptions use the
+attribution line in `references/pr-workflows.md`. See also `references/commenting.md`.
 
 ## Configuration & credentials (agents)
 

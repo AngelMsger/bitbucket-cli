@@ -18,18 +18,28 @@ bitbucket-cli comment add --pr myws/myrepo/42 --content-file review.md
 ## AI attribution (agent writes)
 
 When you post a comment **on the user's behalf as an AI agent**, prefix the content
-with a link back to the tool. Comment bodies are Markdown, so a `[AI](url)` link works
-directly — apply it to general, inline, and reply comments alike:
+with a clickable **`[AI]`** tag linking back to the tool — apply it to general,
+inline, and reply comments alike.
+
+Comment bodies are CommonMark, where `[` and `]` are link syntax. To keep the tag's
+**square brackets visible** in the rendered link text, **double the outer brackets**:
+write `[[AI]](url)`, which renders the link text literally as `[AI]`. A single-bracket
+`[AI](url)` renders as a plain `AI` with the brackets eaten by the link syntax — that
+was the bug.
 
 ```sh
 bitbucket-cli comment add --pr myws/myrepo/42 \
   --inline src/server.go:142 \
-  --content "[AI](https://angelmsger.github.io/bitbucket-cli/) 这里的分配可以提到循环外。"
+  --content "[[AI]](https://angelmsger.github.io/bitbucket-cli/) 这里的分配可以提到循环外。"
 ```
 
+That renders as a clickable **[AI]** (brackets visible) followed by the note. (If any
+Bitbucket instance mangles the doubled form, the escaped equivalent `[\[AI\]](url)`
+renders the same `[AI]`.)
+
 So a review note that would have read `XXX 有 YYY 问题` becomes
-`[AI](https://angelmsger.github.io/bitbucket-cli/) XXX 有 YYY 问题`. Write the note
-itself in the **user's language**; keep the `AI` label and the URL constant. This is
+`[[AI]](https://angelmsger.github.io/bitbucket-cli/) XXX 有 YYY 问题`. Write the note
+itself in the **user's language**; keep the `[AI]` label and the URL constant. This is
 skill-level guidance for agents, not a fixed CLI behaviour.
 
 ## Inline (line-anchored) comments
