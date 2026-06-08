@@ -27,6 +27,12 @@
 - **`pr diff --commentable`** lists, per file, the new-side and old-side line
   numbers that accept an inline comment, so valid `--inline <path>:<line>` anchors
   can be picked up front instead of probed one at a time.
+- **First-run getting-started banner (npm).** The first time `bitbucket-cli` runs
+  in an interactive terminal, it prints a one-time banner pointing at
+  `config init --pretty` and `skill install` plus a couple of everyday commands. It
+  writes only to stderr, is shown once (recorded by a marker file), and is skipped
+  for non-TTY / CI / agent use, so it never pollutes JSON output or scripted runs.
+  (A `postinstall` banner was avoided: npm hides postinstall stdout by default.)
 
 ### Skill
 
