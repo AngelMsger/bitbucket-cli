@@ -1,6 +1,6 @@
 ---
 name: bitbucket
-version: 0.9.0
+version: 0.10.0
 description: "Use Bitbucket as a code-hosting backend for coding agents. Browse repositories and source files at any ref, drive pull request review and merge workflows, see per-file diffs and diffstats, check mergeability and CI build status, fetch a PR into a local git checkout, post inline review comments, triage and respond to received review comments (with resolution / task status and --unresolved filters), and preview every write with --dry-run or lock the session with read-only mode. Supports Bitbucket Cloud and Data Center / Server. Use when the user mentions Bitbucket, a PR or pull-request URL or ID, repository browsing, file content at a ref, code review, responding to or addressing PR review comments, approve/decline/merge a PR, asks to read a diff, or wants a dry-run / read-only / safe-mode session."
 metadata:
   requires:
@@ -44,8 +44,11 @@ TTY — agents should never pass it.
   then `pr files` (diffstat) to budget context, then `pr diff --path <p>` per
   file (or `pr fetch --exec` to bring the PR into your local clone and read
   files directly). Finish with `pr threads` to see inline discussions,
-  `comment add --inline` to reply, and `pr approve` / `pr merge`. See
-  `references/reviewing-locally.md` for the full decision tree.
+  `comment add --inline` to reply, and `pr approve` / `pr merge`. If missing
+  intent or background genuinely blocks the review, post a clarifying comment
+  to the author and defer just the blocked items until they reply. See
+  `references/reviewing-locally.md` for the full decision tree and the
+  "ask the author" protocol.
 - **Respond to received review comments** — when the user is the PR *author*
   addressing feedback. Usually they hand you a specific PR (ref or URL) — list its
   open threads with `pr threads <ref> --unresolved`, or target a single thread the

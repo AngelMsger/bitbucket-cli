@@ -46,6 +46,9 @@ pr files   ─ diffstat: which files changed and how much?
     ▼
 pr threads ─ existing inline discussion, grouped by file/line
     │
+    ├─ intent/context unclear and it blocks judgement?
+    │                       ─→  ask the author (see "When you don't understand
+    │                            the PR" below) and defer just the blocked items
     ▼
 pr diff --path <f> --line-numbers    ─ read the exact NEW-file line number
 comment add --inline <path>:<line>   ─ write inline feedback (line = new-file line;
@@ -86,6 +89,50 @@ pr merge --strategy <merge_commit|squash|fast_forward> --yes
    line. If anchoring fails with `DIFF_PARSE_FAILED` (a server/format incompatibility,
    not a bad number), stop probing anchors and fall back to a general comment that
    names `path:line` in its body. See `commenting.md`.
+
+## When you don't understand the PR — ask the author
+
+Sometimes the diff alone doesn't tell you *why*, and without the why you cannot
+judge whether a change is correct or complete. When such a gap in intent or
+background **genuinely blocks the review**, ask the PR author with a comment
+instead of guessing or giving up. Style preferences and questions you could
+answer yourself don't clear that bar.
+
+**Exhaust self-service first.** Most context gaps close without the author:
+
+- `pr get <ref>` — the PR title and description state the intent.
+- `pr threads <ref>` — the question may already be asked and answered.
+- Commit messages — after `pr fetch --exec`, run
+  `git log <remote>/<base>..<remote>/pr/<id>`.
+- The local codebase and its history (Read / Grep, `git log -p` on the touched
+  files).
+- Issue / ticket links referenced by the PR description or branch name.
+
+**Ask via a comment.** If the gap survives self-service:
+
+- Anchor the question to code with `comment add --inline <path>:<line>` when it
+  is about a specific change; use a general `comment add` for PR-wide intent
+  questions.
+- Batch related questions into as few comments as possible. State what you
+  understood, what is missing, and why it blocks the review, so the author can
+  answer in one pass.
+- Apply the AI-attribution prefix and write in the user's language (see
+  SKILL.md › "AI attribution").
+- In a read-only session you cannot post — report the gap and a suggested
+  question text to the user instead.
+
+**Don't block the whole review.** Keep reviewing the files the gap doesn't
+touch and deliver those findings; list explicitly which files / questions are
+deferred pending the author's reply.
+
+**Pause, don't poll.** You cannot hold a session open until a human replies.
+After posting, report to the user — partial findings, the question comment
+id(s), and the deferred items — then end the turn. When the review resumes,
+first check for replies with `pr threads <ref> --comment <id>` (or
+`comment list --pr <ref> --unresolved`); if the author has answered, fold the
+answer in and finish the deferred items, otherwise tell the user the question
+is still open. While a blocking question is unanswered, don't `pr approve`,
+`pr request-changes`, or `pr decline` on guesswork.
 
 ## Reviewing against the right base
 

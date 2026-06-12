@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+### Added
+
+- **The skill (0.10.0) now tells reviewing agents to ask the PR author when
+  context is missing.** When a gap in intent or background genuinely blocks the
+  review, the agent posts a clarifying comment (inline or general, batched,
+  AI-attributed), keeps reviewing the unaffected files, defers only the blocked
+  items, and on resume checks the thread for the author's reply before
+  finishing — instead of guessing or giving up. See
+  `references/reviewing-locally.md` › "When you don't understand the PR".
+
 ## [0.8.1] - 2026-06-08
 
 ### Changed
