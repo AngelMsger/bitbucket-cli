@@ -17,7 +17,7 @@ func newCommentCmd(s *appState) *cobra.Command {
 		Short: "Read and write pull-request comments",
 	}
 	cmd.AddCommand(newCommentListCmd(s), newCommentAddCmd(s),
-		newCommentUpdateCmd(s), newCommentDeleteCmd(s))
+		newCommentUpdateCmd(s), newCommentDeleteCmd(s), newCommentResolveCmd(s))
 	return cmd
 }
 
@@ -217,13 +217,20 @@ func newCommentUpdateCmd(s *appState) *cobra.Command {
 	return cmd
 }
 
-func newCommentDeleteCmd(s *appState) *cobra.Command {
+func newCommentResolveCmd(s *appState) *cobra.Command {
 	var prArg string
-	var yes, dryRun bool
+	var unresolve, dryRun bool
 	cmd := &cobra.Command{
-		Use:   "delete <comment-id>",
-		Short: "Delete a comment",
-		Args:  cobra.ExactArgs(1),
+		Use:   "resolve <comment-id>",
+		Short: "Resolve (or reopen) a comment thread",
+		Long: "Mark a PR comment thread resolved, or reopen it with --unresolve.\n" +
+			"On Data Center this is also how a task (a BLOCKER-severity comment) is\n" +
+			"completed or reopened. Bitbucket Cloud's separate task objects are not\n" +
+			"covered — this resolves comment threads, the `resolved` field surfaced\n" +
+			"by `comment list` and `pr threads`.",
+		Example: "  bitbucket-cli comment resolve 42 --pr myws/myrepo/7\n" +
+			"  bitbucket-cli comment resolve 42 --pr myws/myrepo/7 --unresolve",
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ref, prID, err := resolvePRRef(prArg, apiclient.RepoRef{})
 			if err != nil {
@@ -239,18 +246,67 @@ func newCommentDeleteCmd(s *appState) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			req := apiclient.DeletePRCommentReq{Repo: ref, PRID: prID, ID: id}
+			req := apiclient.ResolvePRCommentReq{Repo: ref, PRID: prID, ID: id, Resolve: !unresolve}
 			if dryRun {
 				return emitDryRun(s, client, ctx, req)
 			}
-			if !yes {
+			cm, err := client.ResolvePRComment(ctx, req)
+			if err != nil {
+				return err
+			}
+			return s.emit(cm)
+		},
+	}
+	cmd.Flags().StringVar(&prArg, "pr", "", "<workspace>/<repo>/<id> or PR URL")
+	cmd.Flags().BoolVar(&unresolve, "unresolve", false, "reopen the thread instead of resolving it")
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "preview the HTTP request without sending it")
+	_ = cmd.MarkFlagRequired("pr")
+	return cmd
+}
+
+func newCommentDeleteCmd(s *appState) *cobra.Command {
+	var prArg string
+	var yes, dryRun bool
+	cmd := &cobra.Command{
+		Use:   "delete <comment-id>...",
+		Short: "Delete one or more comments",
+		Long: "Delete a PR comment. Pass several comment IDs to delete them in one run,\n" +
+			"or a single '-' to read newline-separated IDs from stdin. --yes (or\n" +
+			"--dry-run) is required and applies to the whole batch.",
+		Args: cobra.MinimumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ref, prID, err := resolvePRRef(prArg, apiclient.RepoRef{})
+			if err != nil {
+				return err
+			}
+			items, err := collectBatchArgs(args, cmd.InOrStdin())
+			if err != nil {
+				return err
+			}
+			if !dryRun && !yes {
 				return cerrors.New(cerrors.CategoryUsage, "NEEDS_YES",
 					"pass --yes to confirm deletion (or --dry-run to preview)")
 			}
-			if err := client.DeletePRComment(ctx, req); err != nil {
+			ctx, cancel := cmdContext(s)
+			defer cancel()
+			client, err := s.newClient(ctx)
+			if err != nil {
 				return err
 			}
-			return s.emit(map[string]any{"deleted": id})
+			return runBatch(s, items, func(arg string) (any, error) {
+				id, perr := strconv.Atoi(arg)
+				if perr != nil {
+					return nil, cerrors.Wrap(perr, cerrors.CategoryUsage, "BAD_ID", "comment ID must be numeric")
+				}
+				req := apiclient.DeletePRCommentReq{Repo: ref, PRID: prID, ID: id}
+				if dryRun {
+					return client.DescribeWrite(ctx, req)
+				}
+				if derr := client.DeletePRComment(ctx, req); derr != nil {
+					return nil, derr
+				}
+				return map[string]any{"deleted": id}, nil
+			})
 		},
 	}
 	cmd.Flags().StringVar(&prArg, "pr", "", "<workspace>/<repo>/<id> or PR URL")

@@ -184,6 +184,76 @@ func (c *apiClient) buildUpdatePRComment(ctx context.Context, req UpdatePRCommen
 	return
 }
 
+// ResolvePRComment marks a comment thread resolved, or reopens it when
+// req.Resolve is false. Cloud uses the dedicated resolve endpoint (POST to
+// resolve, DELETE to reopen) and then re-reads the comment for a uniform
+// result; Data Center PUTs the comment's state (RESOLVED / OPEN), which is the
+// same transition that completes or reopens a task (severity == BLOCKER).
+func (c *apiClient) ResolvePRComment(ctx context.Context, req ResolvePRCommentReq) (*Comment, error) {
+	method, path, payload, err := c.buildResolvePRComment(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if c.flavor == FlavorCloud {
+		// The resolve endpoint returns a resolution object (or 204 on reopen),
+		// not the comment, so re-read it for a consistent Comment result.
+		if derr := c.doJSON(ctx, method, path, nil, payload, nil); derr != nil {
+			return nil, derr
+		}
+		return c.getPRComment(ctx, req.Repo, req.PRID, req.ID)
+	}
+	var raw dcComment
+	if derr := c.doJSON(ctx, method, path, nil, payload, &raw); derr != nil {
+		return nil, derr
+	}
+	cm := mapDCComment(req.PRID, raw)
+	return &cm, nil
+}
+
+// buildResolvePRComment assembles the HTTP call for resolving/reopening a
+// comment thread. On Data Center it performs a read-only GET to learn the
+// current version first (the GET is safe under --dry-run).
+func (c *apiClient) buildResolvePRComment(ctx context.Context, req ResolvePRCommentReq) (method, path string, payload any, err error) {
+	if rerr := checkRepoRef(req.Repo); rerr != nil {
+		return "", "", nil, rerr
+	}
+	base := c.prPath(req.Repo, req.PRID) + "/comments/" + strconv.Itoa(req.ID)
+	if c.flavor == FlavorCloud {
+		method = "POST"
+		if !req.Resolve {
+			method = "DELETE"
+		}
+		path = base + "/resolve"
+		return
+	}
+	// Data Center: PUT the comment with the new state and its current version.
+	method = "PUT"
+	path = base
+	state := "RESOLVED"
+	if !req.Resolve {
+		state = "OPEN"
+	}
+	var current dcComment
+	if gerr := c.getJSON(ctx, path, nil, &current); gerr != nil {
+		err = gerr
+		return
+	}
+	payload = map[string]any{"state": state, "version": current.Version}
+	return
+}
+
+// getPRComment fetches a single PR comment (Cloud). It backs ResolvePRComment's
+// re-read after the resolve endpoint, which does not return the comment itself.
+func (c *apiClient) getPRComment(ctx context.Context, repo RepoRef, prID, id int) (*Comment, error) {
+	path := c.prPath(repo, prID) + "/comments/" + strconv.Itoa(id)
+	var raw cloudComment
+	if err := c.getJSON(ctx, path, nil, &raw); err != nil {
+		return nil, err
+	}
+	cm := mapCloudComment(prID, raw)
+	return &cm, nil
+}
+
 // DeletePRComment removes a PR comment.
 func (c *apiClient) DeletePRComment(ctx context.Context, req DeletePRCommentReq) error {
 	method, path, err := c.buildDeletePRComment(ctx, req)

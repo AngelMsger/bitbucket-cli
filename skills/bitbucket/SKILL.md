@@ -1,7 +1,7 @@
 ---
 name: bitbucket
-version: 0.10.0
-description: "Use Bitbucket as a code-hosting backend for coding agents. Browse repositories and source files at any ref, drive pull request review and merge workflows, see per-file diffs and diffstats, check mergeability and CI build status, fetch a PR into a local git checkout, post inline review comments, triage and respond to received review comments (with resolution / task status and --unresolved filters), and preview every write with --dry-run or lock the session with read-only mode. Supports Bitbucket Cloud and Data Center / Server. Use when the user mentions Bitbucket, a PR or pull-request URL or ID, repository browsing, file content at a ref, code review, responding to or addressing PR review comments, approve/decline/merge a PR, asks to read a diff, or wants a dry-run / read-only / safe-mode session."
+version: 0.11.0
+description: "Use Bitbucket as a code-hosting backend for coding agents. Browse repositories and source files at any ref, drive pull request review and merge workflows, see per-file diffs and diffstats, check mergeability and CI build status, fetch a PR into a local git checkout, post inline review comments, resolve or reopen comment threads, triage and respond to received review comments (with resolution / task status and --unresolved filters), and preview every write with --dry-run or lock the session with read-only mode. Supports Bitbucket Cloud and Data Center / Server. Use when the user mentions Bitbucket, a PR or pull-request URL or ID, repository browsing, file content at a ref, code review, responding to or addressing PR review comments, resolving a comment thread or task, approve/decline/merge a PR, asks to read a diff, or wants a dry-run / read-only / safe-mode session."
 metadata:
   requires:
     bins: ["bitbucket-cli"]
@@ -60,8 +60,26 @@ TTY — agents should never pass it.
 - **Browse source at any ref** — `bitbucket-cli file list/get/tree` reads
   directories and files at a branch, tag or commit. See `references/files.md`.
 - **Comment** — `bitbucket-cli comment add --pr <ws>/<repo>/<id> --content "<text>"`,
-  add `--inline <path>:<line>` for inline review comments.
+  add `--inline <path>:<line>` for inline review comments. Resolve or reopen a
+  thread with `comment resolve <id> --pr <ref>` (`--unresolve` to reopen); on
+  Data Center this also completes/reopens a task.
 - **Repository / branches / commits** — see `references/reading-repos.md`.
+- **Batch writes** — `pr approve`, `pr decline` and `comment delete` take several
+  references/IDs in one call, or a single `-` to read them from stdin (e.g.
+  `pr inbox --format json | jq -r '.items[].ref' | bitbucket-cli pr approve -`).
+  With more than one, output is an `{items, has_more}` aggregate with a per-item
+  `ok`/`error`; the run continues past failures and exits non-zero if any failed.
+
+## Agent-facing conventions
+
+- **Update notices on stderr.** When a newer release exists, commands print a
+  one-line `{"_notice":{"update":{…}}}` to **stderr** (never stdout, so parsing
+  the data is unaffected). `doctor` reports it too. Silence with
+  `BITBUCKET_CLI_NO_UPDATE_NOTIFIER=1`.
+- **Forgiving flags.** camelCase/snake_case flag names (`--userId`) and a flag
+  stuck to its value (`--limit100`) are auto-corrected to the canonical form when
+  it is a real flag; each fix is echoed as a `{"_notice":{"corrections":[…]}}`
+  line on stderr. Prefer the canonical `--kebab-case value` form regardless.
 
 See the topic references in `references/` for details and decision trees.
 

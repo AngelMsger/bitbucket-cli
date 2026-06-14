@@ -135,7 +135,13 @@ bitbucket-cli comment add --pr myws/myrepo/42 \
 bitbucket-cli comment list   --pr myws/myrepo/42
 bitbucket-cli comment update --pr myws/myrepo/42 9876 --content "edited"
 bitbucket-cli comment delete --pr myws/myrepo/42 9876 --yes
+bitbucket-cli comment delete --pr myws/myrepo/42 9876 9877 9878 --yes   # batch
 ```
+
+`comment delete` accepts several IDs (or a single `-` to read newline-separated
+IDs from stdin). With more than one it prints an `{items, has_more}` aggregate
+with a per-comment `ok`/`error`, deletes every one even if some fail, and exits
+non-zero on any failure. `--yes` / `--dry-run` cover the whole batch.
 
 ## Resolution & task status
 
@@ -160,8 +166,19 @@ The same `--unresolved` flag exists on `pr threads` and is the recommended entry
 point for triaging *received* review feedback — see
 `responding-to-review-comments.md`.
 
-> Note: the CLI reads resolution status but does not yet *set* it. Marking a
-> thread resolved/unresolved remains a manual action in the Bitbucket UI.
+Set the resolution too, not just read it:
+
+```sh
+bitbucket-cli comment resolve   --pr myws/myrepo/42 9876            # mark resolved
+bitbucket-cli comment resolve   --pr myws/myrepo/42 9876 --unresolve # reopen
+```
+
+On Cloud this hits the dedicated resolve endpoint; on Data Center it sets the
+comment's `state`, which is also how a task (a BLOCKER-severity comment) is
+completed or reopened. Both honor `--dry-run` and read-only mode.
+
+> Note: this resolves comment *threads* (the `resolved` field). Bitbucket
+> Cloud's separate task objects are still not covered.
 
 ## Cloud vs Data Center
 

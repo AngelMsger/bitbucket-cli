@@ -196,9 +196,11 @@ type Comment struct {
 	UpdatedAt string        `json:"updated_at,omitempty"`
 	// Resolved is true when the comment's thread has been marked resolved.
 	// Cloud: derived from the `resolution` object; DC: state == "RESOLVED".
+	// Settable with ResolvePRComment (`comment resolve` / `--unresolve`).
 	Resolved bool `json:"resolved"`
-	// Task is true for actionable review tasks. DC: severity == "BLOCKER".
-	// (Cloud tasks live on a separate endpoint and are not surfaced yet.)
+	// Task is true for actionable review tasks. DC: severity == "BLOCKER", and
+	// completing such a task is the same transition as ResolvePRComment. (Cloud
+	// tasks live on a separate endpoint and are not surfaced yet.)
 	Task bool `json:"task,omitempty"`
 }
 
@@ -347,6 +349,16 @@ type DeletePRCommentReq struct {
 	Repo RepoRef
 	PRID int
 	ID   int
+}
+
+// ResolvePRCommentReq toggles a comment thread's resolution state. Resolve=true
+// marks the thread resolved; false reopens it. On Data Center this is the same
+// transition that completes/reopens a task comment (severity == BLOCKER).
+type ResolvePRCommentReq struct {
+	Repo    RepoRef
+	PRID    int
+	ID      int
+	Resolve bool
 }
 
 // ListCommitsOpts narrows a commit listing.

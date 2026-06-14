@@ -442,11 +442,24 @@ func newPRActivityCmd(s *appState) *cobra.Command {
 func newPRApproveCmd(s *appState) *cobra.Command {
 	var dryRun bool
 	cmd := &cobra.Command{
-		Use:   "approve <workspace>/<repo>/<id>",
-		Short: "Approve a PR",
-		Args:  cobra.ExactArgs(1),
+		Use:   "approve <workspace>/<repo>/<id>...",
+		Short: "Approve one or more PRs",
+		Long: "Approve a PR. Pass several PR references to approve them in one run, or\n" +
+			"a single '-' to read newline-separated references from stdin. With more\n" +
+			"than one, output is a {items, has_more} aggregate with a per-PR ok/error\n" +
+			"and the exit code is non-zero if any approval failed.",
+		Example: "  bitbucket-cli pr approve myws/myrepo/7\n" +
+			"  bitbucket-cli pr approve myws/myrepo/7 myws/myrepo/8\n" +
+			"  bitbucket-cli pr inbox --format json | jq -r '.items[].ref' | bitbucket-cli pr approve -",
+		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return togglePRApproval(s, args[0], true, dryRun)
+			items, err := collectBatchArgs(args, cmd.InOrStdin())
+			if err != nil {
+				return err
+			}
+			return runBatch(s, items, func(arg string) (any, error) {
+				return doPRApproval(s, arg, true, dryRun)
+			})
 		},
 	}
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "preview the HTTP request without sending it")
@@ -467,25 +480,38 @@ func newPRUnapproveCmd(s *appState) *cobra.Command {
 	return cmd
 }
 
+// togglePRApproval approves/unapproves a single PR and emits the result. It
+// backs the single-only `unapprove` command; `approve` goes through doPRApproval
+// + runBatch so it can take several PRs.
 func togglePRApproval(s *appState, arg string, approve, dryRun bool) error {
-	ref, id, err := resolvePRRef(arg, apiclient.RepoRef{})
+	res, err := doPRApproval(s, arg, approve, dryRun)
 	if err != nil {
 		return err
+	}
+	return s.emit(res)
+}
+
+// doPRApproval performs one approve/unapprove and returns its result payload
+// (or the --dry-run plan) without emitting, so it can be driven by runBatch.
+func doPRApproval(s *appState, arg string, approve, dryRun bool) (any, error) {
+	ref, id, err := resolvePRRef(arg, apiclient.RepoRef{})
+	if err != nil {
+		return nil, err
 	}
 	ctx, cancel := cmdContext(s)
 	defer cancel()
 	client, err := s.newClient(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	req := apiclient.ApprovePRReq{Repo: ref, ID: id, Approve: approve}
 	if dryRun {
-		return emitDryRun(s, client, ctx, req)
+		return client.DescribeWrite(ctx, req)
 	}
 	if err := client.ApprovePR(ctx, req); err != nil {
-		return err
+		return nil, err
 	}
-	return s.emit(map[string]any{"approved": approve, "pr": map[string]any{"repo": ref, "id": id}})
+	return map[string]any{"approved": approve, "pr": map[string]any{"repo": ref, "id": id}}, nil
 }
 
 func newPRRequestChangesCmd(s *appState) *cobra.Command {
@@ -524,33 +550,38 @@ func newPRDeclineCmd(s *appState) *cobra.Command {
 	var message string
 	var yes, dryRun bool
 	cmd := &cobra.Command{
-		Use:   "decline <workspace>/<repo>/<id>",
-		Short: "Decline (close without merging) a PR",
-		Args:  cobra.ExactArgs(1),
+		Use:   "decline <workspace>/<repo>/<id>...",
+		Short: "Decline (close without merging) one or more PRs",
+		Long: "Decline a PR. Pass several PR references to decline them in one run, or a\n" +
+			"single '-' to read newline-separated references from stdin. --yes (or\n" +
+			"--dry-run) is required and applies to the whole batch.",
+		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ref, id, err := resolvePRRef(args[0], apiclient.RepoRef{})
+			items, err := collectBatchArgs(args, cmd.InOrStdin())
 			if err != nil {
 				return err
 			}
-			ctx, cancel := cmdContext(s)
-			defer cancel()
-			client, err := s.newClient(ctx)
-			if err != nil {
-				return err
-			}
-			req := apiclient.DeclinePRReq{Repo: ref, ID: id, Message: message}
-			if dryRun {
-				return emitDryRun(s, client, ctx, req)
-			}
-			if !yes {
+			if !dryRun && !yes {
 				return cerrors.New(cerrors.CategoryUsage, "NEEDS_YES",
-					"pass --yes to confirm declining the PR (or --dry-run to preview)")
+					"pass --yes to confirm declining (or --dry-run to preview)")
 			}
-			pr, err := client.DeclinePR(ctx, req)
-			if err != nil {
-				return err
-			}
-			return s.emit(pr)
+			return runBatch(s, items, func(arg string) (any, error) {
+				ref, id, err := resolvePRRef(arg, apiclient.RepoRef{})
+				if err != nil {
+					return nil, err
+				}
+				ctx, cancel := cmdContext(s)
+				defer cancel()
+				client, err := s.newClient(ctx)
+				if err != nil {
+					return nil, err
+				}
+				req := apiclient.DeclinePRReq{Repo: ref, ID: id, Message: message}
+				if dryRun {
+					return client.DescribeWrite(ctx, req)
+				}
+				return client.DeclinePR(ctx, req)
+			})
 		},
 	}
 	cmd.Flags().StringVar(&message, "message", "", "decline message")

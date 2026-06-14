@@ -43,6 +43,7 @@
       <a href="#bitbucket-cli-comment-add">bitbucket-cli comment add</a>
       <a href="#bitbucket-cli-comment-delete">bitbucket-cli comment delete</a>
       <a href="#bitbucket-cli-comment-list">bitbucket-cli comment list</a>
+      <a href="#bitbucket-cli-comment-resolve">bitbucket-cli comment resolve</a>
       <a href="#bitbucket-cli-comment-update">bitbucket-cli comment update</a>
       </div>
     <div class="side-group">
@@ -318,9 +319,11 @@ JSON with structured errors.</p>
     
     <section class="cmd" id="bitbucket-cli-comment-delete">
       <h2>bitbucket-cli comment delete</h2>
-      <p class="short">Delete a comment</p>
-      <pre>bitbucket-cli comment delete &lt;comment-id&gt; [flags]</pre>
-      
+      <p class="short">Delete one or more comments</p>
+      <pre>bitbucket-cli comment delete &lt;comment-id&gt;... [flags]</pre>
+      <p class="long">Delete a PR comment. Pass several comment IDs to delete them in one run,
+or a single &#39;-&#39; to read newline-separated IDs from stdin. --yes (or
+--dry-run) is required and applies to the whole batch.</p>
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -351,6 +354,28 @@ JSON with structured errors.</p>
         </tbody>
       </table>
       
+    </section>
+    
+    <section class="cmd" id="bitbucket-cli-comment-resolve">
+      <h2>bitbucket-cli comment resolve</h2>
+      <p class="short">Resolve (or reopen) a comment thread</p>
+      <pre>bitbucket-cli comment resolve &lt;comment-id&gt; [flags]</pre>
+      <p class="long">Mark a PR comment thread resolved, or reopen it with --unresolve.
+On Data Center this is also how a task (a BLOCKER-severity comment) is
+completed or reopened. Bitbucket Cloud&#39;s separate task objects are not
+covered — this resolves comment threads, the `resolved` field surfaced
+by `comment list` and `pr threads`.</p>
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>preview the HTTP request without sending it</td></tr>
+        <tr><td><code>--pr</code></td><td></td><td>&lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt; or PR URL</td></tr>
+        <tr><td><code>--unresolve</code></td><td><code>false</code></td><td>reopen the thread instead of resolving it</td></tr>
+        </tbody>
+      </table>
+      <h3>Examples</h3><pre>  bitbucket-cli comment resolve 42 --pr myws/myrepo/7
+  bitbucket-cli comment resolve 42 --pr myws/myrepo/7 --unresolve</pre>
     </section>
     
     <section class="cmd" id="bitbucket-cli-comment-update">
@@ -615,9 +640,12 @@ a single command with the global --use-context flag instead.</p>
     
     <section class="cmd" id="bitbucket-cli-pr-approve">
       <h2>bitbucket-cli pr approve</h2>
-      <p class="short">Approve a PR</p>
-      <pre>bitbucket-cli pr approve &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt; [flags]</pre>
-      
+      <p class="short">Approve one or more PRs</p>
+      <pre>bitbucket-cli pr approve &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt;... [flags]</pre>
+      <p class="long">Approve a PR. Pass several PR references to approve them in one run, or
+a single &#39;-&#39; to read newline-separated references from stdin. With more
+than one, output is a {items, has_more} aggregate with a per-PR ok/error
+and the exit code is non-zero if any approval failed.</p>
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -625,7 +653,9 @@ a single command with the global --use-context flag instead.</p>
         <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>preview the HTTP request without sending it</td></tr>
         </tbody>
       </table>
-      
+      <h3>Examples</h3><pre>  bitbucket-cli pr approve myws/myrepo/7
+  bitbucket-cli pr approve myws/myrepo/7 myws/myrepo/8
+  bitbucket-cli pr inbox --format json | jq -r &#39;.items[].ref&#39; | bitbucket-cli pr approve -</pre>
     </section>
     
     <section class="cmd" id="bitbucket-cli-pr-checkout">
@@ -689,9 +719,11 @@ a single command with the global --use-context flag instead.</p>
     
     <section class="cmd" id="bitbucket-cli-pr-decline">
       <h2>bitbucket-cli pr decline</h2>
-      <p class="short">Decline (close without merging) a PR</p>
-      <pre>bitbucket-cli pr decline &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt; [flags]</pre>
-      
+      <p class="short">Decline (close without merging) one or more PRs</p>
+      <pre>bitbucket-cli pr decline &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt;... [flags]</pre>
+      <p class="long">Decline a PR. Pass several PR references to decline them in one run, or a
+single &#39;-&#39; to read newline-separated references from stdin. --yes (or
+--dry-run) is required and applies to the whole batch.</p>
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>

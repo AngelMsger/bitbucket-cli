@@ -4,7 +4,30 @@
 
 ### Added
 
-- **The skill (0.10.0) now tells reviewing agents to ask the PR author when
+- **Runtime update notice.** Every command — except setup/meta commands like
+  `doctor` (which already reports it), `config` and `auth` — now emits a one-line
+  `{"_notice":{"update":{…}}}` to **stderr** when a newer release is available,
+  backed by a 24h on-disk cache (so at most one command per day touches the
+  network, with an ~800ms bound). stdout data is byte-identical; silence it with
+  `BITBUCKET_CLI_NO_UPDATE_NOTIFIER=1`.
+- **Batch writes.** `pr approve`, `pr decline` and `comment delete` accept
+  several references/IDs at once, or a single `-` to read newline-separated items
+  from stdin. A single argument behaves exactly as before; with more than one the
+  output is an `{items, has_more}` aggregate carrying a per-item `ok`/`error`,
+  every item runs even if some fail, and the exit code is non-zero on any failure
+  (`--yes` / `--dry-run` apply to the whole batch).
+- **`comment resolve` (resolve / reopen a thread).** Mark a PR comment thread
+  resolved, or reopen it with `--unresolve` — the `resolved` status surfaced by
+  `comment list` / `pr threads` was previously read-only. Works on Bitbucket
+  Cloud (dedicated resolve endpoint) and Data Center (comment state), where it is
+  also how a task (a BLOCKER-severity comment) is completed or reopened. Bitbucket
+  Cloud's separate task objects remain out of scope.
+- **Forgiving flag input.** Common argv slips are now corrected before cobra
+  parses — camelCase / snake_case flag names (`--userId` → `--user-id`) and a
+  flag stuck to its value (`--limit100` → `--limit 100`) — but only when the
+  result is a flag the command actually defines, so unknown flags still error as
+  usual. Each fix is echoed as a `{"_notice":{"corrections":[…]}}` line on stderr.
+- **The skill (0.11.0) now tells reviewing agents to ask the PR author when
   context is missing.** When a gap in intent or background genuinely blocks the
   review, the agent posts a clarifying comment (inline or general, batched,
   AI-attributed), keeps reviewing the unaffected files, defers only the blocked

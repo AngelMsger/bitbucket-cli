@@ -68,6 +68,10 @@ func TestReadOnlyBlocksEveryMutator(t *testing.T) {
 		{"DeletePRComment", func() error {
 			return c.DeletePRComment(ctx, DeletePRCommentReq{Repo: repo, PRID: 1, ID: 1})
 		}},
+		{"ResolvePRComment", func() error {
+			_, err := c.ResolvePRComment(ctx, ResolvePRCommentReq{Repo: repo, PRID: 1, ID: 1, Resolve: true})
+			return err
+		}},
 		{"CreateBranch", func() error {
 			_, err := c.CreateBranch(ctx, CreateBranchReq{Repo: repo, Name: "feat", FromRef: "main"})
 			return err

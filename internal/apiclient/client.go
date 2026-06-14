@@ -56,6 +56,7 @@ type Client interface {
 	AddPRComment(ctx context.Context, req AddPRCommentReq) (*Comment, error)
 	UpdatePRComment(ctx context.Context, req UpdatePRCommentReq) (*Comment, error)
 	DeletePRComment(ctx context.Context, req DeletePRCommentReq) error
+	ResolvePRComment(ctx context.Context, req ResolvePRCommentReq) (*Comment, error)
 
 	ListBranches(ctx context.Context, opt BranchListOpts) (ListResult[Branch], error)
 	GetBranch(ctx context.Context, repo RepoRef, name string) (*Branch, error)
