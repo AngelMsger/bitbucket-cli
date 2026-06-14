@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-06-14
+
 ### Added
 
 - **Runtime update notice.** Every command — except setup/meta commands like
