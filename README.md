@@ -188,9 +188,11 @@ single-server config files are read unchanged.
 
 ## Related
 
-Working in Confluence too? See
-**[confluence-cli](https://github.com/angelmsger/confluence-cli)** — the sister
-CLI from the same author, same agent-first design.
+From the same author, same agent-first design:
+**[confluence-cli](https://github.com/AngelMsger/confluence-cli)** (Confluence as
+a knowledge base) and
+**[openobserve-cli](https://github.com/AngelMsger/openobserve-cli)** (query
+OpenObserve logs, metrics and traces).
 
 ## Development
 
