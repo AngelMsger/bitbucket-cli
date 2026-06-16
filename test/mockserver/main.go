@@ -163,16 +163,20 @@ func routes() http.Handler {
 						},
 					},
 				}},
-				map[string]any{"id": 102, "action": "COMMENTED", "user": user(), "createdDate": 3, "comment": map[string]any{
-					"id": 9002, "text": "Already fixed", "author": user(), "createdDate": 3, "version": 0,
-					"state": "RESOLVED", "severity": "NORMAL",
-					"anchor": map[string]any{"path": "src/app.go", "line": 10, "lineType": "CONTEXT", "fileType": "TO"},
-				}},
-				map[string]any{"id": 103, "action": "COMMENTED", "user": user(), "createdDate": 4, "comment": map[string]any{
-					"id": 9003, "text": "Please rename this", "author": user(), "createdDate": 4, "version": 0,
-					"state": "OPEN", "severity": "BLOCKER",
-					"anchor": map[string]any{"path": "src/app.go", "line": 20, "lineType": "ADDED", "fileType": "TO"},
-				}},
+				// Inline comments: DC carries the anchor on the activity
+				// (commentAnchor), a sibling of comment — not inside it.
+				map[string]any{"id": 102, "action": "COMMENTED", "user": user(), "createdDate": 3,
+					"commentAnchor": map[string]any{"path": "src/app.go", "line": 10, "lineType": "CONTEXT", "fileType": "TO"},
+					"comment": map[string]any{
+						"id": 9002, "text": "Already fixed", "author": user(), "createdDate": 3, "version": 0,
+						"state": "RESOLVED", "severity": "NORMAL",
+					}},
+				map[string]any{"id": 103, "action": "COMMENTED", "user": user(), "createdDate": 4,
+					"commentAnchor": map[string]any{"path": "src/app.go", "line": 20, "lineType": "ADDED", "fileType": "TO"},
+					"comment": map[string]any{
+						"id": 9003, "text": "Please rename this", "author": user(), "createdDate": 4, "version": 0,
+						"state": "OPEN", "severity": "BLOCKER",
+					}},
 				map[string]any{"id": 101, "action": "APPROVED", "user": user(), "createdDate": 2},
 			},
 			"size": 2, "limit": 25, "start": 0, "isLastPage": true,

@@ -114,9 +114,12 @@ func (c *apiClient) GetPRDiffByPath(ctx context.Context, repo RepoRef, id int, p
 	return c.fetchDiffText(ctx, endpoint, query)
 }
 
-// ListPRThreads regroups all PR comments into per-file inline threads plus a
-// "general discussion" bucket. No new API call — the inner ListPRComments is
-// walked to completion and the result reshuffled in Go.
+// ListPRThreads groups all PR comments into review threads — one thread per
+// top-level comment plus its reply tree, mirroring how Bitbucket itself models
+// a discussion (two independent comments on the same line are two threads, not
+// one). No new API call — the inner ListPRComments is walked to completion and
+// the result reshuffled in Go, then sorted by file and anchor line with general
+// (non-inline) threads last.
 func (c *apiClient) ListPRThreads(ctx context.Context, repo RepoRef, id int) (ListResult[Thread], error) {
 	if err := checkRepoRef(repo); err != nil {
 		return ListResult[Thread]{}, err
@@ -131,14 +134,9 @@ func (c *apiClient) ListPRThreads(ctx context.Context, repo RepoRef, id int) (Li
 		return ListResult[Thread]{}, err
 	}
 
-	// Build reply chains. roots[id] is a top-level comment; children[parent]
-	// holds replies in arrival order.
-	byID := map[int]Comment{}
+	// Split into top-level comments and replies keyed by their parent.
 	children := map[int][]Comment{}
 	var roots []Comment
-	for _, c := range all {
-		byID[c.ID] = c
-	}
 	for _, c := range all {
 		if c.ParentID == 0 {
 			roots = append(roots, c)
@@ -147,55 +145,60 @@ func (c *apiClient) ListPRThreads(ctx context.Context, repo RepoRef, id int) (Li
 		}
 	}
 
-	// For each root, gather the full reply tree (DFS, preserving order).
-	type key struct {
-		file string
-		line int
-	}
-	threads := map[key]*Thread{}
-	var order []key
+	// One thread per root: append the root, then its reply tree depth-first in
+	// arrival order. seen guards against a comment surfacing twice (e.g. an edit
+	// re-emitted as a second activity) so it cannot be double-counted.
+	seen := map[int]bool{}
+	var threads []*Thread
 	for _, root := range roots {
-		k := key{}
-		if root.Inline != nil {
-			k.file = root.Inline.Path
-			k.line = root.Inline.Line
+		if seen[root.ID] {
+			continue
 		}
-		t, ok := threads[k]
-		if !ok {
-			t = &Thread{File: k.file, Resolved: root.Resolved}
-			if root.Inline != nil {
-				a := *root.Inline
-				t.Anchor = &a
-			}
-			threads[k] = t
-			order = append(order, k)
+		seen[root.ID] = true
+		t := &Thread{Resolved: root.Resolved}
+		if root.Inline != nil {
+			t.File = root.Inline.Path
+			a := *root.Inline
+			t.Anchor = &a
 		}
 		t.Comments = append(t.Comments, root)
 		var walk func(parentID int)
 		walk = func(parentID int) {
-			kids := children[parentID]
-			for _, kid := range kids {
+			for _, kid := range children[parentID] {
+				if seen[kid.ID] {
+					continue
+				}
+				seen[kid.ID] = true
 				t.Comments = append(t.Comments, kid)
 				walk(kid.ID)
 			}
 		}
 		walk(root.ID)
+		threads = append(threads, t)
 	}
 
-	// Sort threads: general discussion last; inline grouped by file then line.
-	sort.SliceStable(order, func(i, j int) bool {
-		a, b := order[i], order[j]
-		if (a.file == "") != (b.file == "") {
-			return a.file != "" // inline before general
+	// Sort: inline threads first, grouped by file then anchor line; general
+	// (non-inline) threads last. Stable, so same-anchor threads keep arrival
+	// order.
+	lineOf := func(t *Thread) int {
+		if t.Anchor != nil {
+			return t.Anchor.Line
 		}
-		if a.file != b.file {
-			return a.file < b.file
+		return 0
+	}
+	sort.SliceStable(threads, func(i, j int) bool {
+		a, b := threads[i], threads[j]
+		if (a.File == "") != (b.File == "") {
+			return a.File != "" // inline before general
 		}
-		return a.line < b.line
+		if a.File != b.File {
+			return a.File < b.File
+		}
+		return lineOf(a) < lineOf(b)
 	})
 	out := ListResult[Thread]{}
-	for _, k := range order {
-		out.Items = append(out.Items, *threads[k])
+	for _, t := range threads {
+		out.Items = append(out.Items, *t)
 	}
 	return out, nil
 }

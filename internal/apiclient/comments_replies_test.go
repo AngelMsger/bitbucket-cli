@@ -85,3 +85,113 @@ func TestListPRCommentsDataCenterReplies(t *testing.T) {
 		}
 	}
 }
+
+// TestDataCenterActivityAnchorAndThreadScope mirrors the real-world PR that
+// exposed two activities-stream bugs:
+//
+//  1. Anchor placement — DC hoists an inline comment's anchor to the activity
+//     (activity.commentAnchor), not into the comment, so an inline comment read
+//     back from /activities must still come out anchored.
+//  2. Thread scope — each top-level comment is its own thread; independent
+//     general comments must not be merged into one bucket, so `--comment <id>`
+//     (threadHasComment) returns just that root and its replies.
+func TestDataCenterActivityAnchorAndThreadScope(t *testing.T) {
+	c := newResolveTestClient(t, FlavorDataCenter, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"isLastPage": true,
+			"values": []any{
+				// General root with two replies nested under it.
+				map[string]any{"action": "COMMENTED", "comment": map[string]any{
+					"id": 2642135, "text": "AI suggestion", "state": "OPEN",
+					"comments": []any{
+						map[string]any{"id": 2645582, "text": "won't fix", "state": "OPEN"},
+						map[string]any{"id": 2647711, "text": "follow-up", "state": "OPEN"},
+					},
+				}},
+				// Inline comment: anchor is on the ACTIVITY, not the comment.
+				map[string]any{
+					"action": "COMMENTED",
+					"comment": map[string]any{
+						"id": 2646853, "text": "perf test is flaky", "state": "OPEN",
+					},
+					"commentAnchor": map[string]any{
+						"path": "packages/core/tests/cache/SingleFlight.perf.test.ts",
+						"line": 17, "fileType": "TO", "lineType": "ADDED",
+					},
+				},
+				// A second, independent general comment.
+				map[string]any{"action": "COMMENTED", "comment": map[string]any{
+					"id": 2647783, "text": "decline and fix", "state": "OPEN",
+				}},
+			},
+		})
+	}))
+
+	repo := RepoRef{Workspace: "FX", Slug: "fx-corp"}
+
+	// Bug B: the inline comment read from /activities must be anchored.
+	res, err := c.ListPRComments(context.Background(), ListPRCommentsOpts{Repo: repo, PRID: 1952})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var inline *Comment
+	for i := range res.Items {
+		if res.Items[i].ID == 2646853 {
+			inline = &res.Items[i]
+		}
+	}
+	if inline == nil || inline.Inline == nil {
+		t.Fatalf("comment 2646853 should be anchored (anchor lives on activity.commentAnchor); got %+v", inline)
+	}
+	if inline.Inline.Path != "packages/core/tests/cache/SingleFlight.perf.test.ts" || inline.Inline.Line != 17 {
+		t.Errorf("anchor mismatch: %+v", inline.Inline)
+	}
+
+	// Bug A: --comment 2647711 must scope to its root thread only.
+	threads, err := c.ListPRThreads(context.Background(), repo, 1952)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var target *Thread
+	for i := range threads.Items {
+		for _, cm := range threads.Items[i].Comments {
+			if cm.ID == 2647711 {
+				target = &threads.Items[i]
+			}
+		}
+	}
+	if target == nil {
+		t.Fatal("no thread contains comment 2647711")
+	}
+	ids := map[int]bool{}
+	for _, cm := range target.Comments {
+		ids[cm.ID] = true
+	}
+	want := map[int]bool{2642135: true, 2645582: true, 2647711: true}
+	if len(ids) != len(want) {
+		t.Errorf("thread for 2647711 should hold exactly %v, got %v", keys(want), keys(ids))
+	}
+	for id := range want {
+		if !ids[id] {
+			t.Errorf("thread for 2647711 missing %d", id)
+		}
+	}
+	for _, leak := range []int{2647783, 2646853} {
+		if ids[leak] {
+			t.Errorf("thread for 2647711 leaked unrelated comment %d", leak)
+		}
+	}
+	// Three independent roots -> three threads (general comments not merged).
+	if len(threads.Items) != 3 {
+		t.Errorf("expected 3 threads (one per root), got %d", len(threads.Items))
+	}
+}
+
+func keys(m map[int]bool) []int {
+	out := make([]int, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	return out
+}

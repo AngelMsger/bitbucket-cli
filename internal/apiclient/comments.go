@@ -49,8 +49,10 @@ func (c *apiClient) ListPRComments(ctx context.Context, opt ListPRCommentsOpts) 
 			continue
 		}
 		// Walk the reply tree: DC nests replies inside the root comment's
-		// "comments" array, so a plain map would silently drop every reply.
-		flattenDCComment(opt.PRID, 0, *a.Comment, &res.Items)
+		// "comments" array, so a plain map would silently drop every reply. The
+		// inline anchor is hoisted to the activity (a.CommentAnchor), not the
+		// comment, so it is threaded in here and applied to the root.
+		flattenDCComment(opt.PRID, 0, a.CommentAnchor, *a.Comment, &res.Items)
 	}
 	return res, nil
 }

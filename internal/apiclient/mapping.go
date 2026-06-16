@@ -619,21 +619,28 @@ func mapDCComment(prID int, c dcComment) Comment {
 		Resolved:  c.State == "RESOLVED",
 		Task:      c.Severity == "BLOCKER",
 	}
-	if c.Anchor != nil {
-		cm.Inline = &InlineAnchor{
-			Path: c.Anchor.Path,
-			Line: c.Anchor.Line,
-		}
-		if c.Anchor.FileType == "FROM" {
-			cm.Inline.From = c.Anchor.Line
-		} else {
-			cm.Inline.To = c.Anchor.Line
-		}
-	}
+	cm.Inline = inlineFromDCAnchor(c.Anchor)
 	if c.Parent != nil {
 		cm.ParentID = c.Parent.ID
 	}
 	return cm
+}
+
+// inlineFromDCAnchor maps a Data Center comment anchor to the package's
+// flavor-agnostic InlineAnchor, or returns nil when there is no anchor. The
+// same anchor shape appears in two places: inside the comment (single-comment
+// GET / create response) and hoisted to the activity (activities stream).
+func inlineFromDCAnchor(a *dcCommentAnchor) *InlineAnchor {
+	if a == nil {
+		return nil
+	}
+	in := &InlineAnchor{Path: a.Path, Line: a.Line}
+	if a.FileType == "FROM" {
+		in.From = a.Line
+	} else {
+		in.To = a.Line
+	}
+	return in
 }
 
 // flattenDCComment appends c and its entire nested reply tree to out. Bitbucket
@@ -641,15 +648,20 @@ func mapDCComment(prID int, c dcComment) Comment {
 // a comment's replies in its "comments" array — so the tree must be walked here
 // for replies to appear in `comment list` and `pr threads`. parentID is the id
 // of c's immediate parent (0 for a thread root) and is stamped onto each reply
-// so the thread reply-chain reconstruction can locate it.
-func flattenDCComment(prID, parentID int, c dcComment, out *[]Comment) {
+// so the thread reply-chain reconstruction can locate it. rootAnchor carries the
+// activity-level commentAnchor, which DC hoists out of the comment and which
+// applies only to the thread root (replies are never independently anchored).
+func flattenDCComment(prID, parentID int, rootAnchor *dcCommentAnchor, c dcComment, out *[]Comment) {
 	cm := mapDCComment(prID, c)
 	if parentID != 0 {
 		cm.ParentID = parentID
 	}
+	if cm.Inline == nil && parentID == 0 {
+		cm.Inline = inlineFromDCAnchor(rootAnchor)
+	}
 	*out = append(*out, cm)
 	for _, child := range c.Comments {
-		flattenDCComment(prID, c.ID, child, out)
+		flattenDCComment(prID, c.ID, nil, child, out)
 	}
 }
 
@@ -660,6 +672,9 @@ type dcActivity struct {
 	Action        string     `json:"action"`
 	CommentAction string     `json:"commentAction"`
 	Comment       *dcComment `json:"comment"`
+	// CommentAnchor is the inline anchor for a file comment. DC puts it here on
+	// the activity (sibling of comment), not inside the comment object.
+	CommentAnchor *dcCommentAnchor `json:"commentAnchor"`
 }
 
 type dcActivityList struct {

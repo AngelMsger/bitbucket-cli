@@ -258,6 +258,10 @@ func (c *apiClient) ListPRActivity(ctx context.Context, opt PRListOpts) (ListRes
 		}
 		if a.Comment != nil {
 			cm := mapDCComment(prID, *a.Comment)
+			// DC hoists an inline comment's anchor onto the activity.
+			if cm.Inline == nil {
+				cm.Inline = inlineFromDCAnchor(a.CommentAnchor)
+			}
 			entry.Kind = "comment"
 			entry.Comment = &cm
 		}
