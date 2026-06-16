@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **`pr create` on Data Center now honours `--source-repo`.** The Data Center
+  path in `buildCreatePR` ignored the `sourceRepo` parameter and always set
+  `fromRef.repository` to the target repo, making cross-repo PRs (fork →
+  upstream) impossible. The source-repo value is now parsed as
+  `<projectKey>/<slug>` and injected into the `fromRef` block, matching the
+  Cloud behaviour. Contributed by @fuhao-w.
+
 ## [0.9.2] - 2026-06-16
 
 ### Fixed

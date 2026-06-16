@@ -3,6 +3,7 @@ package apiclient
 import (
 	"context"
 	"strconv"
+	"strings"
 
 	cerrors "github.com/angelmsger/bitbucket-cli/internal/errors"
 )
@@ -69,6 +70,14 @@ func (c *apiClient) buildCreatePR(req CreatePRReq) (method, path string, payload
 	}
 	// Data Center
 	path = c.prsPath(req.Repo)
+	sourceSlug := req.Repo.Slug
+	sourceProject := req.Repo.Workspace
+	if req.SourceRepo != "" {
+		if parts := strings.SplitN(req.SourceRepo, "/", 2); len(parts) == 2 {
+			sourceProject = parts[0]
+			sourceSlug = parts[1]
+		}
+	}
 	body := map[string]any{
 		"title":       req.Title,
 		"description": req.Description,
@@ -78,8 +87,8 @@ func (c *apiClient) buildCreatePR(req CreatePRReq) (method, path string, payload
 		"fromRef": map[string]any{
 			"id": "refs/heads/" + req.Source,
 			"repository": map[string]any{
-				"slug":    req.Repo.Slug,
-				"project": map[string]string{"key": req.Repo.Workspace},
+				"slug":    sourceSlug,
+				"project": map[string]string{"key": sourceProject},
 			},
 		},
 	}
