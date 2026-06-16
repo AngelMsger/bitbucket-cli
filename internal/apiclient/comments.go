@@ -48,7 +48,9 @@ func (c *apiClient) ListPRComments(ctx context.Context, opt ListPRCommentsOpts) 
 		if a.Comment == nil {
 			continue
 		}
-		res.Items = append(res.Items, mapDCComment(opt.PRID, *a.Comment))
+		// Walk the reply tree: DC nests replies inside the root comment's
+		// "comments" array, so a plain map would silently drop every reply.
+		flattenDCComment(opt.PRID, 0, *a.Comment, &res.Items)
 	}
 	return res, nil
 }

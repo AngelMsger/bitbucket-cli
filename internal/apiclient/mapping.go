@@ -599,6 +599,13 @@ type dcComment struct {
 	Anchor      *dcCommentAnchor `json:"anchor"`
 	State       string           `json:"state"`    // OPEN / RESOLVED / PENDING
 	Severity    string           `json:"severity"` // NORMAL / BLOCKER (BLOCKER == task)
+	// Comments holds replies. Data Center embeds a comment's reply tree here
+	// rather than emitting each reply as its own activity entry, so a reply is
+	// only reachable by walking this field — see flattenDCComment.
+	Comments []dcComment `json:"comments"`
+	Parent   *struct {
+		ID int `json:"id"`
+	} `json:"parent"`
 }
 
 func mapDCComment(prID int, c dcComment) Comment {
@@ -623,7 +630,27 @@ func mapDCComment(prID int, c dcComment) Comment {
 			cm.Inline.To = c.Anchor.Line
 		}
 	}
+	if c.Parent != nil {
+		cm.ParentID = c.Parent.ID
+	}
 	return cm
+}
+
+// flattenDCComment appends c and its entire nested reply tree to out. Bitbucket
+// Data Center does not surface replies as their own activity entries — it embeds
+// a comment's replies in its "comments" array — so the tree must be walked here
+// for replies to appear in `comment list` and `pr threads`. parentID is the id
+// of c's immediate parent (0 for a thread root) and is stamped onto each reply
+// so the thread reply-chain reconstruction can locate it.
+func flattenDCComment(prID, parentID int, c dcComment, out *[]Comment) {
+	cm := mapDCComment(prID, c)
+	if parentID != 0 {
+		cm.ParentID = parentID
+	}
+	*out = append(*out, cm)
+	for _, child := range c.Comments {
+		flattenDCComment(prID, c.ID, child, out)
+	}
 }
 
 type dcActivity struct {

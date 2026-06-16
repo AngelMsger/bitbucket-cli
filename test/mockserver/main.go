@@ -154,6 +154,14 @@ func routes() http.Handler {
 				map[string]any{"id": 100, "action": "COMMENTED", "user": user(), "createdDate": 1, "comment": map[string]any{
 					"id": 9001, "text": "Looks good", "author": user(), "createdDate": 1, "version": 0,
 					"state": "OPEN", "severity": "NORMAL",
+					// DC nests replies under the root comment rather than emitting
+					// them as separate activity entries.
+					"comments": []any{
+						map[string]any{
+							"id": 9011, "text": "Thanks for the review", "author": user(),
+							"createdDate": 2, "version": 0, "state": "OPEN", "severity": "NORMAL",
+						},
+					},
 				}},
 				map[string]any{"id": 102, "action": "COMMENTED", "user": user(), "createdDate": 3, "comment": map[string]any{
 					"id": 9002, "text": "Already fixed", "author": user(), "createdDate": 3, "version": 0,
