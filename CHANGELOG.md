@@ -2,6 +2,26 @@
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-06-16
+
+### Fixed
+
+- **Data Center inline comments lost their anchor when read back, and review
+  threads were grouped too coarsely.** Two activities-stream bugs on Bitbucket
+  Data Center, both follow-ups to the reply fix in 0.9.1:
+  - **Anchors.** DC hoists an inline comment's anchor onto the activity
+    (`activity.commentAnchor`), a sibling of `comment` — not into
+    `comment.anchor`, which is only populated on the single-comment and
+    create-comment responses. The activities parser read only the latter, so
+    every inline comment came back unanchored and collapsed into the general
+    bucket. It now reads `commentAnchor` and applies it to the thread root.
+  - **Thread scope.** `pr threads` keyed threads by `{file, line}`, which merged
+    every non-inline comment into one "general discussion" thread, so
+    `pr threads --comment <id>` returned that whole bucket instead of the one
+    discussion. Threads are now one-per-root-comment (matching how Bitbucket
+    models a discussion), so `--comment` scopes to exactly that root and its
+    replies, and same-line comments stay distinct.
+
 ## [0.9.1] - 2026-06-16
 
 ### Fixed
