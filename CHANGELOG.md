@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-06-16
+
+### Fixed
+
+- **Data Center replies were invisible to every read command.** A reply posted
+  with `comment add --reply-to` returned a real comment id but never showed up
+  again — `comment list` and `pr threads` omitted it, and `pr threads --comment
+  <id>` failed with `COMMENT_NOT_FOUND` — so an agent could not see its own
+  reply and was misled into posting duplicates. Bitbucket Data Center nests a
+  comment's replies inside the parent's `comments` array rather than emitting
+  them as separate activity entries, and the activity-stream parser only read
+  top-level comments. It now walks the full reply tree and stamps each reply's
+  `parentId`, so replies surface in listings and thread lookups. Bitbucket Cloud
+  (a flat comment list carrying `parent`) was unaffected.
+
 ## [0.9.0] - 2026-06-14
 
 ### Added
