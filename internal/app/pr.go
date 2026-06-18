@@ -236,8 +236,8 @@ func newPRCreateCmd(s *appState) *cobra.Command {
 	f := cmd.Flags()
 	f.StringVar(&repoArg, "repo", "", "<workspace>/<repo>")
 	f.StringVar(&title, "title", "", "PR title")
-	f.StringVar(&description, "description", "", "PR description (Markdown)")
-	f.StringVar(&descriptionFile, "description-file", "", "read description from this file")
+	f.StringVar(&description, "description", "", "PR description (Markdown); literal \\n \\t \\r are decoded to real newlines/tabs (use --description-file for exact bytes)")
+	f.StringVar(&descriptionFile, "description-file", "", "read description from this file (sent as exact bytes, no escape decoding)")
 	f.StringVar(&source, "source", "", "source branch")
 	f.StringVar(&sourceRepo, "source-repo", "", "cross-repo source (Cloud forks): <ws>/<repo>")
 	f.StringVar(&destination, "target", "", "destination branch (default: repo default)")
@@ -284,7 +284,7 @@ func newPRUpdateCmd(s *appState) *cobra.Command {
 	}
 	f := cmd.Flags()
 	f.StringVar(&title, "title", "", "new title")
-	f.StringVar(&description, "description", "", "new description")
+	f.StringVar(&description, "description", "", "new description; literal \\n \\t \\r are decoded to real newlines/tabs")
 	f.StringSliceVar(&reviewers, "reviewer", nil, "replace reviewer list (repeatable)")
 	f.BoolVar(&dryRun, "dry-run", false, "preview the HTTP request without sending it")
 	return cmd
@@ -584,7 +584,7 @@ func newPRDeclineCmd(s *appState) *cobra.Command {
 			})
 		},
 	}
-	cmd.Flags().StringVar(&message, "message", "", "decline message")
+	cmd.Flags().StringVar(&message, "message", "", "decline message; literal \\n \\t \\r are decoded to real newlines/tabs")
 	cmd.Flags().BoolVar(&yes, "yes", false, "confirm declining")
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "preview the HTTP request without sending it")
 	return cmd
@@ -631,7 +631,7 @@ func newPRMergeCmd(s *appState) *cobra.Command {
 	}
 	f := cmd.Flags()
 	f.StringVar(&strategy, "strategy", "merge_commit", "merge_commit | squash | fast_forward")
-	f.StringVar(&message, "message", "", "merge commit message")
+	f.StringVar(&message, "message", "", "merge commit message; literal \\n \\t \\r are decoded to real newlines/tabs")
 	f.BoolVar(&closeSourceBranch, "close-source-branch", false, "close the source branch after merging")
 	f.BoolVar(&dryRun, "dry-run", false, "preview the HTTP request without sending it")
 	f.BoolVar(&yes, "yes", false, "confirm the merge")

@@ -20,10 +20,15 @@ func NewRootCmd() *cobra.Command { return newRootCmd() }
 // Execute builds and runs the root command, returning a process exit code.
 func Execute() int {
 	root := newRootCmd()
-	// Absorb common LLM argv slips (--userId -> --user-id, --limit100 ->
-	// --limit 100) before cobra parses, echoing each fix to stderr so the data
-	// on stdout is untouched and the agent learns the canonical form.
-	if corrected, corrections := cliflags.Normalize(os.Args[1:], cliflags.Collect(root)); len(corrections) > 0 {
+	// Absorb common LLM argv slips before cobra parses, echoing each fix to
+	// stderr so the data on stdout is untouched and the agent learns the rule:
+	//   - flag-name / sticky-value (--userId -> --user-id, --limit100 -> --limit 100);
+	//   - literal backslash escapes in Markdown body flags (--content "a\n\nb"),
+	//     which the shell did not expand and Bitbucket would render verbatim.
+	corrected, corrections := cliflags.Normalize(os.Args[1:], cliflags.Collect(root))
+	corrected, escCorrections := cliflags.InterpretEscapes(corrected, cliflags.BodyFlags)
+	corrections = append(corrections, escCorrections...)
+	if len(corrections) > 0 {
 		root.SetArgs(corrected)
 		output.EmitNotice(os.Stderr, map[string]any{"_notice": map[string]any{"corrections": corrections}})
 	}

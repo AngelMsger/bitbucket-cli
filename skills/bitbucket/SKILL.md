@@ -1,6 +1,6 @@
 ---
 name: bitbucket
-version: 0.11.0
+version: 0.11.1
 description: "Use Bitbucket as a code-hosting backend for coding agents. Browse repositories and source files at any ref, drive pull request review and merge workflows, see per-file diffs and diffstats, check mergeability and CI build status, fetch a PR into a local git checkout, post inline review comments, resolve or reopen comment threads, triage and respond to received review comments (with resolution / task status and --unresolved filters), and preview every write with --dry-run or lock the session with read-only mode. Supports Bitbucket Cloud and Data Center / Server. Use when the user mentions Bitbucket, a PR or pull-request URL or ID, repository browsing, file content at a ref, code review, responding to or addressing PR review comments, resolving a comment thread or task, approve/decline/merge a PR, asks to read a diff, or wants a dry-run / read-only / safe-mode session."
 metadata:
   requires:
@@ -80,6 +80,13 @@ TTY — agents should never pass it.
   stuck to its value (`--limit100`) are auto-corrected to the canonical form when
   it is a real flag; each fix is echoed as a `{"_notice":{"corrections":[…]}}`
   line on stderr. Prefer the canonical `--kebab-case value` form regardless.
+- **Literal `\n` in body flags.** The shell does not expand `\n` inside double
+  quotes, so the free-text body flags (`--content`, `--description`, `--message`)
+  decode the `\n` `\r` `\t` `\\` whitelist into real characters before sending —
+  `--content "a\n\nb"` posts two paragraphs, not a literal `a\n\nb` — and echo an
+  `{"_notice":{"corrections":[{"kind":"escape",…}]}}` line on stderr. Use the
+  `--content-file` / `--description-file` flags for exact bytes (read verbatim,
+  no decoding). See `references/commenting.md` › "Multi-line bodies".
 
 See the topic references in `references/` for details and decision trees.
 

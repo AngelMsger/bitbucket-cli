@@ -164,8 +164,8 @@ func newCommentAddCmd(s *appState) *cobra.Command {
 	}
 	f := cmd.Flags()
 	f.StringVar(&prArg, "pr", "", "<workspace>/<repo>/<id> or PR URL")
-	f.StringVar(&content, "content", "", "comment body (Markdown)")
-	f.StringVar(&contentFile, "content-file", "", "read content from this file")
+	f.StringVar(&content, "content", "", "comment body (Markdown); literal \\n \\t \\r are decoded to real newlines/tabs (use --content-file for exact bytes)")
+	f.StringVar(&contentFile, "content-file", "", "read content from this file (sent as exact bytes, no escape decoding)")
 	f.StringVar(&inline, "inline", "", "inline anchor as <path>:<line> (line is the new/post-change file line unless --side old)")
 	f.StringVar(&side, "side", "new", "diff side the --inline line refers to: new (post-change) or old (pre-change/removed)")
 	f.IntVar(&replyTo, "reply-to", 0, "reply to this comment ID")
@@ -210,7 +210,7 @@ func newCommentUpdateCmd(s *appState) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&prArg, "pr", "", "<workspace>/<repo>/<id> or PR URL")
-	cmd.Flags().StringVar(&content, "content", "", "new content (Markdown)")
+	cmd.Flags().StringVar(&content, "content", "", "new content (Markdown); literal \\n \\t \\r are decoded to real newlines/tabs")
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "preview the HTTP request without sending it")
 	_ = cmd.MarkFlagRequired("pr")
 	_ = cmd.MarkFlagRequired("content")

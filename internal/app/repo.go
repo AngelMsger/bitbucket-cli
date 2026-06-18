@@ -173,7 +173,7 @@ func newRepoCreateCmd(s *appState) *cobra.Command {
 	f := cmd.Flags()
 	f.StringVar(&workspace, "workspace", "", "workspace slug / project key")
 	f.StringVar(&name, "name", "", "human-friendly name (defaults to slug)")
-	f.StringVar(&description, "description", "", "repository description")
+	f.StringVar(&description, "description", "", "repository description; literal \\n \\t \\r are decoded to real newlines/tabs")
 	f.BoolVar(&private, "private", true, "make the repository private")
 	f.BoolVar(&dryRun, "dry-run", false, "preview the HTTP request instead of sending it")
 	return cmd

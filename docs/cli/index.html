@@ -305,8 +305,8 @@ JSON with structured errors.</p>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
-        <tr><td><code>--content</code></td><td></td><td>comment body (Markdown)</td></tr>
-        <tr><td><code>--content-file</code></td><td></td><td>read content from this file</td></tr>
+        <tr><td><code>--content</code></td><td></td><td>comment body (Markdown); literal \n \t \r are decoded to real newlines/tabs (use --content-file for exact bytes)</td></tr>
+        <tr><td><code>--content-file</code></td><td></td><td>read content from this file (sent as exact bytes, no escape decoding)</td></tr>
         <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>preview the HTTP request without sending it</td></tr>
         <tr><td><code>--inline</code></td><td></td><td>inline anchor as &lt;path&gt;:&lt;line&gt; (line is the new/post-change file line unless --side old)</td></tr>
         <tr><td><code>--pr</code></td><td></td><td>&lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt; or PR URL</td></tr>
@@ -387,7 +387,7 @@ by `comment list` and `pr threads`.</p>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
-        <tr><td><code>--content</code></td><td></td><td>new content (Markdown)</td></tr>
+        <tr><td><code>--content</code></td><td></td><td>new content (Markdown); literal \n \t \r are decoded to real newlines/tabs</td></tr>
         <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>preview the HTTP request without sending it</td></tr>
         <tr><td><code>--pr</code></td><td></td><td>&lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt; or PR URL</td></tr>
         </tbody>
@@ -703,8 +703,8 @@ and the exit code is non-zero if any approval failed.</p>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
         <tr><td><code>--close-source-branch</code></td><td><code>false</code></td><td>close the source branch on merge</td></tr>
-        <tr><td><code>--description</code></td><td></td><td>PR description (Markdown)</td></tr>
-        <tr><td><code>--description-file</code></td><td></td><td>read description from this file</td></tr>
+        <tr><td><code>--description</code></td><td></td><td>PR description (Markdown); literal \n \t \r are decoded to real newlines/tabs (use --description-file for exact bytes)</td></tr>
+        <tr><td><code>--description-file</code></td><td></td><td>read description from this file (sent as exact bytes, no escape decoding)</td></tr>
         <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>preview the HTTP request without sending it</td></tr>
         <tr><td><code>--repo</code></td><td></td><td>&lt;workspace&gt;/&lt;repo&gt;</td></tr>
         <tr><td><code>--reviewer</code></td><td><code>[]</code></td><td>reviewer UUID (Cloud) or username (DC); repeatable</td></tr>
@@ -729,7 +729,7 @@ single &#39;-&#39; to read newline-separated references from stdin. --yes (or
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
         <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>preview the HTTP request without sending it</td></tr>
-        <tr><td><code>--message</code></td><td></td><td>decline message</td></tr>
+        <tr><td><code>--message</code></td><td></td><td>decline message; literal \n \t \r are decoded to real newlines/tabs</td></tr>
         <tr><td><code>--yes</code></td><td><code>false</code></td><td>confirm declining</td></tr>
         </tbody>
       </table>
@@ -855,7 +855,7 @@ participant) require --workspace; --role author works globally via the user&#39;
         <tbody>
         <tr><td><code>--close-source-branch</code></td><td><code>false</code></td><td>close the source branch after merging</td></tr>
         <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>preview the HTTP request without sending it</td></tr>
-        <tr><td><code>--message</code></td><td></td><td>merge commit message</td></tr>
+        <tr><td><code>--message</code></td><td></td><td>merge commit message; literal \n \t \r are decoded to real newlines/tabs</td></tr>
         <tr><td><code>--strategy</code></td><td><code>merge_commit</code></td><td>merge_commit | squash | fast_forward</td></tr>
         <tr><td><code>--yes</code></td><td><code>false</code></td><td>confirm the merge</td></tr>
         </tbody>
@@ -928,7 +928,7 @@ participant) require --workspace; --role author works globally via the user&#39;
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
-        <tr><td><code>--description</code></td><td></td><td>new description</td></tr>
+        <tr><td><code>--description</code></td><td></td><td>new description; literal \n \t \r are decoded to real newlines/tabs</td></tr>
         <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>preview the HTTP request without sending it</td></tr>
         <tr><td><code>--reviewer</code></td><td><code>[]</code></td><td>replace reviewer list (repeatable)</td></tr>
         <tr><td><code>--title</code></td><td></td><td>new title</td></tr>
@@ -970,7 +970,7 @@ participant) require --workspace; --role author works globally via the user&#39;
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
-        <tr><td><code>--description</code></td><td></td><td>repository description</td></tr>
+        <tr><td><code>--description</code></td><td></td><td>repository description; literal \n \t \r are decoded to real newlines/tabs</td></tr>
         <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>preview the HTTP request instead of sending it</td></tr>
         <tr><td><code>--name</code></td><td></td><td>human-friendly name (defaults to slug)</td></tr>
         <tr><td><code>--private</code></td><td><code>true</code></td><td>make the repository private</td></tr>

@@ -15,6 +15,31 @@ Or read the body from a file:
 bitbucket-cli comment add --pr myws/myrepo/42 --content-file review.md
 ```
 
+## Multi-line bodies (newlines)
+
+A shell does **not** expand `\n` inside double quotes, so a naive
+`--content "para 1\n\npara 2"` would send a literal backslash-n and Bitbucket
+would render `para 1\n\npara 2` on one line. To remove that footgun, `--content`
+(and the other free-text body flags — `pr create/update --description`,
+`pr decline/merge --message`, `repo --description`) **decode a small escape
+whitelist** — `\n`, `\r`, `\t`, and `\\` — into the real characters before
+sending, echoing a one-line `{"_notice":{"corrections":[{"kind":"escape",…}]}}`
+to **stderr** so the rewrite is visible and stdout stays clean:
+
+```sh
+bitbucket-cli comment add --pr myws/myrepo/42 --content "para 1\n\npara 2"
+# stderr: {"_notice":{"corrections":[{"kind":"escape","flag":"--content","detail":"\\n→newline"}]}}
+# posted: two paragraphs, rendered with a real blank line between them
+```
+
+`\\` is honored so a **literal** backslash sequence is still expressible
+(`\\n` → `\n`), and any other escape — a regex `\d`, a Windows path — passes
+through untouched. For exact bytes with **no** decoding at all (e.g. a body that
+must keep a literal `\n`), use `--content-file` / `--description-file`; those
+flags are read verbatim and never rewritten. You can also keep using a real
+shell newline (`$'a\nb'`, a heredoc) — that already contains a newline, so
+there's nothing to decode.
+
 ## AI attribution (agent writes)
 
 When you post a comment **on the user's behalf as an AI agent**, prefix the content

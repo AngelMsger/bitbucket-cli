@@ -74,3 +74,69 @@ func TestNormalizeNoFalsePositive(t *testing.T) {
 		t.Errorf("unknown camel flag should pass through: out=%v corr=%v", out, corr)
 	}
 }
+
+func TestInterpretEscapesValue(t *testing.T) {
+	cases := []struct {
+		name        string
+		in          string
+		want        string
+		wantChanged bool
+	}{
+		{"literal newlines", `a\n\nb`, "a\n\nb", true},
+		{"tab and cr", `a\tb\rc`, "a\tb\rc", true},
+		{"no backslash untouched", "plain text", "plain text", false},
+		{"unknown escape preserved", `match \d+ digits`, `match \d+ digits`, false},
+		{"escaped backslash collapses", `a\\nb`, `a\nb`, true},
+		{"trailing lone backslash kept", `path\`, `path\`, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, _, changed := interpretEscapes(tc.in)
+			if got != tc.want || changed != tc.wantChanged {
+				t.Errorf("interpretEscapes(%q) = (%q, %v); want (%q, %v)",
+					tc.in, got, changed, tc.want, tc.wantChanged)
+			}
+		})
+	}
+}
+
+func TestInterpretEscapes(t *testing.T) {
+	cases := []struct {
+		name     string
+		in       []string
+		wantOut  []string
+		wantCorr int
+		wantFlag string
+	}{
+		{"space form content", []string{"--content", `a\n\nb`}, []string{"--content", "a\n\nb"}, 1, "--content"},
+		{"eq form description", []string{`--description=x\ny`}, []string{"--description=x\ny"}, 1, "--description"},
+		{"message decoded", []string{"--message", `line1\nline2`}, []string{"--message", "line1\nline2"}, 1, "--message"},
+		{"content-file is not a body flag", []string{"--content-file", `a\nb`}, []string{"--content-file", `a\nb`}, 0, ""},
+		{"non-body flag untouched", []string{"--limit", `5\n`}, []string{"--limit", `5\n`}, 0, ""},
+		{"body flag without escapes untouched", []string{"--content", "plain"}, []string{"--content", "plain"}, 0, ""},
+		{"after double dash untouched", []string{"--", "--content", `a\nb`}, []string{"--", "--content", `a\nb`}, 0, ""},
+		{"completion bypass", []string{"__complete", "--content", `a\nb`}, []string{"__complete", "--content", `a\nb`}, 0, ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			out, corr := InterpretEscapes(tc.in, BodyFlags)
+			if !reflect.DeepEqual(out, tc.wantOut) {
+				t.Errorf("out = %q; want %q", out, tc.wantOut)
+			}
+			if len(corr) != tc.wantCorr {
+				t.Fatalf("corrections = %d; want %d (%v)", len(corr), tc.wantCorr, corr)
+			}
+			if tc.wantCorr > 0 {
+				if corr[0].Kind != "escape" {
+					t.Errorf("kind = %q; want escape", corr[0].Kind)
+				}
+				if corr[0].Flag != tc.wantFlag {
+					t.Errorf("flag = %q; want %q", corr[0].Flag, tc.wantFlag)
+				}
+				if corr[0].Detail == "" {
+					t.Errorf("detail should be non-empty")
+				}
+			}
+		})
+	}
+}

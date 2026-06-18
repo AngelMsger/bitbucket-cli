@@ -20,10 +20,16 @@ import (
 )
 
 // Correction records one argv rewrite, for echoing back to the user/agent.
+// Original/Corrected carry the before/after token for the flag-name and
+// sticky-value kinds; Flag/Detail carry the affected flag and a short
+// human-readable summary for the escape kind (whose before/after values are
+// whole Markdown bodies, too large to echo verbatim).
 type Correction struct {
-	Original  string `json:"original"`
-	Corrected string `json:"corrected"`
-	Kind      string `json:"kind"` // "flag-name" | "sticky-value"
+	Original  string `json:"original,omitempty"`
+	Corrected string `json:"corrected,omitempty"`
+	Kind      string `json:"kind"` // "flag-name" | "sticky-value" | "escape"
+	Flag      string `json:"flag,omitempty"`
+	Detail    string `json:"detail,omitempty"`
 }
 
 // FlagInfo is the set of flags known to the command tree. Known holds every

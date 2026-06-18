@@ -2,6 +2,23 @@
 
 ## [Unreleased]
 
+## [0.9.3] - 2026-06-18
+
+### Fixed
+
+- **Literal `\n` in comment/PR bodies rendered as `\n` instead of a line
+  break.** A shell does not expand `\n` inside double quotes, so
+  `comment add --content "para 1\n\npara 2"` sent a literal backslash-n that
+  Bitbucket rendered verbatim on one line. The free-text body flags — `comment
+  add/update --content`, `pr create/update --description`, `pr decline/merge
+  --message`, and `repo --description` — now decode a small escape whitelist
+  (`\n`, `\r`, `\t`, `\\`) into the real characters before sending, echoing a
+  `{"_notice":{"corrections":[{"kind":"escape",…}]}}` line to **stderr** so the
+  rewrite is visible and stdout stays clean. `\\` stays expressible (`\\n` →
+  literal `\n`) and any other escape (a regex `\d`, a Windows path) passes
+  through untouched; the `--content-file` / `--description-file` flags are read
+  verbatim, never decoded, and remain the exact-bytes path.
+
 ## [0.9.2] - 2026-06-16
 
 ### Fixed
