@@ -182,6 +182,10 @@ assert_contains  "skill show"                "name: bitbucket" "${CLI[@]}" skill
 assert_exit      "missing PR -> 6"           6                "${CLI[@]}" pr get PROJ/demo/404
 assert_exit      "bad flag -> 2"             2                "${CLI[@]}" pr get PROJ/demo/1 --bogus
 assert_exit      "pr merge needs --yes -> 2" 2                "${CLI[@]}" pr merge PROJ/demo/1 </dev/null
+# The update notice must surface even when the command fails (it is emitted from
+# Execute after ExecuteC, not a success-only PostRunE).
+assert_err_contains "update notice survives a failed command" '"update"' \
+                                             "${CLI[@]}" pr merge PROJ/demo/1 </dev/null
 
 # --dry-run additions for v0.3 (every mutating command must accept --dry-run).
 assert_contains  "pr update --dry-run"       '"method": "PUT"' \

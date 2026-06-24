@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+## [0.9.5] - 2026-06-24
+
+### Fixed
+
+- **The "update available" notice was suppressed on failed commands.** It was
+  emitted from a `PersistentPostRunE`, which cobra runs only after a command
+  succeeds — so a command that errored (auth/API failure, a missing `--yes`,
+  etc.) never surfaced the notice, even when a newer release existed. It now
+  fires from `Execute` after the command runs, on success and failure alike, so
+  a failure-heavy (agent) workflow still learns an upgrade is available. The
+  stderr-only delivery, the skip list, and the `BITBUCKET_CLI_NO_UPDATE_NOTIFIER`
+  opt-out are unchanged.
+
 ## [0.9.4] - 2026-06-24
 
 ### Added
