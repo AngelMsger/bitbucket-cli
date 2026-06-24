@@ -32,6 +32,31 @@ up front.
   conventions in `CONTRIBUTING.md`.
 - Never commit `.env`, credentials, tokens, or build artifacts.
 
+## Cloud / Data Center parity — touch both branches, always
+
+This CLI targets **two backends** (Bitbucket Cloud and Data Center / Server),
+and the same concept is reached through different APIs. The recurring bug class
+here is a Cloud branch honouring an input that the DC branch silently drops (or
+vice versa): a missing optimistic-lock `version`, a `--close-source-branch` that
+no-ops, a feature wrongly hard-coded as "Cloud only".
+
+When you touch any read/write path that branches on `c.flavor`:
+
+1. **Handle both branches or consciously diverge.** Every request field set by
+   the command must be consumed by *both* flavor branches, or the divergence
+   must be declared — see next point. Compiling proves nothing here: a DC branch
+   that never reads `req.Foo` is silently wrong.
+2. **Declare divergence in one place.** Asymmetric behaviour lives in the
+   capability registry (`internal/apiclient/capability.go`), never as an inline
+   `cerrors.New("...only on Cloud")`. The runtime guard, help/docs, and the
+   parity test all read that table, so they cannot drift. Add a `Capability`
+   row (with a reason) before you write an "X-only" guard.
+3. **Add/extend the parity tests** in `internal/apiclient/capability_test.go`:
+   keep the registry complete (both flavors covered) and snapshot the per-flavor
+   wire payload (golden) so a one-sided change shows up as a diff in review.
+4. **Never write `flavor-only` without a registry entry.** A mislabelled
+   "Cloud-only" that the other flavor actually supports is itself the bug.
+
 ## Discoverability — no dead-end inputs
 
 **Every non-trivial identifier a command accepts as input must be discoverable

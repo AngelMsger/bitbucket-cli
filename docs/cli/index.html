@@ -111,6 +111,7 @@
       <a href="#bitbucket-cli-skill-install">bitbucket-cli skill install</a>
       <a href="#bitbucket-cli-skill-path">bitbucket-cli skill path</a>
       <a href="#bitbucket-cli-skill-show">bitbucket-cli skill show</a>
+      <a href="#bitbucket-cli-skill-status">bitbucket-cli skill status</a>
       <a href="#bitbucket-cli-skill-uninstall">bitbucket-cli skill uninstall</a>
       </div>
     <div class="side-group">
@@ -148,7 +149,12 @@
     <p class="lead">bitbucket-cli browses repositories, drives the full pull-request review and merge
 lifecycle, posts inline review comments, and queries branches and commits.
 It supports Bitbucket Cloud and Data Center / Server, and emits agent-friendly
-JSON with structured errors.</p>
+JSON with structured errors.
+
+AGENT NOTE: a companion Skill (&#34;bitbucket&#34;) carries the canonical usage,
+safety modes, and env setup and is the source of truth for driving this CLI.
+If you are an agent, load that Skill before composing commands. Check status
+with `bitbucket-cli skill status`; install it with `bitbucket-cli skill install`.</p>
     <p class="lead">Generated from the command tree, so it always matches <code>--help</code>.</p>
 
     <section class="cmd">
@@ -709,7 +715,7 @@ and the exit code is non-zero if any approval failed.</p>
         <tr><td><code>--repo</code></td><td></td><td>&lt;workspace&gt;/&lt;repo&gt;</td></tr>
         <tr><td><code>--reviewer</code></td><td><code>[]</code></td><td>reviewer UUID (Cloud) or username (DC); repeatable</td></tr>
         <tr><td><code>--source</code></td><td></td><td>source branch</td></tr>
-        <tr><td><code>--source-repo</code></td><td></td><td>cross-repo source (Cloud forks): &lt;ws&gt;/&lt;repo&gt;</td></tr>
+        <tr><td><code>--source-repo</code></td><td></td><td>cross-repo source fork: &lt;ws&gt;/&lt;repo&gt; (DC also needs --target)</td></tr>
         <tr><td><code>--target</code></td><td></td><td>destination branch (default: repo default)</td></tr>
         <tr><td><code>--title</code></td><td></td><td>PR title</td></tr>
         </tbody>
@@ -865,7 +871,7 @@ participant) require --workspace; --role author works globally via the user&#39;
     
     <section class="cmd" id="bitbucket-cli-pr-request-changes">
       <h2>bitbucket-cli pr request-changes</h2>
-      <p class="short">Cast (or withdraw) a request-changes vote (Cloud only)</p>
+      <p class="short">Cast (or withdraw) a request-changes / needs-work vote (Cloud only)</p>
       <pre>bitbucket-cli pr request-changes &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt; [flags]</pre>
       
       <h3>Options</h3>
@@ -1079,6 +1085,21 @@ version.</p>
       <pre>bitbucket-cli skill show</pre>
       
       
+      
+    </section>
+    
+    <section class="cmd" id="bitbucket-cli-skill-status">
+      <h2>bitbucket-cli skill status</h2>
+      <p class="short">Report whether the companion Skill is loaded and installed</p>
+      <pre>bitbucket-cli skill status [flags]</pre>
+      
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--project</code></td><td><code>false</code></td><td>check the project skills dirs (./.claude/skills, ./.agents/skills) instead of $HOME</td></tr>
+        </tbody>
+      </table>
       
     </section>
     

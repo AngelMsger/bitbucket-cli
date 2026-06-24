@@ -3,6 +3,7 @@ package apiclient
 import (
 	"context"
 	"strconv"
+	"strings"
 
 	cerrors "github.com/angelmsger/bitbucket-cli/internal/errors"
 )
@@ -69,6 +70,34 @@ func (c *apiClient) buildCreatePR(req CreatePRReq) (method, path string, payload
 	}
 	// Data Center
 	path = c.prsPath(req.Repo)
+	// DC has no close-source-branch property at PR creation. The emulation only
+	// exists at merge time (delete the source branch after a successful merge),
+	// so honouring it here is impossible — reject rather than silently drop it.
+	if req.CloseSourceBranch {
+		err = cerrors.New(cerrors.CategoryUsage, "PR_CREATE_CLOSE_SOURCE_DC",
+			"Bitbucket Data Center cannot set close-source-branch when opening a PR").
+			WithHint("Pass --close-source-branch to `pr merge` instead; it deletes the source branch after the merge.")
+		return
+	}
+	// fromRef points at the source repository. For a same-repo PR that is the
+	// target repo; for a cross-fork PR it is the fork named by --source-repo.
+	fromRepo := req.Repo
+	if req.SourceRepo != "" {
+		fork, perr := parseRepoSpec(req.SourceRepo)
+		if perr != nil {
+			err = perr
+			return
+		}
+		fromRepo = fork
+		// DC matches cross-fork by comparing fromRef/toRef repositories, so the
+		// target ref must be spelled out explicitly — it cannot default.
+		if req.Destination == "" {
+			err = cerrors.New(cerrors.CategoryUsage, "PR_FORK_NEEDS_TARGET",
+				"a cross-fork PR requires an explicit target branch").
+				WithNextSteps("Pass --target <branch> (the upstream destination branch)")
+			return
+		}
+	}
 	body := map[string]any{
 		"title":       req.Title,
 		"description": req.Description,
@@ -78,8 +107,8 @@ func (c *apiClient) buildCreatePR(req CreatePRReq) (method, path string, payload
 		"fromRef": map[string]any{
 			"id": "refs/heads/" + req.Source,
 			"repository": map[string]any{
-				"slug":    req.Repo.Slug,
-				"project": map[string]string{"key": req.Repo.Workspace},
+				"slug":    fromRepo.Slug,
+				"project": map[string]string{"key": fromRepo.Workspace},
 			},
 		},
 	}
@@ -103,12 +132,27 @@ func (c *apiClient) buildCreatePR(req CreatePRReq) (method, path string, payload
 	return
 }
 
+// parseRepoSpec splits a "<workspace>/<repo>" spec into a RepoRef. It is used
+// for cross-repo references (e.g. --source-repo) where the value is a bare spec
+// rather than a resolved RepoRef.
+func parseRepoSpec(spec string) (RepoRef, error) {
+	ws, slug, ok := strings.Cut(spec, "/")
+	if !ok || ws == "" || slug == "" || strings.Contains(slug, "/") {
+		return RepoRef{}, cerrors.Newf(cerrors.CategoryUsage, "BAD_REPO_SPEC",
+			"expected <workspace>/<repo>, got %q", spec)
+	}
+	return RepoRef{Workspace: ws, Slug: slug}, nil
+}
+
 // UpdatePR edits a PR's title/description/reviewers.
 func (c *apiClient) UpdatePR(ctx context.Context, req UpdatePRReq) (*PullRequest, error) {
 	if err := checkRepoRef(req.Repo); err != nil {
 		return nil, err
 	}
-	method, path, payload := c.buildUpdatePR(req)
+	method, path, payload, err := c.buildUpdatePR(ctx, req)
+	if err != nil {
+		return nil, err
+	}
 	if c.flavor == FlavorCloud {
 		var raw cloudPR
 		if err := c.doJSON(ctx, method, path, nil, payload, &raw); err != nil {
@@ -123,17 +167,17 @@ func (c *apiClient) UpdatePR(ctx context.Context, req UpdatePRReq) (*PullRequest
 	return mapDCPR(req.Repo, raw), nil
 }
 
-func (c *apiClient) buildUpdatePR(req UpdatePRReq) (method, path string, payload any) {
+func (c *apiClient) buildUpdatePR(ctx context.Context, req UpdatePRReq) (method, path string, payload any, err error) {
+	method = "PUT"
 	path = c.prPath(req.Repo, req.ID)
+	body := map[string]any{}
+	if req.Title != "" {
+		body["title"] = req.Title
+	}
+	if req.Description != "" {
+		body["description"] = req.Description
+	}
 	if c.flavor == FlavorCloud {
-		method = "PUT"
-		body := map[string]any{}
-		if req.Title != "" {
-			body["title"] = req.Title
-		}
-		if req.Description != "" {
-			body["description"] = req.Description
-		}
 		if req.Reviewers != nil {
 			reviewers := make([]map[string]string, 0, len(req.Reviewers))
 			for _, r := range req.Reviewers {
@@ -144,14 +188,14 @@ func (c *apiClient) buildUpdatePR(req UpdatePRReq) (method, path string, payload
 		payload = body
 		return
 	}
-	method = "PUT"
-	body := map[string]any{}
-	if req.Title != "" {
-		body["title"] = req.Title
+	// Data Center guards updates with an optimistic lock: the PUT must carry the
+	// PR's current version or the server rejects it. Fetch it first.
+	cur, gerr := c.dcGetPRRaw(ctx, req.Repo, req.ID)
+	if gerr != nil {
+		err = gerr
+		return
 	}
-	if req.Description != "" {
-		body["description"] = req.Description
-	}
+	body["version"] = cur.Version
 	if req.Reviewers != nil {
 		reviewers := make([]map[string]any, 0, len(req.Reviewers))
 		for _, r := range req.Reviewers {
@@ -217,7 +261,29 @@ func (c *apiClient) MergePR(ctx context.Context, req MergePRReq) (*PullRequest, 
 	if err := c.doJSON(ctx, method, path, nil, payload, &raw); err != nil {
 		return nil, err
 	}
-	return mapDCPR(req.Repo, raw), nil
+	pr := mapDCPR(req.Repo, raw)
+	// DC has no close-source-branch flag on the merge call. Honor the opt-in by
+	// deleting the source branch after a successful merge. The source ref may
+	// live in a fork, so resolve the repository from the PR's own fromRef.
+	if req.CloseSourceBranch {
+		if derr := c.dcDeleteSourceBranch(ctx, raw); derr != nil {
+			return pr, cerrors.Wrap(derr, cerrors.CategoryServer, "PR_MERGED_BRANCH_KEPT",
+				"PR merged, but deleting the source branch failed")
+		}
+	}
+	return pr, nil
+}
+
+// dcDeleteSourceBranch removes the source branch of a just-merged DC PR, reading
+// the branch name and (possibly forked) repository from the PR's fromRef.
+func (c *apiClient) dcDeleteSourceBranch(ctx context.Context, pr dcPR) error {
+	src := pr.FromRef
+	repo := RepoRef{Workspace: src.Repository.Project.Key, Slug: src.Repository.Slug}
+	if repo.Workspace == "" || repo.Slug == "" || src.DisplayID == "" {
+		return cerrors.New(cerrors.CategoryInternal, "PR_NO_SOURCE_REF",
+			"could not resolve the source branch from the merged PR")
+	}
+	return c.DeleteBranch(ctx, DeleteBranchReq{Repo: repo, Name: src.DisplayID})
 }
 
 func (c *apiClient) buildMergePR(ctx context.Context, req MergePRReq) (method, path string, payload any, err error) {
@@ -293,7 +359,10 @@ func (c *apiClient) DescribeWrite(ctx context.Context, op any) (WriteRequestPlan
 		}
 		return WriteRequestPlan{Method: m, URL: c.baseURL + p, Payload: body}, nil
 	case UpdatePRReq:
-		m, p, body := c.buildUpdatePR(v)
+		m, p, body, err := c.buildUpdatePR(ctx, v)
+		if err != nil {
+			return WriteRequestPlan{}, err
+		}
 		return WriteRequestPlan{Method: m, URL: c.baseURL + p, Payload: body}, nil
 	case MergePRReq:
 		m, p, body, err := c.buildMergePR(ctx, v)
@@ -352,9 +421,9 @@ func (c *apiClient) DescribeWrite(ctx context.Context, op any) (WriteRequestPlan
 		if err := checkRepoRef(v.Repo); err != nil {
 			return WriteRequestPlan{}, err
 		}
-		if c.flavor != FlavorCloud {
+		if sup := c.supportFor(CapPRRequestChanges); !sup.Supported() {
 			return WriteRequestPlan{}, cerrors.New(cerrors.CategoryUsage, "PR_REQ_CHANGES_DC",
-				"request-changes is only available on Bitbucket Cloud").
+				"pr request-changes is not available on this backend: "+sup.Reason).
 				WithHint("On Data Center, decline the PR or post a comment to request changes.")
 		}
 		m := "POST"

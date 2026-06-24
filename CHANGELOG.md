@@ -2,6 +2,73 @@
 
 ## [Unreleased]
 
+## [0.9.4] - 2026-06-24
+
+### Added
+
+- **Companion-Skill discovery for agents.** Agents sometimes shell out to this
+  CLI without loading the `bitbucket` Skill, bypassing the usage recipes and
+  safety guidance it maintains. Three nudges now close that gap: the root
+  `--help` carries an `AGENT NOTE` pointing at the Skill; a new
+  `bitbucket-cli skill status` reports whether the Skill is loaded (via the
+  `BITBUCKET_CLI_SKILL` handshake) and installed, with the single next action;
+  and any real command run non-interactively without that handshake prints a
+  one-line `{"_notice":{"skill":…}}` hint to **stderr** (stdout stays clean).
+  The hint is silent for humans (TTY), self-silences once the Skill sets
+  `BITBUCKET_CLI_SKILL=1`, and can be turned off with `BITBUCKET_CLI_NO_SKILL_HINT=1`.
+- **Cloud/Data-Center capability registry** (`internal/apiclient/capability.go`).
+  Features that differ between flavors (request-changes, close-source-branch,
+  cross-fork create) are declared once with a support level + reason; the
+  runtime guard, help, and a new parity test all read that single table instead
+  of hard-coded inline checks, so an "X-only" claim can no longer drift from
+  reality. Backed by parity tests that keep the table complete and snapshot the
+  per-flavor create-PR wire payload.
+
+### Fixed
+
+- **`pr update` failed on Bitbucket Data Center (missing optimistic-lock
+  version).** DC guards a PR update with a version: the `PUT
+  .../pull-requests/{id}` must echo the PR's current `version` or the server
+  rejects it (400/409). The builder sent title/description/reviewers without it,
+  so every DC `pr update` (e.g. editing a description) failed. It now fetches the
+  current version first and includes it, matching how `pr merge` / `pr decline`
+  and the comment writers already handle DC's lock. `--dry-run` resolves the
+  version too, so the previewed PUT is the real one.
+- **Cross-fork `pr create` was impossible on Data Center.** `--source-repo`
+  pointed the PR's `fromRef` at the fork only on Cloud; the DC branch hard-coded
+  `fromRef.repository` to the target repo and ignored the flag, so a
+  fork → upstream PR could not be opened from the CLI. The DC builder now points
+  `fromRef` at the fork named by `--source-repo`. Because DC distinguishes a
+  cross-fork PR by comparing the from/to repositories, a fork PR also requires an
+  explicit `--target` (the upstream destination branch) — omitting it is now a
+  clear usage error instead of a malformed request.
+
+### Changed
+
+- **`pr request-changes` gained `need-work` / `needs-work` aliases.** Bitbucket
+  Data Center labels this verdict "Needs work" in the UI, so the alias matches
+  what reviewers actually call it. `bitbucket-cli pr need-work <ref>` is now
+  equivalent to `pr request-changes <ref>` (the same Cloud-only caveat applies).
+- **`pr merge --close-source-branch` now works on Data Center.** Cloud deletes
+  the source branch atomically via a body flag; DC has no such flag, so the CLI
+  used to silently drop the opt-in. It now deletes the source branch after a
+  successful DC merge, resolving the (possibly forked) source repository from the
+  PR's own `fromRef`. If the merge succeeds but the branch delete fails, the
+  merge is reported as done with a distinct `PR_MERGED_BRANCH_KEPT` error so the
+  residual cleanup is visible. The flag remains strictly opt-in — nothing is
+  deleted unless you pass it. DC has no equivalent at PR *creation*, so
+  `pr create --close-source-branch` is now rejected on DC (use it on `pr merge`)
+  rather than silently dropped.
+
+### Known limitations
+
+- **`pr request-changes` is still Data Center-only-unimplemented.** DC models a
+  "needs work" vote through the participant-status API
+  (`PUT .../participants/{userSlug}`), which needs the caller's user slug; the DC
+  client has no working whoami yet, so the command returns a clear "not yet
+  implemented" error pointing at decline / comment instead. (Was previously
+  mislabelled "only available on Bitbucket Cloud".)
+
 ## [0.9.3] - 2026-06-18
 
 ### Fixed

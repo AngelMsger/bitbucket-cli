@@ -59,7 +59,11 @@ func newRootCmd() *cobra.Command {
 		Long: "bitbucket-cli browses repositories, drives the full pull-request review and merge\n" +
 			"lifecycle, posts inline review comments, and queries branches and commits.\n" +
 			"It supports Bitbucket Cloud and Data Center / Server, and emits agent-friendly\n" +
-			"JSON with structured errors.",
+			"JSON with structured errors.\n\n" +
+			"AGENT NOTE: a companion Skill (\"bitbucket\") carries the canonical usage,\n" +
+			"safety modes, and env setup and is the source of truth for driving this CLI.\n" +
+			"If you are an agent, load that Skill before composing commands. Check status\n" +
+			"with `bitbucket-cli skill status`; install it with `bitbucket-cli skill install`.",
 		Version:       versionString(),
 		SilenceErrors: true,
 		SilenceUsage:  true,
@@ -67,6 +71,8 @@ func newRootCmd() *cobra.Command {
 			// config / auth subcommands manage configuration themselves and
 			// must run even when nothing is configured yet.
 			output.SetErrorPretty(state.gflags.pretty)
+			// Nudge agents that shell out without the companion Skill loaded.
+			maybeSkillHint(cmd)
 			return state.load()
 		},
 		// PersistentPostRunE runs only after a command succeeds (cobra skips

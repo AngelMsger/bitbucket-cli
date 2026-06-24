@@ -78,7 +78,8 @@ func TestRedacted(t *testing.T) {
 }
 
 func TestStoreKeychainRoundTrip(t *testing.T) {
-	t.Parallel()
+	// Not parallel: the shared go-keyring mock's map is written here and is not
+	// goroutine-safe, so the keychain-writing tests must not run concurrently.
 	s := NewStore(t.TempDir())
 	backend, err := s.Save("host:pat", "tok-xyz")
 	if err != nil {
@@ -123,7 +124,7 @@ func TestStoreFileFallback(t *testing.T) {
 }
 
 func TestResolvePrefersTransientSecret(t *testing.T) {
-	t.Parallel()
+	// Not parallel: writes the shared, non-goroutine-safe go-keyring mock map.
 	s := NewStore(t.TempDir())
 	if _, err := s.Save("kms.example.com:pat", "stored-token"); err != nil {
 		t.Fatal(err)
@@ -142,7 +143,7 @@ func TestResolvePrefersTransientSecret(t *testing.T) {
 }
 
 func TestResolveFallsBackToStore(t *testing.T) {
-	t.Parallel()
+	// Not parallel: writes the shared, non-goroutine-safe go-keyring mock map.
 	s := NewStore(t.TempDir())
 	if _, err := s.Save("kms2.example.com:pat", "stored-token"); err != nil {
 		t.Fatal(err)

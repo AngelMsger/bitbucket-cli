@@ -88,7 +88,7 @@ is published at <https://angelmsger.github.io/bitbucket-cli/cli/>.
 | [`bitbucket-cli pr inbox`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-inbox) | List PRs involving me across repositories (--role reviewer by default) |
 | [`bitbucket-cli pr list`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-list) | List pull requests in a repository |
 | [`bitbucket-cli pr merge`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-merge) | Merge a PR |
-| [`bitbucket-cli pr request-changes`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-request-changes) | Cast (or withdraw) a request-changes vote (Cloud only) |
+| [`bitbucket-cli pr request-changes`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-request-changes) | Cast (or withdraw) a request-changes / needs-work vote (Cloud only) |
 | [`bitbucket-cli pr status`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-status) | Show merge readiness: mergeable, conflicts, reviewers, CI builds |
 | [`bitbucket-cli pr threads`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-threads) | List PR review threads grouped by file and anchor |
 | [`bitbucket-cli pr unapprove`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-unapprove) | Withdraw an approval |
@@ -113,6 +113,7 @@ is published at <https://angelmsger.github.io/bitbucket-cli/cli/>.
 | [`bitbucket-cli skill install`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-skill-install) | Deploy the embedded Skill into a coding agent's skills directory |
 | [`bitbucket-cli skill path`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-skill-path) | Print where the Skill would be installed, and whether it is |
 | [`bitbucket-cli skill show`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-skill-show) | Print the embedded SKILL.md to stdout |
+| [`bitbucket-cli skill status`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-skill-status) | Report whether the companion Skill is loaded and installed |
 | [`bitbucket-cli skill uninstall`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-skill-uninstall) | Remove the companion Skill from a coding agent's skills directory |
 
 ## tag

@@ -28,9 +28,9 @@ func (c *apiClient) RequestPRChanges(ctx context.Context, req RequestChangesReq)
 	if err := checkRepoRef(req.Repo); err != nil {
 		return err
 	}
-	if c.flavor != FlavorCloud {
+	if sup := c.supportFor(CapPRRequestChanges); !sup.Supported() {
 		return cerrors.New(cerrors.CategoryUsage, "PR_REQ_CHANGES_DC",
-			"request-changes is only available on Bitbucket Cloud").
+			"pr request-changes is not available on this backend: "+sup.Reason).
 			WithHint("On Data Center, decline the PR or post a comment to request changes.")
 	}
 	method := "POST"

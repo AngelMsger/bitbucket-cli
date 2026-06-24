@@ -239,7 +239,7 @@ func newPRCreateCmd(s *appState) *cobra.Command {
 	f.StringVar(&description, "description", "", "PR description (Markdown); literal \\n \\t \\r are decoded to real newlines/tabs (use --description-file for exact bytes)")
 	f.StringVar(&descriptionFile, "description-file", "", "read description from this file (sent as exact bytes, no escape decoding)")
 	f.StringVar(&source, "source", "", "source branch")
-	f.StringVar(&sourceRepo, "source-repo", "", "cross-repo source (Cloud forks): <ws>/<repo>")
+	f.StringVar(&sourceRepo, "source-repo", "", "cross-repo source fork: <ws>/<repo> (DC also needs --target)")
 	f.StringVar(&destination, "target", "", "destination branch (default: repo default)")
 	f.StringSliceVar(&reviewers, "reviewer", nil, "reviewer UUID (Cloud) or username (DC); repeatable")
 	f.BoolVar(&closeSourceBranch, "close-source-branch", false, "close the source branch on merge")
@@ -517,9 +517,10 @@ func doPRApproval(s *appState, arg string, approve, dryRun bool) (any, error) {
 func newPRRequestChangesCmd(s *appState) *cobra.Command {
 	var withdraw, dryRun bool
 	cmd := &cobra.Command{
-		Use:   "request-changes <workspace>/<repo>/<id>",
-		Short: "Cast (or withdraw) a request-changes vote (Cloud only)",
-		Args:  cobra.ExactArgs(1),
+		Use:     "request-changes <workspace>/<repo>/<id>",
+		Aliases: []string{"need-work", "needs-work"},
+		Short:   "Cast (or withdraw) a request-changes / needs-work vote (Cloud only)",
+		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ref, id, err := resolvePRRef(args[0], apiclient.RepoRef{})
 			if err != nil {
