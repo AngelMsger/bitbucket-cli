@@ -81,15 +81,15 @@ heuristics (host `*.bitbucket.org` → cloud); otherwise `auto` probes
 `/2.0/user` vs `/rest/api/1.0/application-properties`.
 
 **Endpoint differences are isolated to two files**:
-`internal/apiclient/dialect.go` (path helpers — `repoPath`, `prPath`,
+`pkg/apiclient/dialect.go` (path helpers — `repoPath`, `prPath`,
 `branchesPath`, `commitStatusesPath`, `srcPath`, `filesPath`, …) and
-`internal/apiclient/mapping.go` (raw two-flavor responses → unified
+`pkg/apiclient/mapping.go` (raw two-flavor responses → unified
 models).
 
 ## 3. Normalized data model
 
 Every API method returns flavor-agnostic models
-(`internal/apiclient/models.go`):
+(`pkg/apiclient/models.go`):
 
 ```
 ServerInfo  { Flavor, BaseURL, Reachable }
@@ -247,7 +247,7 @@ pr approve | pr request-changes | pr decline | pr merge
 
 ### 6.2 `pr status` — parallel aggregation
 
-`internal/apiclient/merge_check.go::GetPRStatus` uses `sync.WaitGroup`
+`pkg/apiclient/merge_check.go::GetPRStatus` uses `sync.WaitGroup`
 to fire in parallel:
 
 1. `GetPR` — PR details (including reviewers / state).

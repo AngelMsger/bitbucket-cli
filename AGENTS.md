@@ -13,7 +13,7 @@ repository. It is intentionally short — the real guidance lives elsewhere.
    [`docs/`](docs/):
 
    - [`docs/technical-design.md`](docs/technical-design.md) — architecture, the
-     `internal/` package layout, the API-client/flavor abstraction, the config
+     package layout, the API-client/flavor abstraction, the config
      and error models, and the rendering pipeline. Read before changing core
      behavior.
    - [`docs/installation.md`](docs/installation.md) — install methods, shell
@@ -47,11 +47,11 @@ When you touch any read/write path that branches on `c.flavor`:
    must be declared — see next point. Compiling proves nothing here: a DC branch
    that never reads `req.Foo` is silently wrong.
 2. **Declare divergence in one place.** Asymmetric behaviour lives in the
-   capability registry (`internal/apiclient/capability.go`), never as an inline
+   capability registry (`pkg/apiclient/capability.go`), never as an inline
    `cerrors.New("...only on Cloud")`. The runtime guard, help/docs, and the
    parity test all read that table, so they cannot drift. Add a `Capability`
    row (with a reason) before you write an "X-only" guard.
-3. **Add/extend the parity tests** in `internal/apiclient/capability_test.go`:
+3. **Add/extend the parity tests** in `pkg/apiclient/capability_test.go`:
    keep the registry complete (both flavors covered) and snapshot the per-flavor
    wire payload (golden) so a one-sided change shows up as a diff in review.
 4. **Never write `flavor-only` without a registry entry.** A mislabelled
@@ -87,8 +87,8 @@ When you add a command or flag that takes a new kind of input:
 The same rule applies to error messages. When a command rejects an
 invocation for missing a required identifier, the resulting `CLIError`'s
 `next_steps` must include the discovery command — see
-`internal/apiclient/repos.go` (`REPO_NO_WORKSPACE`) and
-`internal/apiclient/pulls_inbox.go` (`INBOX_NO_WORKSPACE`) for the canonical
+`pkg/apiclient/repos.go` (`REPO_NO_WORKSPACE`) and
+`pkg/apiclient/pulls_inbox.go` (`INBOX_NO_WORKSPACE`) for the canonical
 shape: list the discovery command first, then the flag or environment
 variable fallback. Errors that say "Pass `--workspace <name>`" without
 showing the user how to find a valid `<name>` are defects.
@@ -124,14 +124,14 @@ Two orthogonal protections guard every operation that mutates remote state
 
 When you add a new mutating method on `Client`:
 
-- Add the method override on `readOnlyClient` in `internal/apiclient/readonly.go`
+- Add the method override on `readOnlyClient` in `pkg/apiclient/readonly.go`
   so the wrapper actually blocks it.
-- Add a `DescribeWrite` case (`internal/apiclient/pulls_write.go`) + a
+- Add a `DescribeWrite` case (`pkg/apiclient/pulls_write.go`) + a
   `--dry-run` branch on the calling command.
 - Add an e2e assertion for both the `--dry-run` happy path and the
   `READONLY_BLOCKED` rejection (see `scripts/e2e.sh`).
 - Add a row to the wrapper's table test in
-  `internal/apiclient/readonly_test.go`.
+  `pkg/apiclient/readonly_test.go`.
 
 `--dry-run` must *not* be blocked by read-only mode — `DescribeWrite` sends
 no HTTP and is the right tool to inspect what a write would look like under
