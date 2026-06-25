@@ -121,8 +121,10 @@ Summarize before writing anything back. A compact table the human can scan:
   ```
 - **Apply code fixes** on the local checkout and let the human review/push — this
   workflow does not push on the user's behalf by default.
-- **Marking threads resolved stays manual in the Bitbucket UI.** The CLI surfaces
-  resolution status (`--unresolved`) but does not set it.
+- **Resolve or reopen a thread:** `comment resolve <comment-id> --pr <ref>`
+  (add `--unresolve` to reopen). Filter to open threads when listing with
+  `comment list --pr <ref> --unresolved`. On Data Center this also completes /
+  reopens the associated task. Works on both flavors; `--dry-run` previews it.
 
 ## Inputs the agent needs
 

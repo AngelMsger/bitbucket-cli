@@ -27,6 +27,10 @@ When the user pastes a PR URL or names `<workspace>/<repo>/<id>`:
 5. **Commits / activity** — `pr commits` / `pr activity` enumerate the
    contained commits and the timeline (approvals, comments, state changes).
 
+The PR record itself comes from `pr get <ref> --scope summary|full` (`full`
+adds the description and reviewer detail); `--scope diff|commits|activity`
+mirror the standalone `pr diff`/`pr commits`/`pr activity` subcommands.
+
 See `reviewing-locally.md` for the end-to-end review decision tree (combines
 diffstat-first navigation with a local clone).
 
@@ -35,10 +39,14 @@ diffstat-first navigation with a local clone).
 - Approve: `bitbucket-cli pr approve <ref>`
 - Withdraw: `bitbucket-cli pr unapprove <ref>`
 - Request changes (Cloud only): `bitbucket-cli pr request-changes <ref>`
-  (add `--withdraw` to remove a previous request).
+  (aliases: `need-work`, `needs-work`; add `--withdraw` to remove a previous
+  request). On Data Center this is not implemented — decline or post a comment
+  instead.
 - Decline: `bitbucket-cli pr decline <ref> --yes` (destructive — requires `--yes`).
 - Merge: `bitbucket-cli pr merge <ref> --strategy <merge_commit|squash|fast_forward> --yes`.
-  Run with `--dry-run` first to preview the request body.
+  Run with `--dry-run` first to preview the request body. Add
+  `--close-source-branch` to delete the source branch on merge — native on
+  Cloud, emulated on Data Center via a follow-up branch delete after the merge.
 
 ## Creating
 
@@ -54,6 +62,29 @@ bitbucket-cli pr create \
 
 On Cloud, `--reviewer` takes a UUID; on Data Center, a username. Pass
 `--dry-run` to see the request envelope before committing.
+
+**Cross-fork PRs (from a fork into upstream).** When the source branch lives in a
+fork rather than the target repo, name the fork with `--source-repo <ws>/<repo>`;
+`--repo` stays the upstream repo the PR opens against (the PR's `fromRef` points
+at the fork, `toRef` at upstream):
+
+```sh
+bitbucket-cli pr create \
+  --repo UPSTREAM/repo \        # upstream — where the PR opens
+  --source-repo MYFORK/repo \   # the fork that holds the source branch
+  --source feature/x \
+  --target dev \                # the upstream destination branch
+  --title "Add X"
+```
+
+Works on both flavors. On Bitbucket Cloud `--target` may be omitted (defaults to
+the upstream default branch); on **Data Center a cross-fork PR requires an
+explicit `--target`** — omitting it is a usage error, not a guess.
+
+`pr create` also accepts `--close-source-branch` (delete the source branch when
+the PR later merges). This is a Cloud-only property at creation time — on Data
+Center it is rejected with a usage error; pass `--close-source-branch` to
+`pr merge` instead.
 
 **AI attribution (agent writes).** When you create or update a PR description on the
 user's behalf as an AI agent, prepend a single attribution line to the top of the

@@ -8,6 +8,11 @@
   including `default_branch`, clone URLs, visibility.
 - `bitbucket-cli repo clone-url <ws>/<repo> --protocol ssh|https` prints just
   the URL, suitable for `git clone $(bitbucket-cli repo clone-url …)`.
+- `bitbucket-cli repo create <slug> --workspace <ws>` creates a repository
+  (`--name`, `--description`; `--private` defaults to **true**). Writes —
+  preview with `--dry-run`.
+- `bitbucket-cli repo delete <ws>/<repo> --yes` deletes one (destructive —
+  requires `--yes`; `--dry-run` previews).
 
 If `BITBUCKET_DEFAULT_WORKSPACE` is set, the workspace can be omitted from
 shorthand arguments.

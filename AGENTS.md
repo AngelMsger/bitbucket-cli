@@ -154,6 +154,18 @@ the CLI from managing its own state.
   touches `docs/`. When commands, the feature
   list, or install instructions change, update `docs/index.html` to match — do
   not let the landing page drift from the README and the CLI.
+- **Keep the companion Skill in sync — it is the agent-facing source of truth.**
+  The embedded Skill under [`skills/bitbucket/`](skills/bitbucket/) (`SKILL.md` +
+  `references/`) is what coding agents read *instead of* `--help`, so a
+  capability the Skill omits effectively does not exist for them. Any new
+  command, subcommand, flag, or alias — and any change to flavor-specific
+  behavior (Cloud vs Data Center, e.g. a feature that becomes supported,
+  emulated, or rejected on one flavor) — must be reflected in the Skill's
+  `## Commands` list and the relevant `references/` file in the *same* commit. In
+  particular: a flag whose help text points at another command (e.g. "find IDs
+  with `user search`") must have that command documented in the Skill; and never
+  leave a Skill claim that contradicts the code (e.g. "the CLI does not set
+  resolution" when `comment resolve` exists).
 
 ## Changelog & versioning — required
 

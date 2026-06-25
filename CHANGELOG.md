@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+## [0.9.6] - 2026-06-25
+
+### Fixed
+
+- **The companion Skill drifted out of sync with the CLI.** The agent-facing
+  Skill (`skills/bitbucket/`) — which coding agents read instead of `--help` —
+  omitted or misdescribed several shipping capabilities, so agents missed them.
+  Corrected: `comment resolve` / `--unresolve` (the Skill wrongly claimed
+  resolving threads "stays manual in the UI"); documented the
+  `need-work` / `needs-work` aliases for `pr request-changes`, cross-fork
+  `pr create --source-repo`, `pr merge --close-source-branch` (emulated on Data
+  Center) and its rejection on `pr create` for DC, `repo create` / `repo delete`,
+  and the `pr get --scope full|diff|commits|activity` variants. Added an AGENTS.md
+  rule requiring the Skill to be updated in lockstep with the CLI. (Skill content
+  only — no behavior change.)
+
 ## [0.9.5] - 2026-06-24
 
 ### Fixed
