@@ -5,9 +5,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/angelmsger/bitbucket-cli/internal/apiclient"
-	cerrors "github.com/angelmsger/bitbucket-cli/internal/errors"
-	"github.com/angelmsger/bitbucket-cli/internal/transport"
+	"github.com/angelmsger/bitbucket-cli/pkg/apiclient"
+	cerrors "github.com/angelmsger/bitbucket-cli/pkg/errors"
+	"github.com/angelmsger/bitbucket-cli/pkg/transport"
 	"github.com/angelmsger/bitbucket-cli/pkg/urlref"
 	"github.com/spf13/cobra"
 )

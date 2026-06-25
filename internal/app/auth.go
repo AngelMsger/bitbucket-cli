@@ -8,7 +8,7 @@ import (
 
 	"github.com/angelmsger/bitbucket-cli/internal/auth"
 	"github.com/angelmsger/bitbucket-cli/internal/config"
-	cerrors "github.com/angelmsger/bitbucket-cli/internal/errors"
+	cerrors "github.com/angelmsger/bitbucket-cli/pkg/errors"
 	"github.com/spf13/cobra"
 )
 

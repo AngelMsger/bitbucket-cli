@@ -3,8 +3,8 @@ package app
 import (
 	"context"
 
-	"github.com/angelmsger/bitbucket-cli/internal/apiclient"
 	"github.com/angelmsger/bitbucket-cli/internal/config"
+	"github.com/angelmsger/bitbucket-cli/pkg/apiclient"
 	"github.com/spf13/cobra"
 )
 

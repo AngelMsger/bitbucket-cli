@@ -3,7 +3,7 @@ package apiclient
 import (
 	"context"
 
-	cerrors "github.com/angelmsger/bitbucket-cli/internal/errors"
+	cerrors "github.com/angelmsger/bitbucket-cli/pkg/errors"
 )
 
 // ApprovePR toggles an approval on a PR.

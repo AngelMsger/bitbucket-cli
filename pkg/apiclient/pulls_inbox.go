@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"strings"
 
-	cerrors "github.com/angelmsger/bitbucket-cli/internal/errors"
+	cerrors "github.com/angelmsger/bitbucket-cli/pkg/errors"
 )
 
 // ListMyPRs is the "PRs involving me" cross-repository view. Data Center has a

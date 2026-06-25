@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	cerrors "github.com/angelmsger/bitbucket-cli/internal/errors"
+	cerrors "github.com/angelmsger/bitbucket-cli/pkg/errors"
 )
 
 // This file holds the single structured diff model that both inline-anchor

@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"io"
 
-	cerrors "github.com/angelmsger/bitbucket-cli/internal/errors"
+	cerrors "github.com/angelmsger/bitbucket-cli/pkg/errors"
 	"github.com/neilotoole/jsoncolor"
 )
 

@@ -4,7 +4,7 @@ import (
 	"context"
 	"strconv"
 
-	cerrors "github.com/angelmsger/bitbucket-cli/internal/errors"
+	cerrors "github.com/angelmsger/bitbucket-cli/pkg/errors"
 )
 
 // ListPRComments lists comments on a PR.

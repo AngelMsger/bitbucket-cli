@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	cerrors "github.com/angelmsger/bitbucket-cli/internal/errors"
+	cerrors "github.com/angelmsger/bitbucket-cli/pkg/errors"
 )
 
 // ListPRs lists pull requests in a repository.

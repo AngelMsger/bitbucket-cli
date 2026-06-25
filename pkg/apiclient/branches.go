@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/url"
 
-	cerrors "github.com/angelmsger/bitbucket-cli/internal/errors"
+	cerrors "github.com/angelmsger/bitbucket-cli/pkg/errors"
 )
 
 // ListBranches lists the branches of a repository.

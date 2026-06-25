@@ -5,11 +5,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/angelmsger/bitbucket-cli/internal/apiclient"
 	"github.com/angelmsger/bitbucket-cli/internal/auth"
-	cerrors "github.com/angelmsger/bitbucket-cli/internal/errors"
 	"github.com/angelmsger/bitbucket-cli/internal/update"
+	"github.com/angelmsger/bitbucket-cli/pkg/apiclient"
 	"github.com/angelmsger/bitbucket-cli/pkg/constants"
+	cerrors "github.com/angelmsger/bitbucket-cli/pkg/errors"
 	"github.com/spf13/cobra"
 )
 

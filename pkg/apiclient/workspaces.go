@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/url"
 
-	cerrors "github.com/angelmsger/bitbucket-cli/internal/errors"
+	cerrors "github.com/angelmsger/bitbucket-cli/pkg/errors"
 )
 
 // ListWorkspaces returns every workspace (Cloud) / project (DC) the

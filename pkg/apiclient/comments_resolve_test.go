@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/angelmsger/bitbucket-cli/internal/transport"
+	"github.com/angelmsger/bitbucket-cli/pkg/transport"
 )
 
 func newResolveTestClient(t *testing.T, flavor Flavor, handler http.Handler) Client {

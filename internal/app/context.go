@@ -7,11 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/angelmsger/bitbucket-cli/internal/apiclient"
 	"github.com/angelmsger/bitbucket-cli/internal/auth"
 	"github.com/angelmsger/bitbucket-cli/internal/config"
-	cerrors "github.com/angelmsger/bitbucket-cli/internal/errors"
 	"github.com/angelmsger/bitbucket-cli/internal/output"
+	"github.com/angelmsger/bitbucket-cli/pkg/apiclient"
+	cerrors "github.com/angelmsger/bitbucket-cli/pkg/errors"
 )
 
 // globalFlags holds the persistent flags shared by every command.

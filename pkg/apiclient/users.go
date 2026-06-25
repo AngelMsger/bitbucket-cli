@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/url"
 
-	cerrors "github.com/angelmsger/bitbucket-cli/internal/errors"
+	cerrors "github.com/angelmsger/bitbucket-cli/pkg/errors"
 )
 
 // ListUsers enumerates users the current credentials can see — the discovery

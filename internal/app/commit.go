@@ -1,7 +1,7 @@
 package app
 
 import (
-	"github.com/angelmsger/bitbucket-cli/internal/apiclient"
+	"github.com/angelmsger/bitbucket-cli/pkg/apiclient"
 	"github.com/spf13/cobra"
 )
 

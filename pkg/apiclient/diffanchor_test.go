@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	cerrors "github.com/angelmsger/bitbucket-cli/internal/errors"
+	cerrors "github.com/angelmsger/bitbucket-cli/pkg/errors"
 )
 
 // sampleDiff: hunk starts at old 258 / new 258.

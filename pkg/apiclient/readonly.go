@@ -3,7 +3,7 @@ package apiclient
 import (
 	"context"
 
-	cerrors "github.com/angelmsger/bitbucket-cli/internal/errors"
+	cerrors "github.com/angelmsger/bitbucket-cli/pkg/errors"
 )
 
 // NewReadOnly wraps inner so that every mutating method returns a

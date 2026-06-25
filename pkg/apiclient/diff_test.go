@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	cerrors "github.com/angelmsger/bitbucket-cli/internal/errors"
-	"github.com/angelmsger/bitbucket-cli/internal/transport"
+	cerrors "github.com/angelmsger/bitbucket-cli/pkg/errors"
+	"github.com/angelmsger/bitbucket-cli/pkg/transport"
 )
 
 // dcJSONDiff is Bitbucket Data Center's JSON hunk model for the same change the

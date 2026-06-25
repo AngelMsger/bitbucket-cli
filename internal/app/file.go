@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/angelmsger/bitbucket-cli/internal/apiclient"
-	cerrors "github.com/angelmsger/bitbucket-cli/internal/errors"
+	"github.com/angelmsger/bitbucket-cli/pkg/apiclient"
+	cerrors "github.com/angelmsger/bitbucket-cli/pkg/errors"
 	"github.com/spf13/cobra"
 )
 

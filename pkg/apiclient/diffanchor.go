@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	cerrors "github.com/angelmsger/bitbucket-cli/internal/errors"
+	cerrors "github.com/angelmsger/bitbucket-cli/pkg/errors"
 )
 
 // Diff sides for inline comment anchors. "new" is the post-change (right / TO)

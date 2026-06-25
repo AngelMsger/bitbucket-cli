@@ -6,9 +6,9 @@ import (
 	"os"
 
 	"github.com/angelmsger/bitbucket-cli/internal/cliflags"
-	cerrors "github.com/angelmsger/bitbucket-cli/internal/errors"
 	"github.com/angelmsger/bitbucket-cli/internal/output"
 	"github.com/angelmsger/bitbucket-cli/pkg/constants"
+	cerrors "github.com/angelmsger/bitbucket-cli/pkg/errors"
 	"github.com/spf13/cobra"
 )
 

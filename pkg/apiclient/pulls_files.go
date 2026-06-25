@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	cerrors "github.com/angelmsger/bitbucket-cli/internal/errors"
+	cerrors "github.com/angelmsger/bitbucket-cli/pkg/errors"
 )
 
 // ListPRFiles returns the per-file diffstat of a PR — purely metadata, no

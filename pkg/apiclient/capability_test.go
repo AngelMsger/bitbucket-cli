@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/angelmsger/bitbucket-cli/internal/transport"
+	"github.com/angelmsger/bitbucket-cli/pkg/transport"
 )
 
 // offlineClient builds a client with a fixed base URL and no server. It is only

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	cerrors "github.com/angelmsger/bitbucket-cli/internal/errors"
-	"github.com/angelmsger/bitbucket-cli/internal/transport"
+	cerrors "github.com/angelmsger/bitbucket-cli/pkg/errors"
+	"github.com/angelmsger/bitbucket-cli/pkg/transport"
 )
 
 // newReadOnlyTestClient builds a Data Center flavored client wrapped in the

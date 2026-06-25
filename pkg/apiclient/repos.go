@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"strings"
 
-	cerrors "github.com/angelmsger/bitbucket-cli/internal/errors"
+	cerrors "github.com/angelmsger/bitbucket-cli/pkg/errors"
 )
 
 // ListRepositories lists repositories in a workspace (Cloud) or project (DC).
