@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.10.1] - 2026-06-28
+
 ### Fixed
 
 - **An unknown subcommand of a command group no longer looks like success.** A
