@@ -1,6 +1,6 @@
 {
   "name": "@angelmsger/bitbucket-cli",
-  "version": "0.10.1",
+  "version": "0.11.0",
   "description": "Drive Bitbucket pull requests and repositories from the terminal — built for coding agents: list/get/diff/approve/merge PRs, browse source at any ref, post inline review comments, and fetch a PR into a local git checkout. Supports Bitbucket Cloud and Data Center / Server.",
   "keywords": [
     "bitbucket",

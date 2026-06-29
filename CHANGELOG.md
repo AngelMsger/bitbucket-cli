@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-06-29
+
+### Added
+
+- **The CLI now flags which context your commands will hit when several are
+  configured.** A config can hold multiple named contexts, but an agent shelling
+  out usually has no idea more than one exists — when none is selected
+  explicitly it silently uses the saved `current_context` and can query the
+  wrong Bitbucket instance. Now, gated on `>1` context (single-context setups see
+  nothing): `--help` ends with the active context, the full list, and how it was
+  selected; and a real command run emits a structured `_notice` on stderr when
+  the active context was chosen implicitly, so the ambiguity is visible before
+  results are trusted. The notice self-silences once a context is selected
+  explicitly (`--use-context` or `BITBUCKET_CONTEXT`); opt out entirely with
+  `BITBUCKET_CLI_NO_CONTEXT_HINT=1`.
+
 ## [0.10.1] - 2026-06-28
 
 ### Fixed
