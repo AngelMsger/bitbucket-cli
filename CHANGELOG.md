@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-07-14
+
 ### Added
 
 - Credential-resolution failures now include an optional machine-readable
@@ -530,3 +532,6 @@ PR-centric MVP supporting Bitbucket Cloud (REST 2.0) and Data Center (REST
 `branch`, `commit`, `config`, `auth`, `doctor`, `whoami`, `skill`, `version`
 subtrees; layered configuration with keychain-backed auth; structured error
 model; and an embedded companion Skill.
+
+[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.11.0...v0.12.0
