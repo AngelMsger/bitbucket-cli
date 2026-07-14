@@ -177,6 +177,13 @@ inside the resolved config directory (file 0600, dir 0700) —
 `~/.bitbucket/credentials` when the CLI is running against the legacy
 location.
 
+Credential reads distinguish "not found" from "store inaccessible". When a
+sandbox cannot inspect the host keychain/file, resolution returns
+`CREDENTIAL_STORE_INACCESSIBLE`; an ambiguous absence returns
+`CREDENTIAL_NOT_VISIBLE_OR_MISSING`. Both carry an optional structured
+`recovery` action requesting one retry in host scope, without marking the error
+normally retryable or allowing the CLI to elevate itself.
+
 ### 4.4 The `init` wizard
 
 Enter base URL → detect and confirm the flavor → pick the auth scheme
@@ -321,11 +328,19 @@ errors go to stderr.
 Errors are JSON on **stderr**:
 
 ```json
-{"error":{"category":"auth","code":"HTTP_Unauthorized",
-  "message":"Bitbucket returned HTTP 401: ...",
-  "hint":"...","next_steps":["bitbucket-cli auth login","bitbucket-cli doctor"],
-  "retryable":false,"http_status":401}}
+{"error":{"category":"config","code":"CREDENTIAL_STORE_INACCESSIBLE",
+  "message":"stored Bitbucket credentials cannot be read in this execution environment",
+  "hint":"The configured credential store is inaccessible from the current process.",
+  "next_steps":["Retry the same command with access to the host user environment."],
+  "retryable":false,
+  "recovery":{"action":"retry_current_command","scope":"host",
+    "requires":["user_home","os_keychain"]}}}
 ```
+
+`recovery` is optional and describes an environment change; `retryable` still
+means the same invocation may succeed in the current environment. `doctor`
+mirrors this distinction with per-check `status` and optional
+`recovery_scope` fields.
 
 Categories: `usage config auth permission not_found conflict rate_limit
 network server parse internal`. `extractAPIMessage` extracts the human

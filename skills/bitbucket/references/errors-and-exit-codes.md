@@ -21,8 +21,8 @@ The process exit code matches the category:
 | Code | Category       | Meaning                                                                          |
 |------|----------------|----------------------------------------------------------------------------------|
 | 2    | `usage`        | A flag/argument was malformed (e.g. bad PR ref, missing `--yes`).                |
-| 3    | `config`       | Configuration is missing or invalid; run `config init` or set env vars.          |
-| 4    | `auth`         | 401/403 from Bitbucket. Refresh the token or revisit `auth login`.               |
+| 3    | `config`       | Configuration/credential resolution failed; inspect `code` and `recovery`.       |
+| 4    | `auth`         | 401 from Bitbucket. The server rejected the resolved credential.                 |
 | 5    | `permission`   | 403 from Bitbucket, **or** `READONLY_BLOCKED` from local read-only mode.         |
 | 6    | `not_found`    | 404 — the workspace, repo, PR, branch or commit does not exist for this user.    |
 | 7    | `rate_limit`   | 429 — back off; `retryable=true`.                                                |
@@ -33,6 +33,12 @@ The process exit code matches the category:
 
 ## Common recovery flows
 
+- **`CREDENTIAL_STORE_INACCESSIBLE` / `CREDENTIAL_NOT_VISIBLE_OR_MISSING`** →
+  inspect the optional `recovery` object. When it says
+  `{"action":"retry_current_command","scope":"host"}`, request host access
+  and retry the same invocation once. This is not a normal `retryable=true`
+  retry: repeating it in the same sandbox will not help. Only configure
+  credentials when the host retry also reports them missing.
 - **`auth`** → `bitbucket-cli auth logout && bitbucket-cli auth login` (or set
   `BITBUCKET_TOKEN`). Agents in a sandbox: the credential is usually the user's, just
   unreadable from the sandbox — request elevation and retry rather than
@@ -52,4 +58,5 @@ The process exit code matches the category:
 ## Diagnostic mode
 
 `bitbucket-cli doctor` walks DNS, TLS, API reachability, and auth probes in
-order, returning a structured report.
+order, returning a structured report. Each check includes `status`; credential
+checks can also include `recovery_scope: "host"`.

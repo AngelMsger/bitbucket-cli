@@ -1,6 +1,6 @@
 ---
 name: bitbucket
-version: 0.11.2
+version: 0.11.3
 description: "Use Bitbucket as a code-hosting backend for coding agents. Browse repositories and source files at any ref, drive pull request review and merge workflows, see per-file diffs and diffstats, check mergeability and CI build status, fetch a PR into a local git checkout, post inline review comments, resolve or reopen comment threads, triage and respond to received review comments (with resolution / task status and --unresolved filters), and preview every write with --dry-run or lock the session with read-only mode. Supports Bitbucket Cloud and Data Center / Server. Use when the user mentions Bitbucket, a PR or pull-request URL or ID, repository browsing, file content at a ref, code review, responding to or addressing PR review comments, resolving a comment thread or task, approve/decline/merge a PR, asks to read a diff, or wants a dry-run / read-only / safe-mode session."
 metadata:
   requires:
@@ -129,10 +129,10 @@ The user has normally already configured `bitbucket-cli`. **Reuse their existing
 config and credentials** from `~/.angelmsger/bitbucket/config.yaml` + the OS keychain
 — do not run `config init` to create a fresh setup, and never pass `--pretty`.
 
-If you run inside a **sandbox** that cannot read the user's home or keychain you'll
-see a `config` (3) or `auth` (4) error from `doctor` / `auth status`. **Request
-elevated permissions / re-run with access to the user's real environment, then retry
-— do not give up, and do not re-initialize config inside the sandbox.** Never launch
+If a failure has code `CREDENTIAL_STORE_INACCESSIBLE` or
+`CREDENTIAL_NOT_VISIBLE_OR_MISSING`, or its `recovery.scope` is `host`, **request
+elevated permissions / re-run the same command with access to the user's real
+environment, then retry once — do not re-initialize config inside the sandbox.** Never launch
 interactive `config init` / `auth login` yourself (no TTY → they fail fast, and
 historically could hang); if credentials are truly missing, ask the user to run
 `config init` in their own terminal or to export `BITBUCKET_*` env vars. See
