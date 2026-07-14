@@ -1,6 +1,6 @@
 ---
 name: bitbucket
-version: 0.11.1
+version: 0.11.2
 description: "Use Bitbucket as a code-hosting backend for coding agents. Browse repositories and source files at any ref, drive pull request review and merge workflows, see per-file diffs and diffstats, check mergeability and CI build status, fetch a PR into a local git checkout, post inline review comments, resolve or reopen comment threads, triage and respond to received review comments (with resolution / task status and --unresolved filters), and preview every write with --dry-run or lock the session with read-only mode. Supports Bitbucket Cloud and Data Center / Server. Use when the user mentions Bitbucket, a PR or pull-request URL or ID, repository browsing, file content at a ref, code review, responding to or addressing PR review comments, resolving a comment thread or task, approve/decline/merge a PR, asks to read a diff, or wants a dry-run / read-only / safe-mode session."
 metadata:
   requires:
@@ -40,10 +40,14 @@ TTY — agents should never pass it.
 
 ## Core workflows
 
-- **Review a PR (with local codebase)** — start with `pr status` (mergeable + CI),
-  then `pr files` (diffstat) to budget context, then `pr diff --path <p>` per
-  file (or `pr fetch --exec` to bring the PR into your local clone and read
-  files directly). Finish with `pr threads` to see inline discussions,
+- **Review a PR (with local codebase)** — before using local files, verify that
+  the checkout belongs to the PR repo and record its branch, HEAD, and dirty
+  state; never assume the current worktree is the PR source. Start with `pr status`
+  (mergeable + CI), then `pr files` (diffstat) to budget context, then use
+  `pr diff --path <p>` per file (or `pr fetch --exec` to fetch the PR source and
+  base locally). Treat the fetched `source_ref` and `review_diff` as
+  authoritative; read worktree files only after verifying that HEAD matches the
+  source ref and the tree is clean. Finish with `pr threads` to see discussions,
   `comment add --inline` to reply, and `pr approve` / `pr merge`. If missing
   intent or background genuinely blocks the review, post a clarifying comment
   to the author and defer just the blocked items until they reply. See

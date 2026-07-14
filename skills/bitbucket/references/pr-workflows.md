@@ -20,10 +20,12 @@ When the user pastes a PR URL or names `<workspace>/<repo>/<id>`:
    the equivalent `git` commands; `--exec` runs them in your current checkout.
    It fetches the PR source ref (→ `refs/remotes/<remote>/pr/<id>`) **and the PR's
    base branch**, picks the remote (`upstream` over `origin` when both exist), and
-   prints a ready-to-run `review_diff` that diffs against the merge-base. Bridging to
-   a local checkout is the cheapest way to read many large files — and the only way
-   to review against a correct base. See `reviewing-locally.md` ›
-   "Reviewing against the right base".
+   prints a ready-to-run `review_diff` that diffs against the merge-base. Before
+   `--exec`, verify the checkout's repo, branch, HEAD, and dirty state; the CLI
+   does not verify that the selected remote belongs to the PR repo. Fetching the
+   authoritative refs is the cheapest way to review many large files locally
+   against the correct base. See `reviewing-locally.md` › "Local checkout
+   preflight".
 5. **Commits / activity** — `pr commits` / `pr activity` enumerate the
    contained commits and the timeline (approvals, comments, state changes).
 

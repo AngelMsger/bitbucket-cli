@@ -44,10 +44,10 @@ pr threads --comment <id>            ─ OR just the one thread the user named
     │                                  (skips resolved threads; see commenting.md)
     │
     ▼
-Local codebase present?  ─ is cwd a git checkout of THIS PR's repo?
+Local codebase present?  ─ preflight: right repo, branch/HEAD known, clean?
     │
-    ├─ yes ─→ pr fetch --exec ; pr checkout --exec
-    │         <Read/Grep the real tree; run tests/build to VERIFY>
+    ├─ yes ─→ pr fetch --exec
+    │         <Use source_ref/review_diff; read/test only from an aligned tree>
     │
     └─ no  ─→ degrade to remote read-only: pr diff --path <file>
               (offer to clone if the user wants local verification)
@@ -66,13 +66,15 @@ comment add --reply-to <id> --dry-run   ─ preview, then post
 ## Prefer a local codebase
 
 A local checkout is what turns "reasoning from the diff" into **genuine
-verification**. Before per-thread work, check whether the agent's `cwd` is a git
-checkout of the PR's repo:
+verification**. Before per-thread work, follow the repository identity, branch,
+HEAD, and dirty-state preflight in `reviewing-locally.md`, then check whether the
+agent's `cwd` can safely represent the PR:
 
-- **Local checkout present** → `pr fetch --exec` then `pr checkout --exec`, then
-  use the agent's filesystem tools (Read/Grep) on the real tree. Crucially, you
-  can now *run* the repo's tests / build / linter and reproduce the concern
-  instead of guessing from the patch.
+- **Local checkout present** → `pr fetch --exec`, then use its `source_ref` and
+  `review_diff`. To use filesystem tools (Read/Grep) or run tests / build /
+  linter, first verify that a clean checkout or isolated worktree matches
+  `source_ref`. Use `pr checkout --exec` only when changing the current worktree
+  is safe.
 - **No local checkout** → say so, offer to clone (or note the user can), and
   otherwise degrade gracefully to remote read-only analysis via
   `pr diff --path <file>`.
@@ -130,5 +132,6 @@ Summarize before writing anything back. A compact table the human can scan:
 
 - A PR reference, or `BITBUCKET_DEFAULT_WORKSPACE` set so `pr inbox --role author`
   can find the user's PRs.
-- For local verification: `cwd` must be a git working tree for the PR's repo with
-  the right `origin` remote (the CLI checks this and errors otherwise).
+- For local verification: `cwd` must be a Git worktree whose chosen remote
+  matches the PR repo. The agent verifies that mapping; the CLI checks only that
+  `cwd` is inside a worktree.
