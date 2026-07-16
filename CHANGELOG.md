@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-07-16
+
 ### Added
 
 - Windows is now exercised on a native CI runner, including the Go test suite,
@@ -551,5 +553,6 @@ PR-centric MVP supporting Bitbucket Cloud (REST 2.0) and Data Center (REST
 subtrees; layered configuration with keychain-backed auth; structured error
 model; and an embedded companion Skill.
 
-[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.11.0...v0.12.0
