@@ -16,8 +16,8 @@ URL → flavor detection → auth scheme → credential entry → keychain stora
 writes `~/.angelmsger/bitbucket/config.yaml`
 (or, on legacy installs that still have a `~/.bitbucket/config.yaml`, that
 location); secrets go to the OS keychain (`service="bitbucket-cli"`), or to a
-`credentials` file inside the same directory (mode 0600) when no keychain is
-available.
+`credentials` file inside the same directory when no keychain is available.
+Windows encrypts that fallback with per-user DPAPI; macOS/Linux use mode 0600.
 
 ## Environment-driven setup
 

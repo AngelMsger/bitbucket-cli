@@ -41,11 +41,31 @@ Installs into `go env GOBIN` (or `$GOPATH/bin`). Requires Go 1.24+.
 
 Download the binary for your platform from the
 [Releases page](https://github.com/AngelMsger/bitbucket-cli/releases), verify
-it against `checksums.txt`, then put it on your `PATH`:
+it against `checksums.txt`, then put it on your `PATH`.
+
+On macOS/Linux:
 
 ```bash
 chmod +x bitbucket-cli-* && mv bitbucket-cli-* /usr/local/bin/bitbucket-cli
 ```
+
+On Windows PowerShell, download `bitbucket-cli-windows-amd64.exe` (or
+`windows-arm64.exe`) together with `checksums.txt`, then:
+
+```powershell
+$asset = "bitbucket-cli-windows-amd64.exe"
+$checksumLine = Get-Content .\checksums.txt | Where-Object { $_ -match "\s+$([regex]::Escape($asset))$" } | Select-Object -First 1
+if (-not $checksumLine) { throw "No checksum found for $asset" }
+$expected = ($checksumLine -split '\s+')[0].ToLowerInvariant()
+$actual = (Get-FileHash ".\$asset" -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($actual -ne $expected) { throw "SHA-256 mismatch for $asset" }
+$binDir = Join-Path $HOME "bin"
+New-Item -ItemType Directory -Force $binDir | Out-Null
+Move-Item ".\$asset" (Join-Path $binDir "bitbucket-cli.exe")
+[Environment]::SetEnvironmentVariable("Path", ([Environment]::GetEnvironmentVariable("Path", "User") + ";$binDir"), "User")
+```
+
+Open a new PowerShell window after changing `PATH`.
 
 #### From source
 
@@ -70,6 +90,15 @@ into `./dist/`).
 bitbucket-cli config init --pretty   # interactive TUI: server URL, flavor, credentials
 bitbucket-cli doctor                 # verify configuration and connectivity
 bitbucket-cli workspace list         # discover the workspaces / projects you can see
+```
+
+For headless setup in PowerShell, environment variables use `$env:` syntax:
+
+```powershell
+$env:BITBUCKET_SERVER = "https://api.bitbucket.org"
+$env:BITBUCKET_USERNAME = "alice@example.com"
+$env:BITBUCKET_API_TOKEN = "<api-token>"
+bitbucket-cli doctor
 ```
 
 The `--pretty` flag opts into a `huh`-based TUI with arrow-key selection,

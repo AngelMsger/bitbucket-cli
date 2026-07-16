@@ -172,7 +172,8 @@ Environment variable mapping:
 Secrets are never persisted to `config.yaml`. `config init` stores them
 in the OS keychain (`go-keyring`, service `bitbucket-cli`, account
 `<host>:<scheme>`); on failure it falls back to a `credentials` file
-inside the resolved config directory (file 0600, dir 0700) —
+inside the resolved config directory (per-user DPAPI on Windows; file 0600 and
+dir 0700 on macOS/Linux) —
 `~/.angelmsger/bitbucket/credentials` by default, or
 `~/.bitbucket/credentials` when the CLI is running against the legacy
 location.

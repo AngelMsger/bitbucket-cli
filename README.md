@@ -38,8 +38,8 @@ use it. Write commands support `--dry-run`, and destructive ones require `--yes`
   `--range L1:L2` line slicing) read repository contents at a branch, tag or commit —
   no local clone required.
 - **Flexible configuration** — CLI flags, environment variables, a `.env` file, a YAML
-  config file, or an interactive wizard; secrets stored in the OS keychain (with a
-  `0600` file fallback).
+  config file, or an interactive wizard; secrets stored in the OS keychain, with
+  per-user DPAPI fallback on Windows and a `0600` fallback on macOS/Linux.
 - **Companion Skill** — a `bitbucket` Skill, embedded in the binary, that guides coding
   agents through the CLI.
 
@@ -135,8 +135,10 @@ bitbucket-cli pr merge   myws/myrepo/42 --strategy squash --yes
 Settings resolve in precedence order (highest first): CLI flags → environment
 variables (`BITBUCKET_*`) → `.env` → `~/.angelmsger/bitbucket/config.yaml`
 (legacy fallback `~/.bitbucket/config.yaml`) → defaults. See
-`.env.example` for the full list. Secrets are stored in the OS keychain (with a
-`0600` file fallback) and never written to the config file.
+`.env.example` for the full list. Secrets are stored in the OS keychain. If
+Windows Credential Manager is unavailable, the fallback is encrypted with
+per-user DPAPI; macOS/Linux retain the `0600` fallback. Secrets are never
+written to the config file.
 
 ## Commands
 
