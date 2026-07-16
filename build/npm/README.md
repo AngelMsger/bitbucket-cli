@@ -20,5 +20,6 @@ The companion `bitbucket` Skill for coding agents is embedded in the binary;
 `bitbucket-cli skill install` deploys a copy that always matches the installed
 CLI version.
 
-See the [project README](https://github.com/AngelMsger/bitbucket-cli) for full
-documentation.
+See the [project README](https://github.com/AngelMsger/bitbucket-cli) and the
+[installation guide](https://github.com/AngelMsger/bitbucket-cli/blob/main/docs/installation.md)
+for full documentation.

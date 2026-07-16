@@ -13,6 +13,12 @@
 
 - Installation documentation now includes native PowerShell setup, checksum,
   `PATH`, environment-variable and persistent completion examples.
+- README and the docs-site footer now list all five sibling CLIs, including
+  the new [jira-cli](https://github.com/AngelMsger/jira-cli).
+- README now follows the family-canonical section order and gained an
+  "Errors and exit codes" section; the npm package README links the
+  installation guide; the docs-site "Go deeper" cards now follow the
+  family-canonical set (installation, technical design, releasing, Skill).
 
 ## [0.12.0] - 2026-07-14
 
