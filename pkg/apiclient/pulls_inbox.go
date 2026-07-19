@@ -94,9 +94,7 @@ func (c *apiClient) cloudListMyPRs(ctx context.Context, opt MyPRListOpts, role, 
 
 	if role == "AUTHOR" {
 		q := url.Values{}
-		if state != "ALL" {
-			q.Set("state", state)
-		}
+		addCloudStateParams(q, state)
 		q.Set("pagelen", itoa(c.limitOf(opt.ListOpts)))
 		path := c.apiBase() + "/pullrequests/" + url.PathEscape(selector)
 		if cloudFollowURL(opt.Cursor) {

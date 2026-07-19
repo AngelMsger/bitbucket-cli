@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- `pr list --state ALL` now returns every state on Cloud and Data Center, and
+  `pr inbox --state ALL` now does the same on Cloud. Cloud enumerates
+  OPEN/MERGED/DECLINED/SUPERSEDED as repeated `state` params; the Data Center
+  repository endpoint receives `state=ALL` natively. Data Center inbox already
+  returns every state by omitting `state`, as required by its dashboard API.
+
 ## [0.13.0] - 2026-07-16
 
 ### Added

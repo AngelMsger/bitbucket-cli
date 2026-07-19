@@ -9,6 +9,23 @@ import (
 	cerrors "github.com/angelmsger/bitbucket-cli/pkg/errors"
 )
 
+// cloudAllPRStates are the states enumerated when the caller asks for ALL:
+// the Cloud PR endpoints default to OPEN when no `state` param is sent, so
+// "ALL" must be spelled out as repeated params (the server ORs them).
+var cloudAllPRStates = []string{"OPEN", "MERGED", "DECLINED", "SUPERSEDED"}
+
+// addCloudStateParams writes the `state` query param(s) for a normalized
+// (upper-cased, non-empty) state, expanding ALL into every PR state.
+func addCloudStateParams(q url.Values, state string) {
+	if state == "ALL" {
+		for _, s := range cloudAllPRStates {
+			q.Add("state", s)
+		}
+		return
+	}
+	q.Set("state", state)
+}
+
 // ListPRs lists pull requests in a repository.
 func (c *apiClient) ListPRs(ctx context.Context, opt PRListOpts) (ListResult[PullRequest], error) {
 	if err := checkRepoRef(opt.Repo); err != nil {
@@ -24,14 +41,11 @@ func (c *apiClient) ListPRs(ctx context.Context, opt PRListOpts) (ListResult[Pul
 			q = nil
 		}
 		state := strings.ToUpper(strings.TrimSpace(opt.State))
-		if state == "" || state == "ALL" {
-			// Cloud requires a state; for "ALL" enumerate the common ones via `q`.
-		}
-		if state != "" && state != "ALL" {
+		if state != "" {
 			if q == nil {
 				q = url.Values{}
 			}
-			q.Set("state", state)
+			addCloudStateParams(q, state)
 		}
 		if opt.Query != "" {
 			if q == nil {
@@ -49,8 +63,9 @@ func (c *apiClient) ListPRs(ctx context.Context, opt PRListOpts) (ListResult[Pul
 		}
 		return res, nil
 	}
-	// Data Center
-	if opt.State != "" && strings.ToUpper(opt.State) != "ALL" {
+	// Data Center: the repo endpoint accepts state=ALL natively; omitting the
+	// param would make the server default to OPEN.
+	if opt.State != "" {
 		q.Set("state", strings.ToUpper(opt.State))
 	}
 	if opt.Source != "" {
