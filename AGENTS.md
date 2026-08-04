@@ -166,6 +166,11 @@ the CLI from managing its own state.
   with `user search`") must have that command documented in the Skill; and never
   leave a Skill claim that contradicts the code (e.g. "the CLI does not set
   resolution" when `comment resolve` exists).
+- **Execute every Skill pipeline in tests.** A Skill example that pipes output
+  into another command is an interface contract: its referenced fields must be
+  emitted by the producer, accepted by the consumer, and covered by an e2e
+  assertion. Do not validate examples only by checking that their command names
+  exist.
 
 ## Changelog & versioning — required
 

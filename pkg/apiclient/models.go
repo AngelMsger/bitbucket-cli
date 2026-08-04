@@ -156,6 +156,7 @@ type Participant struct {
 // PullRequest is a normalized Bitbucket pull request.
 type PullRequest struct {
 	ID           int           `json:"id"`
+	Ref          string        `json:"ref,omitempty"`
 	Title        string        `json:"title"`
 	Description  string        `json:"description,omitempty"`
 	State        string        `json:"state"` // OPEN / MERGED / DECLINED / SUPERSEDED

@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [0.13.2] - 2026-08-04
+
+### Fixed
+
+- Pull request output now includes the normalized `ref` accepted by PR write
+  commands, so the companion Skill's inbox-to-batch pipelines no longer emit
+  `null`. The Skill and `--fields` help now explain that list projections are
+  relative to each item, omit the `items.` envelope prefix, and emit nested
+  selections as literal dotted keys.
+
 ## [0.13.1] - 2026-07-19
 
 ### Fixed
@@ -563,7 +573,8 @@ PR-centric MVP supporting Bitbucket Cloud (REST 2.0) and Data Center (REST
 subtrees; layered configuration with keychain-backed auth; structured error
 model; and an embedded companion Skill.
 
-[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.13.1...HEAD
+[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.13.2...HEAD
+[0.13.2]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.13.1...v0.13.2
 [0.13.1]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.11.0...v0.12.0

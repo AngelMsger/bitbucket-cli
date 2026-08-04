@@ -1,6 +1,6 @@
 ---
 name: bitbucket
-version: 0.11.3
+version: 0.11.4
 description: "Use Bitbucket as a code-hosting backend for coding agents. Browse repositories and source files at any ref, drive pull request review and merge workflows, see per-file diffs and diffstats, check mergeability and CI build status, fetch a PR into a local git checkout, post inline review comments, resolve or reopen comment threads, triage and respond to received review comments (with resolution / task status and --unresolved filters), and preview every write with --dry-run or lock the session with read-only mode. Supports Bitbucket Cloud and Data Center / Server. Use when the user mentions Bitbucket, a PR or pull-request URL or ID, repository browsing, file content at a ref, code review, responding to or addressing PR review comments, resolving a comment thread or task, approve/decline/merge a PR, asks to read a diff, or wants a dry-run / read-only / safe-mode session."
 metadata:
   requires:
@@ -76,6 +76,14 @@ TTY — agents should never pass it.
 
 ## Agent-facing conventions
 
+- **Treat projected fields as record-relative.** JSON list commands keep the
+  `{items, next, has_more}` envelope, but `--fields` applies to each item: use
+  `--fields id,title,repository`, never `--fields items.id,items.title`.
+  Selecting a nested path emits a literal dotted key (`--fields
+  repository.workspace` produces `{"repository.workspace":"myws"}`), so
+  either select the containing object for normal jq access or read the flat key
+  as `.["repository.workspace"]`. Inspect `.items[0]` before composing a
+  longer pipeline.
 - **Skill handshake — set `BITBUCKET_CLI_SKILL=1`.** Once you have loaded this
   Skill, export `BITBUCKET_CLI_SKILL=1` in the environment you run the CLI from.
   This is the source of truth for "the agent is driving the CLI through the

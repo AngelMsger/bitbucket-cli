@@ -119,7 +119,8 @@ func newRootCmdWithState() (*cobra.Command, *appState) {
 	pf.StringVar(&state.gflags.baseURL, "base-url", "", "Bitbucket site URL (overrides config)")
 	pf.StringVar(&state.gflags.flavor, "flavor", "", "backend flavor: cloud, datacenter or auto")
 	pf.StringVarP(&state.gflags.format, "format", "f", "", "output format: json, table or ndjson")
-	pf.StringVar(&state.gflags.fields, "fields", "", "comma-separated dot-path fields to keep")
+	pf.StringVar(&state.gflags.fields, "fields", "",
+		"comma-separated fields relative to each record; list paths omit the items envelope prefix; nested paths emit dotted keys")
 	pf.StringVar(&state.gflags.timeout, "timeout", "", "request timeout, e.g. 30s")
 	pf.StringVar(&state.gflags.configPath, "config", "", "config directory (default ~/.angelmsger/bitbucket, falling back to ~/.bitbucket when only that exists)")
 	pf.StringVar(&state.gflags.useContext, "use-context", "", "use a named context for this invocation")

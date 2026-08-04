@@ -65,3 +65,16 @@ func TestValidSubcommandStillRuns(t *testing.T) {
 		t.Fatalf("valid subcommand should run, got: %v", err)
 	}
 }
+
+func TestFieldsHelpExplainsProjectionShape(t *testing.T) {
+	t.Parallel()
+	flag := NewRootCmd().PersistentFlags().Lookup("fields")
+	if flag == nil {
+		t.Fatal("--fields flag not found")
+	}
+	for _, want := range []string{"relative to each record", "omit the items envelope prefix", "dotted keys"} {
+		if !strings.Contains(flag.Usage, want) {
+			t.Errorf("--fields help %q does not contain %q", flag.Usage, want)
+		}
+	}
+}

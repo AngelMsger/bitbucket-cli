@@ -163,6 +163,19 @@ assert_err_contains  "pr threads --comment unknown hint" "pr threads"           
 assert_contains  "pr fetch print-only"       "git fetch"      "${CLI[@]}" pr fetch PROJ/demo/1
 assert_contains  "pr checkout print-only"    "git checkout"   "${CLI[@]}" pr checkout PROJ/demo/1
 assert_contains  "pr inbox (DC dashboard)"   "Wire payment retry" "${CLI[@]}" pr inbox --role reviewer
+assert_contains  "pr inbox exposes batch ref" '"ref": "PROJ/demo/7"' "${CLI[@]}" pr inbox --role reviewer
+assert_contains  "fields projection is item-relative" '"repository.workspace": "PROJ"' \
+                                             "${CLI[@]}" pr inbox --role reviewer --fields id,repository.workspace
+assert_contains  "fields help explains list scope" "omit the items envelope prefix" \
+                                             "${CLI[@]}" pr inbox --help
+out="$("${CLI[@]}" pr inbox --role reviewer --format json 2>/dev/null \
+  | jq -r '.items[].ref' \
+  | "${CLI[@]}" pr approve - 2>/dev/null)"
+if [[ "$out" == *'"approved": true'* ]]; then
+  pass "Skill inbox-to-approve pipeline"
+else
+  fail "Skill inbox-to-approve pipeline (output did not contain an approval result)"
+fi
 assert_contains  "workspace list"            "PROJ"           "${CLI[@]}" workspace list
 assert_contains  "workspace get"             "Demo project"   "${CLI[@]}" workspace get PROJ
 assert_contains  "user list (DC global)"     "alice"          "${CLI[@]}" user list

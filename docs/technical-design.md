@@ -102,7 +102,7 @@ Commit      { Hash, Message, Author, Date, Parents, URL }
 User        { AccountID, UUID, Name, Slug, DisplayName, Email, Type }
 PRRef       { Branch, Commit, Repository }
 Participant { User, Role, Approved, State }
-PullRequest { ID, Title, Description, State, Author, Source, Destination,
+PullRequest { ID, Ref, Title, Description, State, Author, Source, Destination,
               Reviewers, Participants, Repository, URL, CommentCount,
               MergeCommit, CreatedAt, UpdatedAt, ClosedAt }
 InlineAnchor{ Path, Line, From, To }
@@ -307,9 +307,12 @@ a final `Thread{File: ""}` bucket.
 
 Three `Formatter` implementations: `json` (default, agent-oriented,
 stdout), `table` (human-readable), and `ndjson` (streaming for large
-result sets). `--fields a,b.c` projects by dot-path. List commands emit
-`{items, next, has_more}`; `--cursor` continues from a prior page's
-`next`.
+result sets). `--fields a,b.c` projects by dot-path relative to each record.
+For list commands, omit the envelope prefix (`--fields id`, not `--fields
+items.id`); nested projections retain the full dotted path as a literal output
+key (`{"b.c": ...}`). Selecting the containing object preserves nested access
+for downstream `jq`. List commands emit `{items, next, has_more}`; `--cursor`
+continues from a prior page's `next`.
 
 Successful output is unified as JSON on stdout, with these exceptions:
 

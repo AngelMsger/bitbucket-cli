@@ -181,6 +181,7 @@ type cloudPR struct {
 func mapCloudPR(repo RepoRef, r cloudPR) *PullRequest {
 	pr := &PullRequest{
 		ID:           r.ID,
+		Ref:          normalizedPRRef(repo, r.ID),
 		Title:        r.Title,
 		Description:  r.Description,
 		State:        r.State,
@@ -477,6 +478,7 @@ type dcPR struct {
 func mapDCPR(repo RepoRef, r dcPR) *PullRequest {
 	pr := &PullRequest{
 		ID:           r.ID,
+		Ref:          normalizedPRRef(repo, r.ID),
 		Title:        r.Title,
 		Description:  r.Description,
 		State:        r.State,
@@ -509,6 +511,13 @@ func mapDCPR(repo RepoRef, r dcPR) *PullRequest {
 		})
 	}
 	return pr
+}
+
+func normalizedPRRef(repo RepoRef, id int) string {
+	if repo.Workspace == "" || repo.Slug == "" || id <= 0 {
+		return ""
+	}
+	return repo.Workspace + "/" + repo.Slug + "/" + strconv.Itoa(id)
 }
 
 type dcPRList struct {

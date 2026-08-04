@@ -2,6 +2,40 @@ package apiclient
 
 import "testing"
 
+func TestPullRequestMappingsExposeDiscoverableRef(t *testing.T) {
+	t.Parallel()
+	repo := RepoRef{Workspace: "PROJ", Slug: "demo"}
+
+	cloud := mapCloudPR(repo, cloudPR{ID: 7})
+	if cloud.Ref != "PROJ/demo/7" {
+		t.Errorf("Cloud ref = %q, want PROJ/demo/7", cloud.Ref)
+	}
+
+	dc := mapDCPR(repo, dcPR{ID: 8})
+	if dc.Ref != "PROJ/demo/8" {
+		t.Errorf("Data Center ref = %q, want PROJ/demo/8", dc.Ref)
+	}
+}
+
+func TestNormalizedPRRefRequiresCompleteIdentity(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name string
+		repo RepoRef
+		id   int
+	}{
+		{name: "missing workspace", repo: RepoRef{Slug: "demo"}, id: 7},
+		{name: "missing slug", repo: RepoRef{Workspace: "PROJ"}, id: 7},
+		{name: "missing id", repo: RepoRef{Workspace: "PROJ", Slug: "demo"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := normalizedPRRef(tc.repo, tc.id); got != "" {
+				t.Errorf("normalizedPRRef() = %q, want empty", got)
+			}
+		})
+	}
+}
+
 // TestMapDCCommentResolution covers the Data Center comment resolution/task
 // signals: state == "RESOLVED" -> Resolved, severity == "BLOCKER" -> Task.
 func TestMapDCCommentResolution(t *testing.T) {

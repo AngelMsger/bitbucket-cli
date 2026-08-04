@@ -170,7 +170,11 @@ written to the config file.
 In the default JSON output, list commands return a `{items, next, has_more}` envelope;
 pass `--cursor` with a prior page's `next` to read the following page, or `--all` to
 fetch every page. `--format ndjson` instead streams the items themselves, one JSON
-object per line.
+object per line. `--fields` paths are relative to each record, so use
+`--fields id,title,repository` rather than prefixing paths with `items.`. A nested
+projection such as `--fields repository.workspace` emits the literal key
+`"repository.workspace"`; select `repository` when downstream `jq` should retain
+normal `.repository.workspace` access.
 
 ### Multiple servers (contexts)
 

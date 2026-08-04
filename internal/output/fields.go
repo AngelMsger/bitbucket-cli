@@ -19,8 +19,8 @@ func project(v any, fields []string) any {
 	}
 }
 
-// projectMap builds a new map containing only the requested dot paths. The
-// output key is the last path segment; nested paths are flattened.
+// projectMap builds a new map containing only the requested dot paths. Nested
+// paths are flattened and retain the full dot path as the literal output key.
 func projectMap(m map[string]any, fields []string) map[string]any {
 	out := map[string]any{}
 	for _, f := range fields {

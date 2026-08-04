@@ -232,6 +232,29 @@ func TestEmitListFields(t *testing.T) {
 	}
 }
 
+func TestEmitListNestedFieldsAreItemRelativeAndFlattened(t *testing.T) {
+	t.Parallel()
+	var buf bytes.Buffer
+	items := []sampleRec{mk("1", "Hello", "ENG")}
+	if err := EmitList(items, "", false, Options{
+		Format: FormatJSON, Fields: []string{"space.key"}, Writer: &buf,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	var got struct {
+		Items []map[string]any `json:"items"`
+	}
+	if err := json.Unmarshal(buf.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Items) != 1 || got.Items[0]["space.key"] != "ENG" {
+		t.Fatalf("nested list projection = %v, want literal space.key", got.Items)
+	}
+	if _, nested := got.Items[0]["space"]; nested {
+		t.Fatalf("nested list projection unexpectedly preserved an object: %v", got.Items)
+	}
+}
+
 // TestEmitJSONPrettyOnNonTTY proves that Pretty has no effect on a non-TTY
 // writer: the bytes must be identical to the plain path. This is the contract
 // that keeps `bitbucket-cli --pretty pr get … | jq` working.
