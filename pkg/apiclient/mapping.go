@@ -419,11 +419,8 @@ func mapDCRepo(r dcRepo) *Repository {
 }
 
 type dcRepoList struct {
-	Values     []dcRepo `json:"values"`
-	Size       int      `json:"size"`
-	Limit      int      `json:"limit"`
-	Start      int      `json:"start"`
-	IsLastPage bool     `json:"isLastPage"`
+	Values []dcRepo `json:"values"`
+	dcPage
 }
 
 type dcPRRef struct {
@@ -521,11 +518,8 @@ func normalizedPRRef(repo RepoRef, id int) string {
 }
 
 type dcPRList struct {
-	Values     []dcPR `json:"values"`
-	Size       int    `json:"size"`
-	Limit      int    `json:"limit"`
-	Start      int    `json:"start"`
-	IsLastPage bool   `json:"isLastPage"`
+	Values []dcPR `json:"values"`
+	dcPage
 }
 
 type dcBranch struct {
@@ -546,11 +540,8 @@ func mapDCBranch(b dcBranch) Branch {
 }
 
 type dcBranchList struct {
-	Values     []dcBranch `json:"values"`
-	Size       int        `json:"size"`
-	Limit      int        `json:"limit"`
-	Start      int        `json:"start"`
-	IsLastPage bool       `json:"isLastPage"`
+	Values []dcBranch `json:"values"`
+	dcPage
 }
 
 type dcCommit struct {
@@ -583,11 +574,8 @@ func mapDCCommit(c dcCommit) Commit {
 }
 
 type dcCommitList struct {
-	Values     []dcCommit `json:"values"`
-	Size       int        `json:"size"`
-	Limit      int        `json:"limit"`
-	Start      int        `json:"start"`
-	IsLastPage bool       `json:"isLastPage"`
+	Values []dcCommit `json:"values"`
+	dcPage
 }
 
 type dcCommentAnchor struct {
@@ -687,11 +675,8 @@ type dcActivity struct {
 }
 
 type dcActivityList struct {
-	Values     []dcActivity `json:"values"`
-	IsLastPage bool         `json:"isLastPage"`
-	Size       int          `json:"size"`
-	Limit      int          `json:"limit"`
-	Start      int          `json:"start"`
+	Values []dcActivity `json:"values"`
+	dcPage
 }
 
 // epochToISO converts a Bitbucket Data Center millisecond epoch to an ISO-8601

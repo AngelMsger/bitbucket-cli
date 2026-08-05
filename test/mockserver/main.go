@@ -202,7 +202,29 @@ func routes() http.Handler {
 	})
 
 	commitKey := "/rest/api/1.0/projects/{key}/repos/{slug}/commits"
-	mux.HandleFunc("GET "+commitKey, func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("GET "+commitKey, func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		if q.Get("since") != "" || q.Get("until") != "" {
+			if q.Get("start") == "37" {
+				writeJSON(w, map[string]any{
+					"values":     []any{commit("cccc333", "compare page two")},
+					"size":       1,
+					"limit":      25,
+					"start":      37,
+					"isLastPage": true,
+				})
+				return
+			}
+			writeJSON(w, map[string]any{
+				"values":        []any{commit("bbbb222", "compare page one")},
+				"size":          1,
+				"limit":         25,
+				"start":         0,
+				"isLastPage":    false,
+				"nextPageStart": 37,
+			})
+			return
+		}
 		writeJSON(w, map[string]any{
 			"values":     []any{commit("aaaa111", "feat: add login flow")},
 			"size":       1,

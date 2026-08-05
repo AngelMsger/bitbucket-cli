@@ -52,7 +52,7 @@ func (c *apiClient) ListRepositories(ctx context.Context, opt RepoListOpts) (Lis
 	if err := c.getJSON(ctx, path, q, &raw); err != nil {
 		return ListResult[Repository]{}, err
 	}
-	res := ListResult[Repository]{Next: nextOffsetToken(opt.Cursor, limit, len(raw.Values), raw.IsLastPage)}
+	res := ListResult[Repository]{Next: nextOffsetToken(raw.dcPage)}
 	for _, r := range raw.Values {
 		res.Items = append(res.Items, *mapDCRepo(r))
 	}

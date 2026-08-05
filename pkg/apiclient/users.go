@@ -57,17 +57,14 @@ func (c *apiClient) ListUsers(ctx context.Context, opt UserListOpts) (ListResult
 		q.Set("filter", opt.Query)
 	}
 	var raw struct {
-		Values     []dcUser `json:"values"`
-		Size       int      `json:"size"`
-		Limit      int      `json:"limit"`
-		Start      int      `json:"start"`
-		IsLastPage bool     `json:"isLastPage"`
+		Values []dcUser `json:"values"`
+		dcPage
 	}
 	if err := c.getJSON(ctx, "/rest/api/1.0/users", q, &raw); err != nil {
 		return ListResult[User]{}, err
 	}
 	res := ListResult[User]{
-		Next: nextOffsetToken(opt.Cursor, limit, len(raw.Values), raw.IsLastPage),
+		Next: nextOffsetToken(raw.dcPage),
 	}
 	for _, u := range raw.Values {
 		res.Items = append(res.Items, mapDCUser(u))

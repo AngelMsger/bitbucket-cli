@@ -58,7 +58,7 @@ func (c *apiClient) ListBranches(ctx context.Context, opt BranchListOpts) (ListR
 	if err := c.getJSON(ctx, path, q, &raw); err != nil {
 		return ListResult[Branch]{}, err
 	}
-	res := ListResult[Branch]{Next: nextOffsetToken(opt.Cursor, limit, len(raw.Values), raw.IsLastPage)}
+	res := ListResult[Branch]{Next: nextOffsetToken(raw.dcPage)}
 	for _, b := range raw.Values {
 		res.Items = append(res.Items, mapDCBranch(b))
 	}

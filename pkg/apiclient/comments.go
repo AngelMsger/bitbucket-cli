@@ -43,7 +43,7 @@ func (c *apiClient) ListPRComments(ctx context.Context, opt ListPRCommentsOpts) 
 	if err := c.getJSON(ctx, c.prPath(opt.Repo, opt.PRID)+"/activities", q, &raw); err != nil {
 		return ListResult[Comment]{}, err
 	}
-	res := ListResult[Comment]{Next: nextOffsetToken(opt.Cursor, limit, len(raw.Values), raw.IsLastPage)}
+	res := ListResult[Comment]{Next: nextOffsetToken(raw.dcPage)}
 	for _, a := range raw.Values {
 		if a.Comment == nil {
 			continue

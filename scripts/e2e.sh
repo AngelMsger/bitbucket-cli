@@ -126,6 +126,9 @@ assert_contains  "pr unapprove"              '"approved": false' "${CLI[@]}" pr 
 assert_contains  "branch list"               "main"           "${CLI[@]}" branch list --repo PROJ/demo
 assert_contains  "commit list"               "aaaa111"        "${CLI[@]}" commit list --repo PROJ/demo
 assert_contains  "commit get"                "aaaa111"        "${CLI[@]}" commit get --repo PROJ/demo aaaa111
+assert_contains  "commit compare has next"   '"has_more": true' "${CLI[@]}" commit compare --repo PROJ/demo --from main --to dev
+assert_contains  "commit compare cursor"     "compare page two" "${CLI[@]}" commit compare --repo PROJ/demo --from main --to dev --cursor 37
+assert_contains  "commit compare --all"       "compare page two" "${CLI[@]}" commit compare --repo PROJ/demo --from main --to dev --all
 assert_contains  "pr create dry-run"         '"method": "POST"' \
                                              "${CLI[@]}" pr create --repo PROJ/demo --source feature/x --target main --title "X" --dry-run
 # v0.2 — file browsing + PR review aggregation

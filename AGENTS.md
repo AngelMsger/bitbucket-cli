@@ -98,6 +98,15 @@ paths that should include a discovery hint are asserted on (see
 `scripts/e2e.sh`'s `repo list hint` check). New "missing input" errors
 should grow a matching assertion.
 
+## Data Center pagination — follow the server cursor
+
+Every Data Center paged response must decode `nextPageStart`. When
+`isLastPage` is false, expose that value verbatim as the next cursor; never
+infer it from `start + limit`, `start + size`, or the number of decoded items.
+Bitbucket explicitly allows non-contiguous page starts. Cover paged endpoints
+with a fixture whose `nextPageStart` is deliberately non-contiguous so an
+offset inference cannot pass accidentally.
+
 ## Safety modes — `--dry-run` and read-only posture
 
 Two orthogonal protections guard every operation that mutates remote state

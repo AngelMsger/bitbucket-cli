@@ -73,9 +73,11 @@ the site root):
 | Ping | `GET /2.0/user` | `GET /rest/api/1.0/application-properties` |
 
 **Pagination**: Cloud is cursor-based (the `next` field is an absolute
-URL; follow it as-is); Data Center is offset-based (`start` / `limit`,
-terminated by `isLastPage`). `pagination.go`'s `FetchPage[T]` plus
-`CollectAll` abstract both behind one callback.
+URL; follow it as-is). Data Center accepts `start` / `limit`; when
+`isLastPage` is false, clients must reuse the response's `nextPageStart`
+verbatim because the next offset is not guaranteed to equal `start + limit`
+or `start + size`. `pagination.go`'s `FetchPage[T]` plus `CollectAll` abstract
+both behind one callback.
 
 **Flavor detection**: explicit `--flavor` / config wins; otherwise URL
 heuristics (host `*.bitbucket.org` → cloud); otherwise `auto` probes

@@ -71,7 +71,7 @@ func (c *apiClient) ListCommits(ctx context.Context, opt ListCommitsOpts) (ListR
 	if err := c.getJSON(ctx, path, q, &raw); err != nil {
 		return ListResult[Commit]{}, err
 	}
-	res := ListResult[Commit]{Next: nextOffsetToken(opt.Cursor, limit, len(raw.Values), raw.IsLastPage)}
+	res := ListResult[Commit]{Next: nextOffsetToken(raw.dcPage)}
 	for _, cm := range raw.Values {
 		res.Items = append(res.Items, mapDCCommit(cm))
 	}
@@ -83,13 +83,20 @@ func (c *apiClient) CompareCommits(ctx context.Context, req CompareCommitsReq) (
 	if err := checkRepoRef(req.Repo); err != nil {
 		return ListResult[Commit]{}, err
 	}
-	q := url.Values{}
+	limit := c.limitOf(req.ListOpts)
+	q := c.queryWithLimit(req.Cursor, limit)
+	path := c.commitsPath(req.Repo)
 	if c.flavor == FlavorCloud {
 		// Cloud: GET /repositories/{ws}/{repo}/commits?include=<to>&exclude=<from>
-		q.Set("include", req.To)
-		q.Set("exclude", req.From)
+		if cloudFollowURL(req.Cursor) {
+			path = req.Cursor
+			q = nil
+		} else {
+			q.Set("include", req.To)
+			q.Set("exclude", req.From)
+		}
 		var raw cloudCommitList
-		if err := c.getJSON(ctx, c.commitsPath(req.Repo), q, &raw); err != nil {
+		if err := c.getJSON(ctx, path, q, &raw); err != nil {
 			return ListResult[Commit]{}, err
 		}
 		res := ListResult[Commit]{Next: cloudNextCursor(raw.Next)}
@@ -102,10 +109,10 @@ func (c *apiClient) CompareCommits(ctx context.Context, req CompareCommitsReq) (
 	q.Set("until", req.To)
 	q.Set("since", req.From)
 	var raw dcCommitList
-	if err := c.getJSON(ctx, c.commitsPath(req.Repo), q, &raw); err != nil {
+	if err := c.getJSON(ctx, path, q, &raw); err != nil {
 		return ListResult[Commit]{}, err
 	}
-	res := ListResult[Commit]{Next: nextOffsetToken("", 0, len(raw.Values), raw.IsLastPage)}
+	res := ListResult[Commit]{Next: nextOffsetToken(raw.dcPage)}
 	for _, cm := range raw.Values {
 		res.Items = append(res.Items, mapDCCommit(cm))
 	}

@@ -90,7 +90,12 @@ func newCommitListCmd(s *appState) *cobra.Command {
 }
 
 func newCommitCompareCmd(s *appState) *cobra.Command {
-	var repoArg, from, to string
+	var (
+		repoArg, from, to string
+		limit             int
+		all               bool
+		cursor            string
+	)
 	cmd := &cobra.Command{
 		Use:   "compare",
 		Short: "List the commits between two refs",
@@ -105,17 +110,24 @@ func newCommitCompareCmd(s *appState) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			res, err := client.CompareCommits(ctx, apiclient.CompareCommitsReq{Repo: ref, From: from, To: to})
+			fetch := func(c string) (apiclient.ListResult[apiclient.Commit], error) {
+				return client.CompareCommits(ctx, apiclient.CompareCommitsReq{
+					ListOpts: apiclient.ListOpts{Limit: limit, Cursor: c},
+					Repo:     ref, From: from, To: to,
+				})
+			}
+			items, info, err := collectPage(fetch, cursor, all)
 			if err != nil {
 				return err
 			}
-			return s.emitList(res.Items, pageInfo{Next: res.Next, HasMore: res.Next != ""})
+			return s.emitList(items, info)
 		},
 	}
 	f := cmd.Flags()
 	f.StringVar(&repoArg, "repo", "", "<workspace>/<repo>")
 	f.StringVar(&from, "from", "", "exclude commits reachable from this ref")
 	f.StringVar(&to, "to", "", "include commits reachable from this ref")
+	addListFlags(cmd, &limit, &all, &cursor)
 	_ = cmd.MarkFlagRequired("repo")
 	_ = cmd.MarkFlagRequired("from")
 	_ = cmd.MarkFlagRequired("to")

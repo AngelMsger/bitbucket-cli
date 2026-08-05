@@ -30,4 +30,6 @@ shorthand arguments.
 - `bitbucket-cli commit get --repo <ws>/<repo> <hash>` — show one commit.
 - `bitbucket-cli commit list --repo <ws>/<repo> [--branch main] [--path src/]`
 - `bitbucket-cli commit compare --repo <ws>/<repo> --from <ref> --to <ref>`
-  yields the set of commits reachable from `to` but not from `from`.
+  yields the set of commits reachable from `to` but not from `from`. It accepts
+  `--limit N`, `--cursor <next>`, and `--all`; the default returns one page with
+  `next` and `has_more`, while `--all` fetches the complete comparison.

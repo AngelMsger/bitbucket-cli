@@ -69,17 +69,14 @@ func (c *apiClient) ListFiles(ctx context.Context, opt FileListOpts) (ListResult
 	q := c.queryWithLimit(opt.Cursor, limit)
 	q.Set("at", gitRef)
 	var raw struct {
-		Values     []string `json:"values"`
-		Size       int      `json:"size"`
-		Limit      int      `json:"limit"`
-		Start      int      `json:"start"`
-		IsLastPage bool     `json:"isLastPage"`
+		Values []string `json:"values"`
+		dcPage
 	}
 	if err := c.getJSON(ctx, c.filesPath(opt.Repo, opt.Path), q, &raw); err != nil {
 		return ListResult[FileEntry]{}, err
 	}
 	res := ListResult[FileEntry]{
-		Next: nextOffsetToken(opt.Cursor, limit, len(raw.Values), raw.IsLastPage),
+		Next: nextOffsetToken(raw.dcPage),
 	}
 	for _, p := range raw.Values {
 		res.Items = append(res.Items, FileEntry{

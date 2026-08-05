@@ -80,7 +80,7 @@ func (c *apiClient) ListPRs(ctx context.Context, opt PRListOpts) (ListResult[Pul
 	if err := c.getJSON(ctx, path, q, &raw); err != nil {
 		return ListResult[PullRequest]{}, err
 	}
-	res := ListResult[PullRequest]{Next: nextOffsetToken(opt.Cursor, limit, len(raw.Values), raw.IsLastPage)}
+	res := ListResult[PullRequest]{Next: nextOffsetToken(raw.dcPage)}
 	for _, p := range raw.Values {
 		res.Items = append(res.Items, *mapDCPR(opt.Repo, p))
 	}
@@ -198,7 +198,7 @@ func (c *apiClient) ListPRCommits(ctx context.Context, opt PRListOpts) (ListResu
 	if err := c.getJSON(ctx, path, q, &raw); err != nil {
 		return ListResult[Commit]{}, err
 	}
-	res := ListResult[Commit]{Next: nextOffsetToken(opt.Cursor, limit, len(raw.Values), raw.IsLastPage)}
+	res := ListResult[Commit]{Next: nextOffsetToken(raw.dcPage)}
 	for _, cm := range raw.Values {
 		res.Items = append(res.Items, mapDCCommit(cm))
 	}
@@ -264,7 +264,7 @@ func (c *apiClient) ListPRActivity(ctx context.Context, opt PRListOpts) (ListRes
 	if err := c.getJSON(ctx, path, q, &raw); err != nil {
 		return ListResult[Activity]{}, err
 	}
-	res := ListResult[Activity]{Next: nextOffsetToken(opt.Cursor, limit, len(raw.Values), raw.IsLastPage)}
+	res := ListResult[Activity]{Next: nextOffsetToken(raw.dcPage)}
 	for _, a := range raw.Values {
 		entry := Activity{
 			Kind:  strings.ToLower(a.Action),

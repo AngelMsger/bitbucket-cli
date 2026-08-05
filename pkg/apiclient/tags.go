@@ -77,16 +77,13 @@ func (c *apiClient) ListTags(ctx context.Context, opt TagListOpts) (ListResult[T
 			LatestCommit string `json:"latestCommit"`
 			Hash         string `json:"hash"`
 		} `json:"values"`
-		Size       int  `json:"size"`
-		Limit      int  `json:"limit"`
-		Start      int  `json:"start"`
-		IsLastPage bool `json:"isLastPage"`
+		dcPage
 	}
 	if err := c.getJSON(ctx, path, q, &raw); err != nil {
 		return ListResult[Tag]{}, err
 	}
 	res := ListResult[Tag]{
-		Next: nextOffsetToken(opt.Cursor, limit, len(raw.Values), raw.IsLastPage),
+		Next: nextOffsetToken(raw.dcPage),
 	}
 	for _, v := range raw.Values {
 		res.Items = append(res.Items, Tag{

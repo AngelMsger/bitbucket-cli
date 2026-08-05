@@ -81,6 +81,17 @@ func (c *apiClient) commitsPath(ref RepoRef) string {
 	return c.repoPath(ref) + "/commits"
 }
 
+// dcPage is the pagination metadata shared by Bitbucket Data Center list
+// responses. nextPageStart is an opaque server cursor; it is not guaranteed to
+// equal start + limit or start + size.
+type dcPage struct {
+	Size          int  `json:"size"`
+	Limit         int  `json:"limit"`
+	Start         int  `json:"start"`
+	IsLastPage    bool `json:"isLastPage"`
+	NextPageStart int  `json:"nextPageStart"`
+}
+
 // queryWithLimit builds a query string with pagination params. Cloud and DC
 // both accept their respective limit / page params via this helper.
 func (c *apiClient) queryWithLimit(cursor string, limit int) url.Values {
@@ -103,18 +114,12 @@ func (c *apiClient) queryWithLimit(cursor string, limit int) url.Values {
 	return q
 }
 
-// nextOffsetToken computes the cursor for the following DC page.
-func nextOffsetToken(cursor string, limit, size int, isLastPage bool) string {
-	if isLastPage || limit <= 0 || size < limit {
+// nextOffsetToken returns the server-provided cursor for the following DC page.
+func nextOffsetToken(page dcPage) string {
+	if page.IsLastPage {
 		return ""
 	}
-	start := 0
-	if cursor != "" {
-		if n, err := strconv.Atoi(cursor); err == nil {
-			start = n
-		}
-	}
-	return strconv.Itoa(start + limit)
+	return strconv.Itoa(page.NextPageStart)
 }
 
 // cloudNextCursor extracts the cursor portion (the `page` value or the whole

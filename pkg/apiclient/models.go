@@ -381,6 +381,7 @@ type ListCommitsOpts struct {
 
 // CompareCommitsReq compares two refs (branches or hashes).
 type CompareCommitsReq struct {
+	ListOpts
 	Repo RepoRef
 	From string
 	To   string

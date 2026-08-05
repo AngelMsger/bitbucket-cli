@@ -61,7 +61,7 @@ func (c *apiClient) dcListDashboardPRs(ctx context.Context, opt MyPRListOpts, ro
 		return ListResult[PullRequest]{}, err
 	}
 	out := ListResult[PullRequest]{
-		Next: nextOffsetToken(opt.Cursor, limit, len(raw.Values), raw.IsLastPage),
+		Next: nextOffsetToken(raw.dcPage),
 	}
 	for _, p := range raw.Values {
 		repo := RepoRef{

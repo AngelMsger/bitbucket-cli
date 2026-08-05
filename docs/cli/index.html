@@ -421,7 +421,10 @@ by `comment list` and `pr threads`.</p>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
+        <tr><td><code>--all</code></td><td><code>false</code></td><td>fetch every page of results</td></tr>
+        <tr><td><code>--cursor</code></td><td></td><td>start from this pagination cursor (the &#39;next&#39; of a prior page)</td></tr>
         <tr><td><code>--from</code></td><td></td><td>exclude commits reachable from this ref</td></tr>
+        <tr><td><code>--limit</code></td><td><code>0</code></td><td>page size (default from config)</td></tr>
         <tr><td><code>--repo</code></td><td></td><td>&lt;workspace&gt;/&lt;repo&gt;</td></tr>
         <tr><td><code>--to</code></td><td></td><td>include commits reachable from this ref</td></tr>
         </tbody>

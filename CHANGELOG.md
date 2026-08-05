@@ -4,6 +4,11 @@
 
 ### Fixed
 
+- `commit compare` now supports the standard `--limit`, `--cursor`, and `--all`
+  pagination flags on both Cloud and Data Center instead of silently stopping
+  after the first page. All Data Center list cursors now use the server's
+  `nextPageStart` value rather than inferring the next offset from page size,
+  so non-contiguous server cursors are preserved and `has_more` stays truthful.
 - `pr update` now preserves existing reviewers on Bitbucket Data Center when
   `--reviewer` is omitted. Data Center treats the reviewer field as a complete
   replacement set, so the client now fetches and round-trips the current set
