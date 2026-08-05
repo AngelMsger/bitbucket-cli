@@ -19,10 +19,10 @@ func newWriteTestClient(t *testing.T, flavor Flavor, handler http.Handler) Clien
 	return New(Config{Flavor: flavor, BaseURL: srv.URL, Transport: transport.New(transport.Options{})})
 }
 
-// TestUpdatePRDataCenterSendsVersion guards the optimistic-lock fix: a DC PR
-// update must GET the current version and echo it back in the PUT body, or the
-// server rejects the write.
-func TestUpdatePRDataCenterSendsVersion(t *testing.T) {
+// TestUpdatePRDataCenterPreservesVersionAndReviewers guards both pieces of
+// state that a DC metadata PUT must round-trip: the optimistic-lock version and
+// the complete reviewer set.
+func TestUpdatePRDataCenterPreservesVersionAndReviewers(t *testing.T) {
 	var getHit bool
 	var putBody map[string]any
 	c := newWriteTestClient(t, FlavorDataCenter, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -30,7 +30,13 @@ func TestUpdatePRDataCenterSendsVersion(t *testing.T) {
 		switch r.Method {
 		case http.MethodGet:
 			getHit = true
-			_ = json.NewEncoder(w).Encode(map[string]any{"id": 7, "version": 5, "title": "old"})
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"id": 7, "version": 5, "title": "old",
+				"reviewers": []any{
+					map[string]any{"user": map[string]string{"name": "alice"}},
+					map[string]any{"user": map[string]string{"name": "bob"}},
+				},
+			})
 		case http.MethodPut:
 			raw, _ := io.ReadAll(r.Body)
 			_ = json.Unmarshal(raw, &putBody)
@@ -54,6 +60,49 @@ func TestUpdatePRDataCenterSendsVersion(t *testing.T) {
 	if putBody["title"] != "new" {
 		t.Errorf("PUT title = %v; want new", putBody["title"])
 	}
+	if got := reviewerNamesFromPayload(t, putBody); strings.Join(got, ",") != "alice,bob" {
+		t.Errorf("PUT reviewers = %v; want existing reviewers [alice bob]", got)
+	}
+}
+
+func TestUpdatePRDataCenterReplacesReviewersWhenExplicit(t *testing.T) {
+	c := newWriteTestClient(t, FlavorDataCenter, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			t.Fatalf("dry-run should only GET; got %s", r.Method)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"id": 7, "version": 5,
+			"reviewers": []any{map[string]any{"user": map[string]string{"name": "alice"}}},
+		})
+	}))
+	plan, err := c.DescribeWrite(context.Background(), UpdatePRReq{
+		Repo: RepoRef{Workspace: "PROJ", Slug: "repo"}, ID: 7,
+		Reviewers: []string{"carol"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := plan.Payload.(map[string]any)
+	if got := reviewerNamesFromPayload(t, body); strings.Join(got, ",") != "carol" {
+		t.Errorf("PUT reviewers = %v; want explicit replacement [carol]", got)
+	}
+}
+
+func TestUpdatePRCloudOmitsUnchangedReviewers(t *testing.T) {
+	c := newWriteTestClient(t, FlavorCloud, http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		t.Fatalf("Cloud dry-run should not send HTTP; got %s", r.Method)
+	}))
+	plan, err := c.DescribeWrite(context.Background(), UpdatePRReq{
+		Repo: RepoRef{Workspace: "ws", Slug: "repo"}, ID: 7, Description: "new",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := plan.Payload.(map[string]any)
+	if _, ok := body["reviewers"]; ok {
+		t.Errorf("Cloud PUT should omit unchanged reviewers; got %v", body["reviewers"])
+	}
 }
 
 // TestDescribeUpdatePRDataCenter confirms --dry-run also resolves the version
@@ -76,6 +125,27 @@ func TestDescribeUpdatePRDataCenter(t *testing.T) {
 	if plan.Method != http.MethodPut || body["version"] != 9 {
 		t.Errorf("plan = %s version=%v; want PUT version=9", plan.Method, body["version"])
 	}
+}
+
+func reviewerNamesFromPayload(t *testing.T, body map[string]any) []string {
+	t.Helper()
+	b, err := json.Marshal(body["reviewers"])
+	if err != nil {
+		t.Fatal(err)
+	}
+	var reviewers []struct {
+		User struct {
+			Name string `json:"name"`
+		} `json:"user"`
+	}
+	if err := json.Unmarshal(b, &reviewers); err != nil {
+		t.Fatal(err)
+	}
+	names := make([]string, 0, len(reviewers))
+	for _, reviewer := range reviewers {
+		names = append(names, reviewer.User.Name)
+	}
+	return names
 }
 
 // TestCreatePRDataCenterFork verifies a cross-fork PR points fromRef at the fork

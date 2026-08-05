@@ -56,6 +56,7 @@ the site root):
 | List workspaces | `GET /2.0/workspaces` | `GET /rest/api/1.0/projects` |
 | List PRs | `GET /2.0/repositories/{ws}/{repo}/pullrequests?state=&q=` | `GET /rest/api/1.0/projects/{key}/repos/{repo}/pull-requests?state=` |
 | Get PR | `GET .../pullrequests/{id}` | `GET .../pull-requests/{id}` |
+| Update PR metadata | `PUT .../pullrequests/{id}` accepts partial metadata; omit `reviewers` to preserve them | `PUT .../pull-requests/{id}` requires the current `version` and treats `reviewers` as a complete replacement set; the client fetches and round-trips both |
 | PR diff (whole) | `GET .../pullrequests/{id}/diff` (text) | `GET .../pull-requests/{id}/diff` (JSON hunks; `Accept: text/plain` for raw text) |
 | PR diff (per file) | `GET .../pullrequests/{id}/diff?path=` | `GET .../pull-requests/{id}/diff/{path}` |
 | PR diffstat | `GET .../pullrequests/{id}/diffstat` | `GET .../pull-requests/{id}/changes` |

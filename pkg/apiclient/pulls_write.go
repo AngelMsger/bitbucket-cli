@@ -196,13 +196,21 @@ func (c *apiClient) buildUpdatePR(ctx context.Context, req UpdatePRReq) (method,
 		return
 	}
 	body["version"] = cur.Version
-	if req.Reviewers != nil {
-		reviewers := make([]map[string]any, 0, len(req.Reviewers))
-		for _, r := range req.Reviewers {
-			reviewers = append(reviewers, map[string]any{"user": map[string]string{"name": r}})
+	// Data Center treats reviewers as the complete replacement set, even when
+	// the field is omitted from the PUT. Round-trip the current set unless the
+	// caller explicitly supplied a replacement.
+	reviewerNames := req.Reviewers
+	if reviewerNames == nil {
+		reviewerNames = make([]string, 0, len(cur.Reviewers))
+		for _, reviewer := range cur.Reviewers {
+			reviewerNames = append(reviewerNames, reviewer.User.Name)
 		}
-		body["reviewers"] = reviewers
 	}
+	reviewers := make([]map[string]any, 0, len(reviewerNames))
+	for _, r := range reviewerNames {
+		reviewers = append(reviewers, map[string]any{"user": map[string]string{"name": r}})
+	}
+	body["reviewers"] = reviewers
 	payload = body
 	return
 }

@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- `pr update` now preserves existing reviewers on Bitbucket Data Center when
+  `--reviewer` is omitted. Data Center treats the reviewer field as a complete
+  replacement set, so the client now fetches and round-trips the current set
+  together with the optimistic-lock version; an explicit `--reviewer` still
+  replaces the list as documented.
+
 ## [0.13.2] - 2026-08-04
 
 ### Fixed
