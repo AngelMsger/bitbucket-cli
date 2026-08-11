@@ -425,7 +425,8 @@ readable.
 `skill install` uses an agent path table (`agentSpecs` in
 `internal/app/skill.go`) mapping each agent to its global / project
 skills directory: Claude Code uses `~/.claude/skills` and
-`./.claude/skills`; Codex uses `~/.codex/skills` and `./.agents/skills`.
+`./.claude/skills`; Codex uses `~/.codex/skills` and `./.agents/skills`;
+Grok Build uses `~/.grok/skills` and `./.grok/skills`.
 With no flag it probes which directories exist and installs / removes
 for each hit; `--agent` selects explicitly; `--dir` is the
 agent-agnostic explicit path.
