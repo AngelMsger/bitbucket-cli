@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+## [0.14.1] - 2026-08-11
+
+### Added
+
+- **Pi skill install target.** `skill install` now deploys the companion Skill
+  for Pi (`--agent pi`) to `~/.pi/agent/skills/<name>` globally and
+  `./.pi/skills/<name>` with `--project`. Auto-detection probes `~/.pi` /
+  `./.pi` alongside Claude Code, Codex, and Grok Build. Installation guides,
+  generated CLI docs, and agent help text list the new target.
+
+
 ## [0.14.0] - 2026-08-11
 
 ### Added
@@ -599,7 +610,8 @@ PR-centric MVP supporting Bitbucket Cloud (REST 2.0) and Data Center (REST
 subtrees; layered configuration with keychain-backed auth; structured error
 model; and an embedded companion Skill.
 
-[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.14.0...HEAD
+[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.14.1...HEAD
+[0.14.1]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.14.0...v0.14.1
 [0.14.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.13.3...v0.14.0
 [0.13.3]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.13.2...v0.13.3
 [0.13.2]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.13.1...v0.13.2

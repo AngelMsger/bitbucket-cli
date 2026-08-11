@@ -183,7 +183,7 @@ After loading the script, type `bitbucket-cli pr get x --scope ` and press
 
 ## 3. Install the companion Skill
 
-The `bitbucket` Skill teaches a coding agent — **Claude Code**, **Codex**, and **Grok Build** —
+The `bitbucket` Skill teaches a coding agent — **Claude Code**, **Codex**, **Grok Build**, and **Pi** —
 how to drive this CLI. It is **embedded in the `bitbucket-cli` binary**, so
 whichever way you installed the CLI — npm, `go install`, a prebuilt binary —
 you already have a version-matched copy of the Skill.
@@ -196,7 +196,7 @@ the Skill into every one it finds:
 ```bash
 bitbucket-cli skill install              # auto-detect; install for each agent found
 bitbucket-cli skill install --agent codex          # only Codex
-bitbucket-cli skill install --agent claude-code,codex,grok
+bitbucket-cli skill install --agent claude-code,codex,grok,pi
 bitbucket-cli skill install --project    # project dirs instead of $HOME
 bitbucket-cli skill install --dir <path> # explicit base -> <path>/bitbucket
 
@@ -211,9 +211,10 @@ Install locations per agent:
 | Claude Code | `~/.claude/skills/bitbucket` | `./.claude/skills/bitbucket` |
 | Codex | `~/.codex/skills/bitbucket` | `./.agents/skills/bitbucket` |
 | Grok Build | `~/.grok/skills/bitbucket` | `./.grok/skills/bitbucket` |
+| Pi | `~/.pi/agent/skills/bitbucket` | `./.pi/skills/bitbucket` |
 
-Auto-detection looks for `~/.claude` / `~/.codex` / `~/.grok` (global) or `./.claude` /
-`./.agents` / `./AGENTS.md` / `./.grok` (project). If nothing is detected, pass `--agent`
+Auto-detection looks for `~/.claude` / `~/.codex` / `~/.grok` / `~/.pi` (global) or `./.claude` /
+`./.agents` / `./AGENTS.md` / `./.grok` / `./.pi` (project). If nothing is detected, pass `--agent`
 or `--dir` explicitly.
 
 Because the Skill ships inside the binary, **updating is automatic**: upgrade

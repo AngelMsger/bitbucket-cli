@@ -109,7 +109,7 @@ is published at <https://angelmsger.github.io/bitbucket-cli/cli/>.
 
 | Command | Description |
 | --- | --- |
-| [`bitbucket-cli skill`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-skill) | Install the companion Skill for coding agents (Claude Code, Codex, Grok Build) |
+| [`bitbucket-cli skill`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-skill) | Install the companion Skill for coding agents (Claude Code, Codex, Grok Build, Pi) |
 | [`bitbucket-cli skill install`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-skill-install) | Deploy the embedded Skill into a coding agent's skills directory |
 | [`bitbucket-cli skill path`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-skill-path) | Print where the Skill would be installed, and whether it is |
 | [`bitbucket-cli skill show`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-skill-show) | Print the embedded SKILL.md to stdout |
