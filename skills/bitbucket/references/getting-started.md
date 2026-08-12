@@ -42,6 +42,12 @@ bitbucket-cli workspace list  # discover the workspaces (Cloud) / projects (DC) 
 The `slug` field of each workspace entry is what every other command's
 `--workspace` flag (and `BITBUCKET_DEFAULT_WORKSPACE`) accepts.
 
+On Data Center, `whoami` reads the authenticated response's `X-AUSERNAME`
+header and then resolves the matching user record. If a reverse proxy strips
+that header, the command returns `AUTH_IDENTITY_UNAVAILABLE` instead of
+claiming success without a username; check `auth status`, `doctor`, and the
+proxy's response-header configuration.
+
 `bitbucket-cli auth login` re-stores credentials for an existing context.
 `bitbucket-cli auth logout` deletes them.
 

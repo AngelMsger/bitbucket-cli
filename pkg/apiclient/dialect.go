@@ -34,6 +34,16 @@ func (c *apiClient) repoPath(ref RepoRef) string {
 	return c.apiBase() + "/projects/" + url.PathEscape(ref.Workspace) + "/repos/" + url.PathEscape(ref.Slug)
 }
 
+// forkRepoPath is the write endpoint for creating a fork.
+// Cloud uses a dedicated /forks collection; Data Center overloads POST on the
+// source repository resource.
+func (c *apiClient) forkRepoPath(ref RepoRef) string {
+	if c.flavor == FlavorCloud {
+		return c.repoPath(ref) + "/forks"
+	}
+	return c.repoPath(ref)
+}
+
 // reposPath is the URL path for listing repositories.
 // Cloud:        /2.0/repositories/{workspace}
 // Data Center:  /rest/api/1.0/projects/{project}/repos

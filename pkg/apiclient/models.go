@@ -417,6 +417,23 @@ type CreateRepoReq struct {
 	Private     bool
 }
 
+// ForkRepoReq forks an existing repository.
+//
+// Source is always required. Data Center may omit Workspace to use the caller's
+// personal project. Cloud requires Workspace, and a same-workspace Cloud fork
+// also requires Name so the generated repository slug is distinct.
+type ForkRepoReq struct {
+	// Source is the repository being forked.
+	Source RepoRef
+	// Workspace is where the fork is created: a project key on Data Center
+	// (personal projects look like ~username) or a workspace slug on Cloud.
+	// Empty means the caller's personal project on Data Center and is rejected
+	// on Cloud.
+	Workspace string
+	// Name names the fork. Empty keeps the source repository's name.
+	Name string
+}
+
 // DeleteRepoReq removes a repository.
 type DeleteRepoReq struct {
 	Repo RepoRef

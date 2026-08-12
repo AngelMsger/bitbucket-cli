@@ -15,7 +15,55 @@ func newRepoCmd(s *appState) *cobra.Command {
 		Short: "Browse and manage Bitbucket repositories",
 	}
 	cmd.AddCommand(newRepoListCmd(s), newRepoGetCmd(s), newRepoCloneURLCmd(s),
-		newRepoCreateCmd(s), newRepoDeleteCmd(s))
+		newRepoCreateCmd(s), newRepoForkCmd(s), newRepoDeleteCmd(s))
+	return cmd
+}
+
+func newRepoForkCmd(s *appState) *cobra.Command {
+	var (
+		into, name string
+		dryRun     bool
+	)
+	cmd := &cobra.Command{
+		Use:   "fork <workspace>/<repo> | <url>",
+		Short: "Fork a repository into a workspace, project, or personal area",
+		Long: "Forks a repository. Data Center defaults to your personal project when " +
+			"--into is omitted. Bitbucket Cloud requires --into because its API has no " +
+			"personal-workspace default.\n\n" +
+			"Use --name to give the fork a different name. Cloud also requires --name " +
+			"when the source and destination are the same workspace.",
+		Example: "  bitbucket-cli repo fork FX/fx-code\n" +
+			"  bitbucket-cli repo fork FX/fx-code --into ~alice\n" +
+			"  bitbucket-cli repo fork https://bitbucket.org/team/repo --into my-workspace --dry-run",
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ref, err := resolveRepoRef(args[0], defaultWorkspace(s, ""))
+			if err != nil {
+				return err
+			}
+			req := apiclient.ForkRepoReq{Source: ref, Workspace: into, Name: name}
+
+			ctx, cancel := cmdContext(s)
+			defer cancel()
+			client, err := s.newClient(ctx)
+			if err != nil {
+				return err
+			}
+			if dryRun {
+				return emitDryRun(s, client, ctx, req)
+			}
+			r, err := client.ForkRepository(ctx, req)
+			if err != nil {
+				return err
+			}
+			return s.emit(r)
+		},
+	}
+	f := cmd.Flags()
+	f.StringVar(&into, "into", "",
+		"target project key or workspace (required on Cloud; DC defaults to your personal project)")
+	f.StringVar(&name, "name", "", "name for the fork; defaults to the source repository's name")
+	f.BoolVar(&dryRun, "dry-run", false, "preview the HTTP request instead of sending it")
 	return cmd
 }
 

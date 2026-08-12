@@ -36,6 +36,9 @@ func blocked(op string) *cerrors.CLIError {
 func (r *readOnlyClient) CreateRepository(_ context.Context, _ CreateRepoReq) (*Repository, error) {
 	return nil, blocked("CreateRepository")
 }
+func (r *readOnlyClient) ForkRepository(_ context.Context, _ ForkRepoReq) (*Repository, error) {
+	return nil, blocked("ForkRepository")
+}
 func (r *readOnlyClient) DeleteRepository(_ context.Context, _ DeleteRepoReq) error {
 	return blocked("DeleteRepository")
 }

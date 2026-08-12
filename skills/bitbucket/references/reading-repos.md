@@ -11,6 +11,13 @@
 - `bitbucket-cli repo create <slug> --workspace <ws>` creates a repository
   (`--name`, `--description`; `--private` defaults to **true**). Writes —
   preview with `--dry-run`.
+- `bitbucket-cli repo fork <ws>/<repo> [--into <target>] [--name <name>]`
+  creates a fork. On **Cloud**, `--into` is required because the API has no
+  personal-workspace default; if source and target are the same workspace,
+  `--name` is also required. On **Data Center**, omitting `--into` targets the
+  authenticated user's personal project; use `whoami` to discover the username
+  for an explicit personal-project key such as `~alice`. Preview with
+  `--dry-run`; read-only mode blocks the live fork.
 - `bitbucket-cli repo delete <ws>/<repo> --yes` deletes one (destructive —
   requires `--yes`; `--dry-run` previews).
 

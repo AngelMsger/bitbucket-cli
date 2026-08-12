@@ -19,6 +19,8 @@ const (
 	CapPRCloseSourceBranch Capability = "pr.close-source-branch"
 	// CapPRCrossForkCreate: opening a PR from a fork into an upstream repo.
 	CapPRCrossForkCreate Capability = "pr.cross-fork-create"
+	// CapRepoForkImplicitTarget: omitting a fork's destination namespace.
+	CapRepoForkImplicitTarget Capability = "repo.fork-implicit-target"
 )
 
 // SupportLevel describes how a flavor provides a capability.
@@ -49,7 +51,7 @@ var capabilitySupport = map[Capability]map[Flavor]Support{
 	CapPRRequestChanges: {
 		FlavorCloud: {Level: SupportNative},
 		FlavorDataCenter: {Level: SupportUnsupported,
-			Reason: "DC models this as a participant-status (NEEDS_WORK) PUT keyed on the caller's user slug, which the DC client cannot resolve yet (no working whoami)"},
+			Reason: "DC models this as a participant-status (NEEDS_WORK) PUT, which the client has not implemented yet"},
 	},
 	CapPRCloseSourceBranch: {
 		FlavorCloud: {Level: SupportNative},
@@ -60,6 +62,11 @@ var capabilitySupport = map[Capability]map[Flavor]Support{
 		FlavorCloud: {Level: SupportNative},
 		FlavorDataCenter: {Level: SupportNative,
 			Reason: "DC also requires an explicit --target (the upstream destination branch)"},
+	},
+	CapRepoForkImplicitTarget: {
+		FlavorCloud: {Level: SupportUnsupported,
+			Reason: "Bitbucket Cloud requires the destination workspace in every fork request"},
+		FlavorDataCenter: {Level: SupportNative},
 	},
 }
 
