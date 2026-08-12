@@ -183,7 +183,7 @@ After loading the script, type `bitbucket-cli pr get x --scope ` and press
 
 ## 3. Install the companion Skill
 
-The `bitbucket` Skill teaches a coding agent — **Claude Code**, **Codex**, **Grok Build**, and **Pi** —
+The `bitbucket` Skill teaches a coding agent — **Claude Code**, **Codex**, **Cursor**, **Agents** (shared), **Gemini CLI**, **GitHub Copilot**, **OpenCode**, **Continue**, **Windsurf**, **Grok Build**, **Pi**, **Kilo Code**, and **Roo Code** —
 how to drive this CLI. It is **embedded in the `bitbucket-cli` binary**, so
 whichever way you installed the CLI — npm, `go install`, a prebuilt binary —
 you already have a version-matched copy of the Skill.
@@ -196,7 +196,7 @@ the Skill into every one it finds:
 ```bash
 bitbucket-cli skill install              # auto-detect; install for each agent found
 bitbucket-cli skill install --agent codex          # only Codex
-bitbucket-cli skill install --agent claude-code,codex,grok,pi
+bitbucket-cli skill install --agent cursor,agents,gemini
 bitbucket-cli skill install --project    # project dirs instead of $HOME
 bitbucket-cli skill install --dir <path> # explicit base -> <path>/bitbucket
 
@@ -210,12 +210,19 @@ Install locations per agent:
 |-------|------------------|-----------------------|
 | Claude Code | `~/.claude/skills/bitbucket` | `./.claude/skills/bitbucket` |
 | Codex | `~/.codex/skills/bitbucket` | `./.agents/skills/bitbucket` |
+| Cursor | `~/.cursor/skills/bitbucket` | `./.cursor/skills/bitbucket` |
+| Agents (shared) | `~/.agents/skills/bitbucket` | `./.agents/skills/bitbucket` |
+| Gemini CLI | `~/.gemini/skills/bitbucket` | `./.gemini/skills/bitbucket` |
+| GitHub Copilot | `~/.copilot/skills/bitbucket` | `./.agents/skills/bitbucket` |
+| OpenCode | `~/.config/opencode/skills/bitbucket` | `./.opencode/skills/bitbucket` |
+| Continue | `~/.continue/skills/bitbucket` | `./.continue/skills/bitbucket` |
+| Windsurf | `~/.codeium/windsurf/skills/bitbucket` | `./.windsurf/skills/bitbucket` |
 | Grok Build | `~/.grok/skills/bitbucket` | `./.grok/skills/bitbucket` |
 | Pi | `~/.pi/agent/skills/bitbucket` | `./.pi/skills/bitbucket` |
+| Kilo Code | `~/.kilocode/skills/bitbucket` | `./.kilocode/skills/bitbucket` |
+| Roo Code | `~/.roo/skills/bitbucket` | `./.roo/skills/bitbucket` |
 
-Auto-detection looks for `~/.claude` / `~/.codex` / `~/.grok` / `~/.pi` (global) or `./.claude` /
-`./.agents` / `./AGENTS.md` / `./.grok` / `./.pi` (project). If nothing is detected, pass `--agent`
-or `--dir` explicitly.
+Auto-detection looks for each agent's home or project marker (`~/.claude`, `~/.codex`, `~/.cursor`, `~/.agents`, `~/.gemini`, `~/.copilot`, `~/.config/opencode`, `~/.continue`, `~/.codeium/windsurf`, `~/.grok`, `~/.pi`, `~/.kilocode`, `~/.roo`, and the matching project dirs). If nothing is detected, pass `--agent` or `--dir` explicitly.
 
 Because the Skill ships inside the binary, **updating is automatic**: upgrade
 the CLI (`npm update -g @angelmsger/bitbucket-cli`, `go install ...@latest`,

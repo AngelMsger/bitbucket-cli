@@ -75,7 +75,7 @@ Or download a prebuilt binary from the
 ### 2. Deploy the companion Skill
 
 The `bitbucket` Skill is embedded in the binary; it teaches your coding agent
-(**Claude Code**, **Codex**, **Grok Build**, **Pi**) how to drive the CLI. `skill install` probes for
+(**Claude Code**, **Codex**, **Cursor**, **Agents** (shared), **Gemini CLI**, **GitHub Copilot**, **OpenCode**, **Continue**, **Windsurf**, **Grok Build**, **Pi**, **Kilo Code**, and **Roo Code**) how to drive the CLI. `skill install` probes for
 installed agents and installs into each one found:
 
 ```bash
@@ -163,7 +163,7 @@ written to the config file.
 | `commit get` / `list` / `compare` | query commits; walk history; compare two refs |
 | `comment list` / `add` / `update` / `delete` | PR comments (`--inline path:line` for review comments) |
 | `whoami` | print the user the credentials authenticate as |
-| `skill install` / `skill uninstall` | deploy or remove the embedded companion Skill (Claude Code, Codex, Grok Build, Pi, Pi) |
+| `skill install` / `skill uninstall` | deploy or remove the embedded companion Skill (Claude Code, Codex, Cursor, Agents, Gemini, GitHub Copilot, OpenCode, Continue, Windsurf, Grok Build, Pi, Kilo Code, Roo Code) |
 | `config get-contexts` / `use-context` / `delete-context` | manage multiple named servers |
 | `config` / `auth` / `doctor` / `version` | setup and diagnostics |
 
