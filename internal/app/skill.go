@@ -220,7 +220,7 @@ func agentIDs() []string {
 // skillDest is a resolved install location for the Skill.
 type skillDest struct {
 	agent string // agent id, or "" for an explicit --dir target
-	path  string // the `bitbucket` skill directory
+	path  string // the `bitbucket` directory itself
 }
 
 // agentDest returns the `bitbucket` Skill directory for an agent.
