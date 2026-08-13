@@ -107,6 +107,7 @@ fish, PowerShell and persistent setup are covered in
 bitbucket-cli config init --pretty   # interactive TUI setup (recommended for humans)
 bitbucket-cli doctor                 # verify configuration and connectivity
 bitbucket-cli workspace list         # discover the workspaces / projects you can see
+bitbucket-cli repo fork myws/upstream --into myws --name upstream-fork --dry-run
 
 # Find what to review (cross-repo "PRs awaiting my review")
 bitbucket-cli pr inbox --role reviewer                          # DC: dashboard call; Cloud: add --workspace
@@ -158,7 +159,7 @@ written to the config file.
 | `pr approve` / `unapprove` / `request-changes` | review verdicts (`request-changes` is Cloud only) |
 | `pr fetch` / `pr checkout` | print the equivalent `git` commands; `--exec` runs them in your current checkout |
 | `file list` / `tree` / `get` | browse and read source at any ref; `--range L1:L2` slices a line range |
-| `repo list` / `get` / `clone-url` / `create` / `delete` | manage repositories; `clone-url` prints HTTPS/SSH URLs |
+| `repo list` / `get` / `clone-url` / `create` / `fork` / `delete` | manage repositories; `fork` supports `--into`, `--name`, and `--dry-run` |
 | `branch list` / `get` / `create` / `delete` | manage branches in a repository |
 | `commit get` / `list` / `compare` | query commits; walk history; compare two refs |
 | `comment list` / `add` / `update` / `delete` | PR comments (`--inline path:line` for review comments) |

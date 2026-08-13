@@ -280,7 +280,7 @@ const htmlTemplate = `<!doctype html>
       </table>{{end}}
       {{if .Example}}<h3>Examples</h3><pre>{{example .Example}}</pre>{{end}}
     </section>
-    {{end}}{{end}}
+{{end}}{{end}}
   </main>
 </div>
 <footer class="footer">

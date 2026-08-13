@@ -126,6 +126,89 @@ func (c *apiClient) buildCreateRepo(req CreateRepoReq) (method, path string, pay
 	return
 }
 
+// ForkRepository forks a repository. Data Center may infer the caller's
+// personal project; Cloud requires an explicit destination workspace.
+func (c *apiClient) ForkRepository(ctx context.Context, req ForkRepoReq) (*Repository, error) {
+	if err := c.validateForkRepo(req); err != nil {
+		return nil, err
+	}
+	method, path, payload := c.buildForkRepo(req)
+
+	if c.flavor == FlavorCloud {
+		var raw cloudRepo
+		if err := c.doJSON(ctx, method, path, nil, payload, &raw); err != nil {
+			return nil, err
+		}
+		return mapCloudRepo(raw), nil
+	}
+	var raw dcRepo
+	if err := c.doJSON(ctx, method, path, nil, payload, &raw); err != nil {
+		return nil, err
+	}
+	return mapDCRepo(raw), nil
+}
+
+// buildForkRepo renders the fork request for either backend.
+//
+// Data Center overloads POST on the repository's own path to mean "fork this";
+// an empty body forks into the caller's personal project under the same name.
+// Cloud has a dedicated /forks sub-resource and requires workspace.slug.
+func (c *apiClient) buildForkRepo(req ForkRepoReq) (method, path string, payload any) {
+	method = "POST"
+	path = c.forkRepoPath(req.Source)
+	body := map[string]any{}
+
+	if c.flavor == FlavorCloud {
+		if req.Name != "" {
+			body["name"] = req.Name
+		}
+		if req.Workspace != "" {
+			body["workspace"] = map[string]any{"slug": req.Workspace}
+		}
+		return method, path, body
+	}
+
+	if req.Name != "" {
+		body["name"] = req.Name
+	}
+	if req.Workspace != "" {
+		body["project"] = map[string]any{"key": req.Workspace}
+	}
+	return method, path, body
+}
+
+// validateForkRepo keeps live execution and DescribeWrite on the same
+// flavor-aware validation path. Data Center can infer the caller's personal
+// project; Cloud deliberately cannot and requires an explicit workspace.
+func (c *apiClient) validateForkRepo(req ForkRepoReq) error {
+	if err := checkRepoRef(req.Source); err != nil {
+		return err
+	}
+	workspace := strings.TrimSpace(req.Workspace)
+	if workspace == "" {
+		if sup := c.supportFor(CapRepoForkImplicitTarget); !sup.Supported() {
+			return cerrors.New(cerrors.CategoryUsage, "REPO_FORK_NO_WORKSPACE",
+				"a destination workspace is required to fork a repository on Bitbucket Cloud: "+sup.Reason).
+				WithHint("Discover a writable workspace, then pass it with --into.").
+				WithNextSteps(
+					"bitbucket-cli workspace list   # discover available workspaces",
+					"bitbucket-cli repo fork <workspace>/<repo> --into <workspace>",
+				)
+		}
+		return nil
+	}
+	if c.flavor == FlavorCloud && strings.EqualFold(workspace, strings.TrimSpace(req.Source.Workspace)) &&
+		strings.TrimSpace(req.Name) == "" {
+		return cerrors.New(cerrors.CategoryUsage, "REPO_FORK_NAME_REQUIRED",
+			"--name is required when forking into the source repository's Cloud workspace").
+			WithHint("Choose a distinct fork name so its generated slug does not collide with the source repository.").
+			WithNextSteps(
+				"bitbucket-cli repo fork <workspace>/<repo> --into <workspace> --name <new-name>",
+			)
+	}
+	return nil
+}
+
 // DeleteRepository deletes a repository.
 func (c *apiClient) DeleteRepository(ctx context.Context, req DeleteRepoReq) error {
 	if err := checkRepoRef(req.Repo); err != nil {

@@ -45,6 +45,10 @@ func TestReadOnlyBlocksEveryMutator(t *testing.T) {
 			_, err := c.CreateRepository(ctx, CreateRepoReq{Workspace: "WS", Slug: "x"})
 			return err
 		}},
+		{"ForkRepository", func() error {
+			_, err := c.ForkRepository(ctx, ForkRepoReq{Source: repo, Workspace: "target"})
+			return err
+		}},
 		{"DeleteRepository", func() error { return c.DeleteRepository(ctx, DeleteRepoReq{Repo: repo}) }},
 		{"CreatePR", func() error {
 			_, err := c.CreatePR(ctx, CreatePRReq{Repo: repo, Title: "t", Source: "feat"})

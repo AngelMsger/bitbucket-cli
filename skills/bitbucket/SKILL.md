@@ -1,6 +1,6 @@
 ---
 name: bitbucket
-version: 0.11.5
+version: 0.11.6
 description: "Use Bitbucket as a code-hosting backend for coding agents. Browse repositories and source files at any ref, drive pull request review and merge workflows, see per-file diffs and diffstats, check mergeability and CI build status, fetch a PR into a local git checkout, post inline review comments, resolve or reopen comment threads, triage and respond to received review comments (with resolution / task status and --unresolved filters), and preview every write with --dry-run or lock the session with read-only mode. Supports Bitbucket Cloud and Data Center / Server. Use when the user mentions Bitbucket, a PR or pull-request URL or ID, repository browsing, file content at a ref, code review, responding to or addressing PR review comments, resolving a comment thread or task, approve/decline/merge a PR, asks to read a diff, or wants a dry-run / read-only / safe-mode session."
 metadata:
   requires:
@@ -67,7 +67,9 @@ TTY — agents should never pass it.
   add `--inline <path>:<line>` for inline review comments. Resolve or reopen a
   thread with `comment resolve <id> --pr <ref>` (`--unresolve` to reopen); on
   Data Center this also completes/reopens a task.
-- **Repository / branches / commits** — see `references/reading-repos.md`.
+- **Repository / branches / commits** — browse, create, fork, and delete
+  repositories with `repo ...`; see `references/reading-repos.md` for the
+  Cloud/DC `repo fork --into/--name` rules.
 - **Batch writes** — `pr approve`, `pr decline` and `comment delete` take several
   references/IDs in one call, or a single `-` to read them from stdin (e.g.
   `pr inbox --format json | jq -r '.items[].ref' | bitbucket-cli pr approve -`).

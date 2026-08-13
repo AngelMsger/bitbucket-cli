@@ -36,6 +36,7 @@ type Client interface {
 	ListRepositories(ctx context.Context, opt RepoListOpts) (ListResult[Repository], error)
 	GetRepository(ctx context.Context, ref RepoRef) (*Repository, error)
 	CreateRepository(ctx context.Context, req CreateRepoReq) (*Repository, error)
+	ForkRepository(ctx context.Context, req ForkRepoReq) (*Repository, error)
 	DeleteRepository(ctx context.Context, req DeleteRepoReq) error
 
 	ListPRs(ctx context.Context, opt PRListOpts) (ListResult[PullRequest], error)
@@ -138,6 +139,33 @@ func (c *apiClient) limitOf(opt ListOpts) int {
 // getJSON performs a GET and decodes the JSON body into out.
 func (c *apiClient) getJSON(ctx context.Context, path string, query url.Values, out any) error {
 	return c.doJSON(ctx, http.MethodGet, path, query, nil, out)
+}
+
+// getResponseHeader performs a GET and returns one response header, discarding
+// the body. Data Center reports the authenticated user only in the X-AUSERNAME
+// header rather than through any "current user" endpoint, so reading a header
+// is the sole way to answer whoami there.
+func (c *apiClient) getResponseHeader(ctx context.Context, path, header string, query url.Values) (string, error) {
+	endpoint := c.absEndpoint(path, query)
+
+	req, err := http.NewRequest(http.MethodGet, endpoint, nil)
+	if err != nil {
+		return "", cerrors.Wrap(err, cerrors.CategoryUsage, "BAD_REQUEST", "failed to build request")
+	}
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := c.http.Do(ctx, req)
+	if err != nil {
+		return "", cerrors.Wrap(err, cerrors.CategoryNetwork, "NETWORK",
+			fmt.Sprintf("request to %s failed", endpoint))
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return "", c.httpError(resp)
+	}
+	_, _ = io.Copy(io.Discard, resp.Body)
+	return resp.Header.Get(header), nil
 }
 
 // getDiffBody performs a GET against a diff endpoint and returns the response
