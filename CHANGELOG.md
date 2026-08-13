@@ -12,6 +12,39 @@
   creating a PR. If the optional lookup fails, the CLI emits a structured warning
   and preserves the previous behavior by continuing without automatic reviewers.
 
+## [0.15.0] - 2026-08-12
+
+### Added
+
+- **Repository forks on Cloud and Data Center.** `repo fork <workspace>/<repo>`
+  supports `--into`, `--name`, and `--dry-run`; live forks are blocked by
+  read-only mode. Data Center can omit `--into` to use the authenticated user's
+  personal project. Cloud requires an explicit destination workspace and also
+  requires a new name when source and destination are the same workspace; both
+  usage errors point to `workspace list` or a corrected command.
+- **Data Center `whoami` now reports the username.** The client reads
+  `X-AUSERNAME` from an authenticated REST response, resolves the full user
+  record when possible, and returns a structured auth error instead of a
+  successful identity-less result when the header is unavailable.
+
+### Changed
+
+- The Data Center `pr request-changes` limitation now reports the remaining
+  unimplemented participant-status write path instead of incorrectly claiming
+  that the caller's username cannot be resolved.
+
+## [0.14.2] - 2026-08-12
+
+### Added
+
+- **Broader skill install agent matrix.** `skill install` now treats Cursor,
+  the shared Agents tree, Gemini CLI, GitHub Copilot, OpenCode, Continue,
+  Windsurf, Kilo Code, and Roo Code as first-class targets alongside Claude
+  Code, Codex, Grok Build, and Pi (13 agents total). Auto-detection probes
+  each product's home and project markers; `--agent` accepts the full id
+  list. Installation guides, generated CLI docs, and help text stay in sync.
+
+
 ## [0.14.1] - 2026-08-11
 
 ### Added
@@ -620,7 +653,9 @@ PR-centric MVP supporting Bitbucket Cloud (REST 2.0) and Data Center (REST
 subtrees; layered configuration with keychain-backed auth; structured error
 model; and an embedded companion Skill.
 
-[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.14.1...HEAD
+[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.14.2...v0.15.0
+[0.14.2]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.14.1...v0.14.2
 [0.14.1]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.14.0...v0.14.1
 [0.14.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.13.3...v0.14.0
 [0.13.3]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.13.2...v0.13.3

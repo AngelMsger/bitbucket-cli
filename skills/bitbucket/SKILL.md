@@ -73,7 +73,9 @@ TTY — agents should never pass it.
   add `--inline <path>:<line>` for inline review comments. Resolve or reopen a
   thread with `comment resolve <id> --pr <ref>` (`--unresolve` to reopen); on
   Data Center this also completes/reopens a task.
-- **Repository / branches / commits** — see `references/reading-repos.md`.
+- **Repository / branches / commits** — browse, create, fork, and delete
+  repositories with `repo ...`; see `references/reading-repos.md` for the
+  Cloud/DC `repo fork --into/--name` rules.
 - **Batch writes** — `pr approve`, `pr decline` and `comment delete` take several
   references/IDs in one call, or a single `-` to read them from stdin (e.g.
   `pr inbox --format json | jq -r '.items[].ref' | bitbucket-cli pr approve -`).

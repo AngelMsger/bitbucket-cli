@@ -389,6 +389,12 @@ func (c *apiClient) DescribeWrite(ctx context.Context, op any) (WriteRequestPlan
 	case CreateRepoReq:
 		m, p, body := c.buildCreateRepo(v)
 		return WriteRequestPlan{Method: m, URL: c.baseURL + p, Payload: body}, nil
+	case ForkRepoReq:
+		if err := c.validateForkRepo(v); err != nil {
+			return WriteRequestPlan{}, err
+		}
+		m, p, body := c.buildForkRepo(v)
+		return WriteRequestPlan{Method: m, URL: c.baseURL + p, Payload: body}, nil
 	case CreatePRReq:
 		m, p, body, err := c.prepareCreatePR(ctx, v)
 		if err != nil {

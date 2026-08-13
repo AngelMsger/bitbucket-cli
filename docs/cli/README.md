@@ -102,6 +102,7 @@ is published at <https://angelmsger.github.io/bitbucket-cli/cli/>.
 | [`bitbucket-cli repo clone-url`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-repo-clone-url) | Print the HTTPS or SSH clone URL of a repository |
 | [`bitbucket-cli repo create`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-repo-create) | Create a repository |
 | [`bitbucket-cli repo delete`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-repo-delete) | Delete a repository (irreversible) |
+| [`bitbucket-cli repo fork`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-repo-fork) | Fork a repository into a workspace, project, or personal area |
 | [`bitbucket-cli repo get`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-repo-get) | Show a repository's details |
 | [`bitbucket-cli repo list`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-repo-list) | List repositories in a workspace (Cloud) or project (Data Center) |
 
@@ -109,7 +110,7 @@ is published at <https://angelmsger.github.io/bitbucket-cli/cli/>.
 
 | Command | Description |
 | --- | --- |
-| [`bitbucket-cli skill`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-skill) | Install the companion Skill for coding agents (Claude Code, Codex, Grok Build, Pi) |
+| [`bitbucket-cli skill`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-skill) | Install the companion Skill for coding agents |
 | [`bitbucket-cli skill install`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-skill-install) | Deploy the embedded Skill into a coding agent's skills directory |
 | [`bitbucket-cli skill path`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-skill-path) | Print where the Skill would be installed, and whether it is |
 | [`bitbucket-cli skill show`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-skill-show) | Print the embedded SKILL.md to stdout |

@@ -113,6 +113,18 @@ assert_contains  "repo list"                 "demo"           "${CLI[@]}" repo l
 assert_contains  "repo get"                  "demo"           "${CLI[@]}" repo get PROJ/demo
 assert_contains  "repo clone-url https"      "bitbucket.example.com/scm" \
                                              "${CLI[@]}" repo clone-url PROJ/demo --protocol https
+assert_contains  "repo fork (DC personal default)" '"workspace": "~alice"' \
+                                             "${CLI[@]}" repo fork PROJ/demo
+assert_contains  "repo fork --into / --name" "demo-fork" \
+                                             "${CLI[@]}" repo fork PROJ/demo --into '~alice' --name demo-fork
+assert_err_contains "repo fork Cloud requires --into" "workspace list" \
+                                             "${CLI[@]}" --flavor cloud repo fork team/repo --dry-run
+assert_exit      "repo fork Cloud missing --into -> 2" 2 \
+                                             "${CLI[@]}" --flavor cloud repo fork team/repo --dry-run
+assert_err_contains "repo fork Cloud same workspace requires --name" "--name" \
+                                             "${CLI[@]}" --flavor cloud repo fork team/repo --into team --dry-run
+assert_contains  "repo fork Cloud --into dry-run" '"slug": "target"' \
+                                             "${CLI[@]}" --flavor cloud repo fork team/repo --into target --dry-run
 assert_contains  "pr list"                   "Add login flow" "${CLI[@]}" pr list --repo PROJ/demo
 assert_contains  "pr get summary"            "Add login flow" "${CLI[@]}" pr get PROJ/demo/1
 assert_contains  "pr get diff"               "@@ -1 +1 @@"    "${CLI[@]}" pr get PROJ/demo/1 --scope diff
@@ -189,6 +201,7 @@ assert_contains  "workspace list"            "PROJ"           "${CLI[@]}" worksp
 assert_contains  "workspace get"             "Demo project"   "${CLI[@]}" workspace get PROJ
 assert_contains  "user list (DC global)"     "alice"          "${CLI[@]}" user list
 assert_contains  "user get"                  "Alice"          "${CLI[@]}" user get alice
+assert_contains  "whoami (DC username)"      '"slug": "alice"' "${CLI[@]}" whoami
 assert_contains  "tag list"                  "v1.2.3"         "${CLI[@]}" tag list --repo PROJ/demo
 assert_contains  "tag get"                   "aaaa111"        "${CLI[@]}" tag get --repo PROJ/demo v1.2.3
 # Hint surfaces workspace discovery when --workspace is missing.
@@ -228,6 +241,8 @@ assert_contains  "branch delete --dry-run"   '"method": "DELETE"' \
                                              "${CLI[@]}" branch delete feat-x --repo PROJ/demo --dry-run
 assert_contains  "repo delete --dry-run"     '"method": "DELETE"' \
                                              "${CLI[@]}" repo delete PROJ/demo --dry-run
+assert_contains  "repo fork --dry-run"       '"method": "POST"' \
+                                             "${CLI[@]}" repo fork PROJ/demo --into '~alice' --name preview-fork --dry-run
 
 # Read-only mode: env BITBUCKET_CLI_READ_ONLY blocks writes; --allow-writes
 # overrides it; --dry-run remains usable.
@@ -242,6 +257,12 @@ assert_contains     "read-only + --dry-run still previews" '"method": "POST"' \
                                                      "${RO_ENV[@]}" "${CLI[@]}" pr approve PROJ/demo/1 --dry-run
 assert_contains     "--allow-writes overrides read-only"   '"approved": true' \
                                                      "${RO_ENV[@]}" "${CLI[@]}" --allow-writes pr approve PROJ/demo/1
+assert_err_contains "read-only blocks repo fork"            "READONLY_BLOCKED" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" repo fork PROJ/demo
+assert_contains     "read-only repo fork dry-run previews"  '"method": "POST"' \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" repo fork PROJ/demo --dry-run
+assert_contains     "--allow-writes permits repo fork"      "allowed-fork" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" --allow-writes repo fork PROJ/demo --into '~alice' --name allowed-fork
 assert_err_contains "read-only blocks pr fetch --exec"     "READONLY_BLOCKED" \
                                                      "${RO_ENV[@]}" "${CLI[@]}" pr fetch PROJ/demo/1 --exec
 assert_contains     "read-only allows pr fetch (print-only)" "git fetch" \

@@ -36,6 +36,7 @@ func routes() http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /rest/api/1.0/application-properties", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("X-AUSERNAME", "alice")
 		writeJSON(w, map[string]any{"version": "8.19.0", "buildNumber": "0", "displayName": "Bitbucket"})
 	})
 
@@ -120,6 +121,25 @@ func routes() http.Handler {
 			return
 		}
 		writeJSON(w, []any{user()})
+	})
+	mux.HandleFunc("POST /rest/api/1.0/projects/{key}/repos/{slug}", func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Name    string `json:"name"`
+			Project struct {
+				Key string `json:"key"`
+			} `json:"project"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		if body.Name == "" {
+			body.Name = r.PathValue("slug")
+		}
+		if body.Project.Key == "" {
+			body.Project.Key = "~alice"
+		}
+		fork := repo(body.Project.Key, strings.ToLower(body.Name), body.Name)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_ = json.NewEncoder(w).Encode(fork)
 	})
 
 	prKey := "/rest/api/1.0/projects/{key}/repos/{slug}/pull-requests"

@@ -31,7 +31,7 @@ exactly which URL and payload would be sent.
 Available on: `pr create`, `pr update`, `pr approve`, `pr unapprove`,
 `pr request-changes`, `pr decline`, `pr merge`, `comment add`,
 `comment update`, `comment delete`, `branch create`, `branch delete`,
-`repo create`, `repo delete`.
+`repo create`, `repo fork`, `repo delete`.
 
 ## Read-only mode — lock the session
 

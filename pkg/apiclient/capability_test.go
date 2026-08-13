@@ -57,6 +57,50 @@ func TestRequestChangesMatchesRegistry(t *testing.T) {
 	}
 }
 
+func TestForkImplicitTargetMatchesRegistry(t *testing.T) {
+	req := ForkRepoReq{Source: RepoRef{Workspace: "source", Slug: "repo"}}
+	for _, f := range []Flavor{FlavorCloud, FlavorDataCenter} {
+		sup := capabilitySupportFor(CapRepoForkImplicitTarget, f)
+		_, err := offlineClient(f).DescribeWrite(context.Background(), req)
+		if sup.Supported() && err != nil {
+			t.Errorf("flavor %q supports an implicit fork target but validation failed: %v", f, err)
+		}
+		if !sup.Supported() && err == nil {
+			t.Errorf("flavor %q rejects an implicit fork target but validation allowed it", f)
+		}
+	}
+}
+
+func TestForkRepositoryPayloadGolden(t *testing.T) {
+	req := ForkRepoReq{
+		Source:    RepoRef{Workspace: "source", Slug: "repo"},
+		Workspace: "target",
+		Name:      "repo-fork",
+	}
+
+	cloud := describePayloadJSON(t, offlineClient(FlavorCloud), req)
+	wantCloud := `{
+  "name": "repo-fork",
+  "workspace": {
+    "slug": "target"
+  }
+}`
+	if cloud != wantCloud {
+		t.Errorf("Cloud fork payload drift:\n got:\n%s\nwant:\n%s", cloud, wantCloud)
+	}
+
+	dc := describePayloadJSON(t, offlineClient(FlavorDataCenter), req)
+	wantDC := `{
+  "name": "repo-fork",
+  "project": {
+    "key": "target"
+  }
+}`
+	if dc != wantDC {
+		t.Errorf("DC fork payload drift:\n got:\n%s\nwant:\n%s", dc, wantDC)
+	}
+}
+
 // describePayloadJSON renders a write op's planned payload as canonical JSON
 // (map keys sorted by encoding/json) for golden comparison.
 func describePayloadJSON(t *testing.T, c Client, op any) string {

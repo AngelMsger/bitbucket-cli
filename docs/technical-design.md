@@ -21,7 +21,8 @@ state** and a **local code checkout** for end-to-end code review.
   - **Source browsing** at any ref: list / tree / get (with optional
     line-range slicing).
   - **Repos / branches / tags / commits**: list and detail for
-    `repo` / `branch` / `tag` / `commit`.
+    `repo` / `branch` / `tag` / `commit`, plus repository create, fork,
+    and delete operations.
   - **Comments**: list / add (with inline anchor support) / update /
     delete.
   - **Discovery commands**: `workspace list`, `user list`,
@@ -29,7 +30,8 @@ state** and a **local code checkout** for end-to-end code review.
     accepts (`--workspace`, `--reviewer`, `--ref`, …) has a CLI-internal
     discovery path.
   - **`whoami` / `user me`** report the user attached to the current
-    credentials.
+    credentials. Data Center obtains the username from the authenticated
+    response's `X-AUSERNAME` header, then resolves the full user record.
   - Every write command accepts `--dry-run` to preview the request;
     delete / merge / decline operations additionally require `--yes`.
 
@@ -53,6 +55,7 @@ the site root):
 | Operation | cloud | datacenter |
 |-----------|-------|------------|
 | List repositories | `GET /2.0/repositories/{ws}` | `GET /rest/api/1.0/projects/{key}/repos` |
+| Fork repository | `POST /2.0/repositories/{ws}/{repo}/forks`; body must include target `workspace.slug`, and same-workspace forks also need a new `name` | `POST /rest/api/1.0/projects/{key}/repos/{repo}`; optional `project.key` / `name`, with an omitted project defaulting to the caller's personal project |
 | List workspaces | `GET /2.0/workspaces` | `GET /rest/api/1.0/projects` |
 | List PRs | `GET /2.0/repositories/{ws}/{repo}/pullrequests?state=&q=` | `GET /rest/api/1.0/projects/{key}/repos/{repo}/pull-requests?state=` |
 | Get PR | `GET .../pullrequests/{id}` | `GET .../pull-requests/{id}` |
@@ -209,7 +212,7 @@ Commands group by resource: `repo`, `workspace`, `pr`, `file`,
 - **Identifier parsing**: `pkg/urlref` accepts PR / repo URLs and
   unpacks workspace / slug / PR id / commit; commands also accept the
   `<ws>/<repo>` and `<ws>/<repo>/<id>` short forms.
-- **Writes**: every create / update / delete / merge / decline /
+- **Writes**: every create / fork / update / delete / merge / decline /
   comment / branch-mutation is a write. Each accepts `--dry-run` to
   preview the request; delete / merge / decline additionally require
   `--yes`.
@@ -418,12 +421,12 @@ trigger description, `metadata.requires.bins: ["bitbucket-cli"]`) +
 `references/`:
 
 - `getting-started.md` — configuration / auth / `doctor` /
-  `workspace list` discovery.
+  `workspace list` discovery and Data Center `whoami` identity validation.
 - `pr-workflows.md` — `pr status` → `pr files` → `pr diff --path` flow.
 - `reviewing-locally.md` — end-to-end "remote + local" review, including
   `pr fetch --exec`.
 - `commenting.md` — inline vs general / `--reply-to`.
-- `reading-repos.md` — repo / branch / commit browsing.
+- `reading-repos.md` — repo create / fork / delete plus branch / commit browsing.
 - `files.md` — the `file` subtree's ref semantics and `--range` usage.
 - `safety-modes.md` — `--dry-run` and read-only mode for agents.
 - `errors-and-exit-codes.md` — exit codes plus per-category recovery
@@ -436,10 +439,7 @@ readable.
 
 `skill install` uses an agent path table (`agentSpecs` in
 `internal/app/skill.go`) mapping each agent to its global / project
-skills directory: Claude Code uses `~/.claude/skills` and
-`./.claude/skills`; Codex uses `~/.codex/skills` and `./.agents/skills`;
-Grok Build uses `~/.grok/skills` and `./.grok/skills`; Pi uses
-`~/.pi/agent/skills` and `./.pi/skills`.
+skills directory: Claude Code uses `~/.claude/skills` and `./.claude/skills`; Codex uses `~/.codex/skills` and `./.agents/skills`; Cursor uses `~/.cursor/skills` and `./.cursor/skills`; the shared Agents tree uses `~/.agents/skills` and `./.agents/skills`; Gemini CLI uses `~/.gemini/skills` and `./.gemini/skills`; GitHub Copilot uses `~/.copilot/skills` and `./.agents/skills`; OpenCode uses `~/.config/opencode/skills` and `./.opencode/skills`; Continue uses `~/.continue/skills` and `./.continue/skills`; Windsurf uses `~/.codeium/windsurf/skills` and `./.windsurf/skills`; Grok Build uses `~/.grok/skills` and `./.grok/skills`; Pi uses `~/.pi/agent/skills` and `./.pi/skills`; Kilo Code uses `~/.kilocode/skills` and `./.kilocode/skills`; Roo Code uses `~/.roo/skills` and `./.roo/skills`.
 With no flag it probes which directories exist and installs / removes
 for each hit; `--agent` selects explicitly; `--dir` is the
 agent-agnostic explicit path.
@@ -461,8 +461,9 @@ agent-agnostic explicit path.
   `repo list` without `--workspace` must include `workspace list` in
   stderr). The dry-run and read-only safety modes are covered here as
   well — every blocked-write path is paired with its `--allow-writes`
-  override and `--dry-run` counter-test. Current coverage: 71+
-  assertions.
+  override and `--dry-run` counter-test. Current coverage exceeds 100
+  assertions, including live mock fork execution, Cloud fork validation,
+  Data Center `whoami`, dry-run, and read-only rejection.
 - **Read-only live verification**: `BITBUCKET_E2E_LIVE=1
   ./scripts/e2e.sh` runs only `doctor` / `whoami`-style read-only
   commands against a real server.
