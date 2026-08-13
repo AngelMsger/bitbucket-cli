@@ -241,7 +241,7 @@ func newPRCreateCmd(s *appState) *cobra.Command {
 	f.StringVar(&source, "source", "", "source branch")
 	f.StringVar(&sourceRepo, "source-repo", "", "cross-repo source fork: <ws>/<repo> (DC also needs --target)")
 	f.StringVar(&destination, "target", "", "destination branch (default: repo default)")
-	f.StringSliceVar(&reviewers, "reviewer", nil, "reviewer UUID (Cloud) or username (DC); repeatable")
+	f.StringSliceVar(&reviewers, "reviewer", nil, "reviewer UUID (Cloud) or username (DC); repeatable; omit to use effective defaults")
 	f.BoolVar(&closeSourceBranch, "close-source-branch", false, "close the source branch on merge")
 	f.BoolVar(&dryRun, "dry-run", false, "preview the HTTP request without sending it")
 	return cmd

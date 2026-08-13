@@ -2,6 +2,7 @@ package apiclient
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"strings"
 
@@ -18,7 +19,7 @@ func (c *apiClient) CreatePR(ctx context.Context, req CreatePRReq) (*PullRequest
 			"source branch is required").
 			WithNextSteps("Pass --source <branch>")
 	}
-	method, path, payload, err := c.buildCreatePR(req)
+	method, path, payload, err := c.prepareCreatePR(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -34,6 +35,34 @@ func (c *apiClient) CreatePR(ctx context.Context, req CreatePRReq) (*PullRequest
 		return nil, err
 	}
 	return mapDCPR(req.Repo, raw), nil
+}
+
+// prepareCreatePR resolves server-managed defaults before building the final
+// request. Calling buildCreatePR first preserves validation errors without
+// making a pre-fetch, while the second build keeps live writes and --dry-run on
+// the exact same payload path.
+func (c *apiClient) prepareCreatePR(ctx context.Context, req CreatePRReq) (method, path string, payload any, err error) {
+	method, path, payload, err = c.buildCreatePR(req)
+	if err != nil || req.Reviewers != nil {
+		return
+	}
+	req.Reviewers, err = c.resolveDefaultReviewers(ctx, req)
+	if err != nil {
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			return "", "", nil, err
+		}
+		c.warn(Warning{
+			Code:    "PR_DEFAULT_REVIEWERS_UNAVAILABLE",
+			Message: "could not resolve effective default reviewers; continuing without automatically adding reviewers",
+			Detail:  err.Error(),
+			NextSteps: []string{
+				"Pass --reviewer explicitly when creating the PR",
+				"Add reviewers in the Bitbucket web interface after creation",
+			},
+		})
+		return c.buildCreatePR(req)
+	}
+	return c.buildCreatePR(req)
 }
 
 func (c *apiClient) buildCreatePR(req CreatePRReq) (method, path string, payload any, err error) {
@@ -361,7 +390,7 @@ func (c *apiClient) DescribeWrite(ctx context.Context, op any) (WriteRequestPlan
 		m, p, body := c.buildCreateRepo(v)
 		return WriteRequestPlan{Method: m, URL: c.baseURL + p, Payload: body}, nil
 	case CreatePRReq:
-		m, p, body, err := c.buildCreatePR(v)
+		m, p, body, err := c.prepareCreatePR(ctx, v)
 		if err != nil {
 			return WriteRequestPlan{}, err
 		}

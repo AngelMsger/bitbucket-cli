@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- `pr create` now resolves and sends the target repository's effective default
+  reviewers when `--reviewer` is omitted. Cloud includes repository and inherited
+  project defaults; Data Center evaluates branch-conditional defaults using the
+  source/target repository IDs and refs. Explicit `--reviewer` values still
+  replace the automatic list, and `--dry-run` shows the resolved payload without
+  creating a PR. If the optional lookup fails, the CLI emits a structured warning
+  and preserves the previous behavior by continuing without automatic reviewers.
+
 ## [0.14.1] - 2026-08-11
 
 ### Added

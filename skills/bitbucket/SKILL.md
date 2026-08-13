@@ -1,6 +1,6 @@
 ---
 name: bitbucket
-version: 0.11.5
+version: 0.11.6
 description: "Use Bitbucket as a code-hosting backend for coding agents. Browse repositories and source files at any ref, drive pull request review and merge workflows, see per-file diffs and diffstats, check mergeability and CI build status, fetch a PR into a local git checkout, post inline review comments, resolve or reopen comment threads, triage and respond to received review comments (with resolution / task status and --unresolved filters), and preview every write with --dry-run or lock the session with read-only mode. Supports Bitbucket Cloud and Data Center / Server. Use when the user mentions Bitbucket, a PR or pull-request URL or ID, repository browsing, file content at a ref, code review, responding to or addressing PR review comments, resolving a comment thread or task, approve/decline/merge a PR, asks to read a diff, or wants a dry-run / read-only / safe-mode session."
 metadata:
   requires:
@@ -63,6 +63,12 @@ TTY — agents should never pass it.
   replies only after confirmation. See `references/responding-to-review-comments.md`.
 - **Browse source at any ref** — `bitbucket-cli file list/get/tree` reads
   directories and files at a branch, tag or commit. See `references/files.md`.
+- **Create a PR** — `bitbucket-cli pr create` resolves the target repository's
+  effective default reviewers when `--reviewer` is omitted; pass explicit
+  reviewer UUIDs (Cloud) or usernames (Data Center) to replace that list. Use
+  `--dry-run` to inspect the resolved payload first. If the default lookup fails,
+  the CLI warns on stderr and continues without automatic reviewers. See
+  `references/pr-workflows.md`.
 - **Comment** — `bitbucket-cli comment add --pr <ws>/<repo>/<id> --content "<text>"`,
   add `--inline <path>:<line>` for inline review comments. Resolve or reopen a
   thread with `comment resolve <id> --pr <ref>` (`--unresolve` to reopen); on

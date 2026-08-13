@@ -3,6 +3,8 @@ package apiclient
 import (
 	"context"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -10,8 +12,8 @@ import (
 )
 
 // offlineClient builds a client with a fixed base URL and no server. It is only
-// valid for DescribeWrite on operations whose builder makes no HTTP call
-// (e.g. CreatePR); anything that pre-fetches a version will panic on dial.
+// valid for DescribeWrite when the request explicitly bypasses any pre-fetch;
+// anything that resolves server state will fail on dial.
 func offlineClient(flavor Flavor) Client {
 	return New(Config{Flavor: flavor, BaseURL: "https://bb.example", Transport: transport.New(transport.Options{})})
 }
@@ -77,7 +79,7 @@ func describePayloadJSON(t *testing.T, c Client, op any) string {
 func TestCreatePRPayloadGolden(t *testing.T) {
 	req := CreatePRReq{
 		Repo: RepoRef{Workspace: "UP", Slug: "repo"}, Title: "t", Description: "d",
-		Source: "feature", Destination: "dev",
+		Source: "feature", Destination: "dev", Reviewers: []string{},
 	}
 
 	cloud := describePayloadJSON(t, offlineClient(FlavorCloud), req)
@@ -137,7 +139,7 @@ func TestCreatePRPayloadGolden(t *testing.T) {
 func TestCreatePRCloseSourceBranchParity(t *testing.T) {
 	req := CreatePRReq{
 		Repo: RepoRef{Workspace: "UP", Slug: "repo"}, Title: "t",
-		Source: "feature", Destination: "dev", CloseSourceBranch: true,
+		Source: "feature", Destination: "dev", Reviewers: []string{}, CloseSourceBranch: true,
 	}
 
 	cloud := describePayloadJSON(t, offlineClient(FlavorCloud), req)
@@ -156,7 +158,7 @@ func TestCreatePRCloseSourceBranchParity(t *testing.T) {
 func TestCreatePRForkPayloadGolden(t *testing.T) {
 	req := CreatePRReq{
 		Repo: RepoRef{Workspace: "UP", Slug: "repo"}, Title: "t",
-		Source: "feature", SourceRepo: "FORK/repo", Destination: "dev",
+		Source: "feature", SourceRepo: "FORK/repo", Destination: "dev", Reviewers: []string{},
 	}
 	dc := describePayloadJSON(t, offlineClient(FlavorDataCenter), req)
 	if !strings.Contains(dc, `"key": "FORK"`) {
@@ -167,5 +169,106 @@ func TestCreatePRForkPayloadGolden(t *testing.T) {
 	to := strings.Index(dc, `"toRef"`)
 	if from < 0 || to < 0 || strings.Index(dc, `"FORK"`) > to {
 		t.Errorf("expected fromRef(FORK) before toRef(UP); got:\n%s", dc)
+	}
+}
+
+// TestCreatePRDefaultReviewerParity guards the read-before-write behavior on
+// both flavors: an omitted reviewer list resolves the backend's effective
+// defaults and places them in the same payload used by --dry-run and live POSTs.
+func TestCreatePRDefaultReviewerParity(t *testing.T) {
+	tests := []struct {
+		name       string
+		flavor     Flavor
+		handler    http.Handler
+		assertBody func(*testing.T, map[string]any)
+	}{
+		{
+			name:   "cloud",
+			flavor: FlavorCloud,
+			handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path != "/2.0/repositories/UP/repo/effective-default-reviewers" {
+					t.Fatalf("unexpected Cloud request: %s %s", r.Method, r.URL.Path)
+				}
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"values": []any{map[string]any{"user": map[string]string{"uuid": "{cloud-reviewer}"}}},
+				})
+			}),
+			assertBody: func(t *testing.T, body map[string]any) {
+				t.Helper()
+				raw, _ := json.Marshal(body["reviewers"])
+				if !strings.Contains(string(raw), `"uuid":"{cloud-reviewer}"`) {
+					t.Fatalf("Cloud reviewers = %s; want effective default reviewer", raw)
+				}
+			},
+		},
+		{
+			name:   "data-center",
+			flavor: FlavorDataCenter,
+			handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				switch r.URL.Path {
+				case "/rest/api/1.0/projects/UP/repos/repo":
+					_ = json.NewEncoder(w).Encode(map[string]any{"id": 42})
+				case "/rest/default-reviewers/latest/projects/UP/repos/repo/reviewers":
+					_ = json.NewEncoder(w).Encode([]any{map[string]string{"name": "dc-reviewer"}})
+				default:
+					t.Fatalf("unexpected Data Center request: %s %s", r.Method, r.URL.Path)
+				}
+			}),
+			assertBody: func(t *testing.T, body map[string]any) {
+				t.Helper()
+				if got := reviewerNamesFromPayload(t, body); strings.Join(got, ",") != "dc-reviewer" {
+					t.Fatalf("Data Center reviewers = %v; want effective default reviewer", got)
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			srv := httptest.NewServer(tt.handler)
+			t.Cleanup(srv.Close)
+			client := New(Config{Flavor: tt.flavor, BaseURL: srv.URL, Transport: transport.New(transport.Options{})})
+			plan, err := client.DescribeWrite(context.Background(), CreatePRReq{
+				Repo: RepoRef{Workspace: "UP", Slug: "repo"}, Title: "t",
+				Source: "feature", Destination: "dev",
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			tt.assertBody(t, plan.Payload.(map[string]any))
+		})
+	}
+}
+
+// TestCreatePRDefaultReviewerFailureParity keeps the compatibility fallback
+// symmetric: either backend may fail to expose its default-reviewer endpoint,
+// but PR creation still plans the original payload and surfaces one warning.
+func TestCreatePRDefaultReviewerFailureParity(t *testing.T) {
+	for _, flavor := range []Flavor{FlavorCloud, FlavorDataCenter} {
+		t.Run(string(flavor), func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				http.Error(w, `{"errors":[{"message":"defaults unavailable"}]}`, http.StatusForbidden)
+			}))
+			t.Cleanup(srv.Close)
+
+			var warnings []Warning
+			client := New(Config{
+				Flavor: flavor, BaseURL: srv.URL, Transport: transport.New(transport.Options{}),
+				WarningSink: func(w Warning) { warnings = append(warnings, w) },
+			})
+			plan, err := client.DescribeWrite(context.Background(), CreatePRReq{
+				Repo: RepoRef{Workspace: "UP", Slug: "repo"}, Title: "t",
+				Source: "feature", Destination: "dev",
+			})
+			if err != nil {
+				t.Fatalf("default-reviewer lookup should not block create: %v", err)
+			}
+			if _, ok := plan.Payload.(map[string]any)["reviewers"]; ok {
+				t.Fatal("fallback payload should preserve the original omitted-reviewer behavior")
+			}
+			if len(warnings) != 1 || warnings[0].Code != "PR_DEFAULT_REVIEWERS_UNAVAILABLE" {
+				t.Fatalf("warnings = %#v; want one default-reviewer warning", warnings)
+			}
+		})
 	}
 }

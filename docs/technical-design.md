@@ -394,6 +394,18 @@ Two orthogonal write-protections, layered on top of `--yes`:
    not overridden by the wrapper, so previews still work under a
    locked session.
 
+`CreatePR` also uses a read-before-write preparation step when the caller omits
+`Reviewers`. Cloud follows every page of the repository's
+`effective-default-reviewers` endpoint. Data Center resolves source and target
+repository IDs plus full branch refs, then queries the `default-reviewers`
+plugin so branch-conditional rules match. Data Center versions have returned
+both flat users and condition objects from that endpoint, so the decoder accepts
+both and deduplicates usernames. `DescribeWrite` uses the same preparation step,
+making `--dry-run` show the reviewer payload that the live POST would send. A
+failed optional lookup emits `PR_DEFAULT_REVIEWERS_UNAVAILABLE` through the
+client's warning sink and falls back to the previous reviewer-less payload;
+validation and context cancellation errors still stop the operation.
+
 Out of scope: `config init`, `auth login|logout`, `skill install`, and
 `file get --output` are CLI self-configuration / local IO, not remote
 mutations and not local-worktree mutations — they remain available
