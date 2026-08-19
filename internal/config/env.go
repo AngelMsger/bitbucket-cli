@@ -8,16 +8,17 @@ import (
 
 // envBindings maps environment variable names to layer field keys.
 var envBindings = map[string]string{
-	"BITBUCKET_SERVER":                fieldServer,
-	"BITBUCKET_FLAVOR":                fieldFlavor,
-	"BITBUCKET_USERNAME":              fieldAuthUsername,
-	"BITBUCKET_FORMAT":                fieldFormat,
-	"BITBUCKET_PERSONAL_ACCESS_TOKEN": fieldPAT,
-	"BITBUCKET_PASSWORD":              fieldPassword,
-	"BITBUCKET_API_TOKEN":             fieldAPIToken,
-	"BITBUCKET_TOKEN":                 fieldPAT,
-	"BITBUCKET_DEFAULT_WORKSPACE":     fieldWorkspace,
-	"BITBUCKET_CLI_READ_ONLY":         fieldReadOnly,
+	"BITBUCKET_SERVER":                         fieldServer,
+	"BITBUCKET_FLAVOR":                         fieldFlavor,
+	"BITBUCKET_USERNAME":                       fieldAuthUsername,
+	"BITBUCKET_FORMAT":                         fieldFormat,
+	"BITBUCKET_PERSONAL_ACCESS_TOKEN":          fieldPAT,
+	"BITBUCKET_PASSWORD":                       fieldPassword,
+	"BITBUCKET_API_TOKEN":                      fieldAPIToken,
+	"BITBUCKET_TOKEN":                          fieldPAT,
+	"BITBUCKET_DEFAULT_WORKSPACE":              fieldWorkspace,
+	"BITBUCKET_CLI_READ_ONLY":                  fieldReadOnly,
+	"BITBUCKET_CLI_AUTO_ADD_DEFAULT_REVIEWERS": fieldAutoAddDefaultReviewers,
 }
 
 // layerFromVars converts a name->value map into a layer map. Empty values are

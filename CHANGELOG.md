@@ -11,6 +11,10 @@
   replace the automatic list, and `--dry-run` shows the resolved payload without
   creating a PR. If the optional lookup fails, the CLI emits a structured warning
   and preserves the previous behavior by continuing without automatic reviewers.
+  Set `defaults.auto_add_default_reviewers: false`, export
+  `BITBUCKET_CLI_AUTO_ADD_DEFAULT_REVIEWERS=false`, or pass
+  `--default-reviewers=false` to opt out; the command flag can also re-enable the
+  behavior for one invocation.
 
 ## [0.15.0] - 2026-08-12
 

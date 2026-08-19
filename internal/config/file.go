@@ -17,11 +17,12 @@ type authShape struct {
 }
 
 type defaultsShape struct {
-	Format     string `yaml:"format,omitempty"`
-	PageSize   int    `yaml:"page_size,omitempty"`
-	Timeout    string `yaml:"timeout,omitempty"`
-	MaxRetries int    `yaml:"max_retries,omitempty"`
-	ReadOnly   bool   `yaml:"read_only,omitempty"`
+	Format                  string `yaml:"format,omitempty"`
+	PageSize                int    `yaml:"page_size,omitempty"`
+	Timeout                 string `yaml:"timeout,omitempty"`
+	MaxRetries              int    `yaml:"max_retries,omitempty"`
+	ReadOnly                bool   `yaml:"read_only,omitempty"`
+	AutoAddDefaultReviewers *bool  `yaml:"auto_add_default_reviewers,omitempty"`
 }
 
 type contextShape struct {
@@ -201,6 +202,7 @@ func WriteFile(dir string, f File) error {
 	}
 	fs.Defaults.MaxRetries = f.Defaults.MaxRetries
 	fs.Defaults.ReadOnly = f.Defaults.ReadOnly
+	fs.Defaults.AutoAddDefaultReviewers = f.Defaults.AutoAddDefaultReviewers
 
 	out, err := yaml.Marshal(&fs)
 	if err != nil {
@@ -213,11 +215,12 @@ func WriteFile(dir string, f File) error {
 // Missing fields stay zero; the default layer fills them during Load.
 func defaultsFromShape(ds defaultsShape) Defaults {
 	return Defaults{
-		Format:     ds.Format,
-		PageSize:   ds.PageSize,
-		Timeout:    durationOr(ds.Timeout, 0),
-		MaxRetries: ds.MaxRetries,
-		ReadOnly:   ds.ReadOnly,
+		Format:                  ds.Format,
+		PageSize:                ds.PageSize,
+		Timeout:                 durationOr(ds.Timeout, 0),
+		MaxRetries:              ds.MaxRetries,
+		ReadOnly:                ds.ReadOnly,
+		AutoAddDefaultReviewers: ds.AutoAddDefaultReviewers,
 	}
 }
 

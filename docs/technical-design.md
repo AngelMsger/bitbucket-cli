@@ -136,7 +136,8 @@ writes raw bytes straight to stdout.
 ```
 Config   { BaseURL, Flavor, Auth, Defaults, DetectedFlavor }
 AuthConfig { Scheme: pat | basic, Username }
-Defaults { Format, PageSize, Timeout, MaxRetries, Workspace, ReadOnly }
+Defaults { Format, PageSize, Timeout, MaxRetries, Workspace, ReadOnly,
+           AutoAddDefaultReviewers }
                                               # ↑ default workspace; overridable via --workspace
                                               # ↑ ReadOnly is the session-level write block
 ```
@@ -164,6 +165,7 @@ Environment variable mapping:
 | `BITBUCKET_FORMAT` | `Defaults.Format` |
 | `BITBUCKET_CONTEXT` | currently selected context name |
 | `BITBUCKET_CLI_READ_ONLY` | `Defaults.ReadOnly` |
+| `BITBUCKET_CLI_AUTO_ADD_DEFAULT_REVIEWERS` | `Defaults.AutoAddDefaultReviewers` |
 
 ### 4.3 Authentication
 
@@ -408,6 +410,12 @@ making `--dry-run` show the reviewer payload that the live POST would send. A
 failed optional lookup emits `PR_DEFAULT_REVIEWERS_UNAVAILABLE` through the
 client's warning sink and falls back to the previous reviewer-less payload;
 validation and context cancellation errors still stop the operation.
+The behavior defaults on but can be disabled persistently with
+`defaults.auto_add_default_reviewers: false` or
+`BITBUCKET_CLI_AUTO_ADD_DEFAULT_REVIEWERS=false`. The `pr create
+--default-reviewers=<bool>` flag overrides it for one invocation. Disabling it
+sets an explicit empty reviewer list in `CreatePRReq`, which bypasses the lookup
+without changing the public API's nil-versus-explicit-list contract.
 
 Out of scope: `config init`, `auth login|logout`, `skill install`, and
 `file get --output` are CLI self-configuration / local IO, not remote

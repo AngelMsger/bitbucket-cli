@@ -99,13 +99,14 @@ func newConfigShowCmd(s *appState) *cobra.Command {
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg := s.cfg()
 			view := map[string]any{
-				"server":      cfg.BaseURL,
-				"flavor":      cfg.Flavor,
-				"auth.scheme": cfg.Auth.Scheme,
-				"auth.user":   cfg.Auth.Username,
-				"format":      cfg.Defaults.Format,
-				"page_size":   cfg.Defaults.PageSize,
-				"timeout":     cfg.Defaults.Timeout.String(),
+				"server":                     cfg.BaseURL,
+				"flavor":                     cfg.Flavor,
+				"auth.scheme":                cfg.Auth.Scheme,
+				"auth.user":                  cfg.Auth.Username,
+				"format":                     cfg.Defaults.Format,
+				"page_size":                  cfg.Defaults.PageSize,
+				"timeout":                    cfg.Defaults.Timeout.String(),
+				"auto_add_default_reviewers": cfg.Defaults.ShouldAutoAddDefaultReviewers(),
 			}
 			if explain {
 				src := s.resolved.Sources
@@ -114,6 +115,9 @@ func newConfigShowCmd(s *appState) *cobra.Command {
 				view["auth.scheme"] = explained(cfg.Auth.Scheme, src, config.FieldAuthScheme)
 				view["auth.user"] = explained(cfg.Auth.Username, src, config.FieldAuthUser)
 				view["format"] = explained(cfg.Defaults.Format, src, config.FieldFormat)
+				view["auto_add_default_reviewers"] = fmt.Sprintf("%t (from %s)",
+					cfg.Defaults.ShouldAutoAddDefaultReviewers(),
+					config.ExplainField(src, config.FieldAutoAddDefaultReviewers))
 			}
 			// Surface the context only when more than one is configured, so
 			// single-context users never see the concept.

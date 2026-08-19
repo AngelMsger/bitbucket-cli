@@ -71,6 +71,13 @@ lookup fails, the CLI emits `PR_DEFAULT_REVIEWERS_UNAVAILABLE` on stderr and
 continues with the previous reviewer-less behavior; add reviewers in Bitbucket
 after creation or rerun with explicit `--reviewer` values.
 
+Automatic defaults are configurable. Set
+`defaults.auto_add_default_reviewers: false` in `config.yaml` or export
+`BITBUCKET_CLI_AUTO_ADD_DEFAULT_REVIEWERS=false` to disable them persistently.
+For one command, `--default-reviewers=false` skips the lookup and
+`--default-reviewers=true` re-enables it. Explicit `--reviewer` values always
+remain explicit regardless of this setting.
+
 **Cross-fork PRs (from a fork into upstream).** When the source branch lives in a
 fork rather than the target repo, name the fork with `--source-repo <ws>/<repo>`;
 `--repo` stays the upstream repo the PR opens against (the PR's `fromRef` points

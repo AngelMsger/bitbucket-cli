@@ -145,6 +145,12 @@ assert_contains  "pr create dry-run"         '"method": "POST"' \
                                              "${CLI[@]}" pr create --repo PROJ/demo --source feature/x --target main --title "X" --dry-run
 assert_contains  "pr create default reviewer" '"name": "alice"' \
                                              "${CLI[@]}" pr create --repo PROJ/demo --source feature/x --target main --title "X" --dry-run
+assert_not_contains "pr create defaults disabled" '"name": "alice"' \
+                                             env BITBUCKET_CLI_AUTO_ADD_DEFAULT_REVIEWERS=false "${CLI[@]}" pr create --repo PROJ/demo --source feature/x --target main --title "X" --dry-run
+assert_contains  "pr create defaults disabled still previews" '"method": "POST"' \
+                                             env BITBUCKET_CLI_AUTO_ADD_DEFAULT_REVIEWERS=false "${CLI[@]}" pr create --repo PROJ/demo --source feature/x --target main --title "X" --dry-run
+assert_contains  "pr create defaults re-enabled" '"name": "alice"' \
+                                             env BITBUCKET_CLI_AUTO_ADD_DEFAULT_REVIEWERS=false "${CLI[@]}" pr create --repo PROJ/demo --source feature/x --target main --title "X" --default-reviewers=true --dry-run
 assert_contains  "pr create reviewer fallback" '"method": "POST"' \
                                              "${CLI[@]}" pr create --repo PROJ/demo --source feature/defaults-unavailable --target main --title "X" --dry-run
 assert_err_contains "pr create reviewer warning" "PR_DEFAULT_REVIEWERS_UNAVAILABLE" \

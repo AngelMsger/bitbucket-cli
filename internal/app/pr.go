@@ -193,6 +193,7 @@ func newPRCreateCmd(s *appState) *cobra.Command {
 		repoArg, title, description, descriptionFile string
 		source, sourceRepo, destination              string
 		reviewers                                    []string
+		defaultReviewers                             bool
 		closeSourceBranch                            bool
 		dryRun                                       bool
 	)
@@ -211,6 +212,13 @@ func newPRCreateCmd(s *appState) *cobra.Command {
 						"could not read --description-file")
 				}
 				description = string(b)
+			}
+			useDefaultReviewers := s.cfg().Defaults.ShouldAutoAddDefaultReviewers()
+			if cmd.Flags().Changed("default-reviewers") {
+				useDefaultReviewers = defaultReviewers
+			}
+			if !useDefaultReviewers && reviewers == nil {
+				reviewers = []string{}
 			}
 			req := apiclient.CreatePRReq{
 				Repo: ref, Title: title, Description: description,
@@ -242,6 +250,7 @@ func newPRCreateCmd(s *appState) *cobra.Command {
 	f.StringVar(&sourceRepo, "source-repo", "", "cross-repo source fork: <ws>/<repo> (DC also needs --target)")
 	f.StringVar(&destination, "target", "", "destination branch (default: repo default)")
 	f.StringSliceVar(&reviewers, "reviewer", nil, "reviewer UUID (Cloud) or username (DC); repeatable; omit to use effective defaults")
+	f.BoolVar(&defaultReviewers, "default-reviewers", true, "resolve effective default reviewers when --reviewer is omitted; use --default-reviewers=false to skip")
 	f.BoolVar(&closeSourceBranch, "close-source-branch", false, "close the source branch on merge")
 	f.BoolVar(&dryRun, "dry-run", false, "preview the HTTP request without sending it")
 	return cmd
