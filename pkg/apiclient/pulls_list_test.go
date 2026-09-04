@@ -8,6 +8,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	cerrors "github.com/angelmsger/bitbucket-cli/pkg/errors"
 )
 
 // cloudEmptyPRList answers any PR-collection GET with an empty Cloud page.
@@ -81,5 +83,77 @@ func TestListMyPRsCloudAuthorStateAllEnumeratesStates(t *testing.T) {
 	sort.Strings(gotStates)
 	if strings.Join(gotStates, ",") != strings.Join(want, ",") {
 		t.Errorf("state params = %v; want %v", gotStates, want)
+	}
+}
+
+func TestListMyPRsDataCenterClosedSinceAndAnyRole(t *testing.T) {
+	var gotQuery url.Values
+	c := newWriteTestClient(t, FlavorDataCenter, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.Query()
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"values": []any{}, "isLastPage": true})
+	}))
+
+	if _, err := c.ListMyPRs(context.Background(), MyPRListOpts{
+		Role: "ANY", State: "ALL", ClosedSinceSeconds: 172800,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if got := gotQuery.Get("closedSince"); got != "172800" {
+		t.Errorf("closedSince = %q; want 172800", got)
+	}
+	if got := gotQuery.Get("order"); got != "CLOSED_DATE" {
+		t.Errorf("order = %q; want CLOSED_DATE", got)
+	}
+	if got := gotQuery.Get("role"); got != "" {
+		t.Errorf("role = %q; want omitted for ANY", got)
+	}
+	if got := gotQuery.Get("state"); got != "" {
+		t.Errorf("state = %q; want omitted for ALL", got)
+	}
+}
+
+func TestListMyPRsCloudRejectsClosedSince(t *testing.T) {
+	c := newWriteTestClient(t, FlavorCloud, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		t.Fatal("Cloud --closed-since should fail before making an HTTP request")
+	}))
+
+	_, err := c.ListMyPRs(context.Background(), MyPRListOpts{ClosedSinceSeconds: 3600})
+	if err == nil {
+		t.Fatal("expected --closed-since to be rejected on Cloud")
+	}
+	if got := cerrors.AsCLIError(err).Code; got != "INBOX_CLOSED_SINCE_UNSUPPORTED" {
+		t.Fatalf("error code = %q; want INBOX_CLOSED_SINCE_UNSUPPORTED", got)
+	}
+}
+
+func TestListMyPRsCloudAnyRoleUsesOneCombinedFilter(t *testing.T) {
+	var gotFilter string
+	c := newWriteTestClient(t, FlavorCloud, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/2.0/user":
+			_ = json.NewEncoder(w).Encode(map[string]any{"uuid": "{u-1}", "nickname": "me"})
+		case "/2.0/repositories/ws":
+			_ = json.NewEncoder(w).Encode(map[string]any{"values": []any{
+				map[string]any{"slug": "repo", "workspace": map[string]any{"slug": "ws"}},
+			}})
+		case "/2.0/repositories/ws/repo/pullrequests":
+			gotFilter = r.URL.Query().Get("q")
+			cloudEmptyPRList(w)
+		default:
+			t.Fatalf("unexpected path %s", r.URL.Path)
+		}
+	}))
+
+	if _, err := c.ListMyPRs(context.Background(), MyPRListOpts{
+		Role: "ANY", State: "OPEN", Workspace: "ws",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"author.uuid", "reviewers.uuid", "participants.uuid"} {
+		if !strings.Contains(gotFilter, want) {
+			t.Errorf("combined filter %q does not contain %q", gotFilter, want)
+		}
 	}
 }

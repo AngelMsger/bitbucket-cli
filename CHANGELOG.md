@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-09-04
+
+### Added
+
+- **Time-bounded review activity for worklog automation.** `pr inbox` accepts
+  `--role any` on both flavors and `--closed-since 24h|7d` on Data Center, using
+  the dashboard API's native close-time filter instead of paging through every
+  historical merged or declined PR. `pr activity` now accepts several PR refs
+  or newline-delimited refs from stdin and filters by `--actor`, `--kind`,
+  `--since`, or `--from` / `--to`; batch queries require a time bound. Activity
+  records include their canonical `pull_request.ref`; `--kind merge|decline`
+  matches Cloud state-update records without changing their historical JSON
+  shape. Cloud rejects `--closed-since` explicitly because it has no equivalent
+  cross-repository close-time filter.
+
 ## [0.15.0] - 2026-08-12
 
 ### Added
@@ -643,7 +658,8 @@ PR-centric MVP supporting Bitbucket Cloud (REST 2.0) and Data Center (REST
 subtrees; layered configuration with keychain-backed auth; structured error
 model; and an embedded companion Skill.
 
-[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.15.0...HEAD
+[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.16.0...HEAD
+[0.16.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.14.2...v0.15.0
 [0.14.2]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.14.1...v0.14.2
 [0.14.1]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.14.0...v0.14.1

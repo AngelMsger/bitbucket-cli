@@ -36,6 +36,46 @@ mirror the standalone `pr diff`/`pr commits`/`pr activity` subcommands.
 See `reviewing-locally.md` for the end-to-end review decision tree (combines
 diffstat-first navigation with a local clone).
 
+## Collecting review activity for a worklog
+
+`pr activity` accepts one or more PR refs, or a single `-` to read
+newline-delimited refs from stdin. Filter the resulting timelines by the
+authenticated user, activity kind and a half-open time window:
+
+```sh
+bitbucket-cli pr activity PROJ/repo/42 PROJ/other/7 \
+  --actor me \
+  --from 2026-09-03T00:00:00+08:00 \
+  --to 2026-09-04T00:00:00+08:00 \
+  --kind approval,comment,decline
+```
+
+Batch queries require `--since` or `--from`, preventing an automation from
+accidentally walking every candidate PR's full history. Each activity carries
+`pull_request.id`, `pull_request.ref`, and `pull_request.repository`, so the
+result can be associated with an issue or deduplicated by PR without another
+lookup. `--from` is inclusive and `--to` is exclusive. Date-only values are UTC;
+use RFC 3339 with an explicit offset for a local calendar day.
+
+On Data Center, avoid listing years of merged or declined PRs by using its
+native close-time filter before reading the activity streams:
+
+```sh
+bitbucket-cli pr inbox --role any --state MERGED --closed-since 48h --all \
+  --fields ref \
+  | jq -r '.items[].ref' \
+  | bitbucket-cli pr activity - --actor me --since 24h \
+      --kind approval,comment,decline
+```
+
+Run the inbox query separately for `OPEN`, `MERGED`, and `DECLINED` when all
+three states matter; `--closed-since` describes the PR's close time and is not
+an update-time filter. Bitbucket Cloud has no equivalent cross-repository
+close-time filter, so it rejects `--closed-since` rather than silently treating
+`updated_on` as the same concept. On Cloud, feed known PR refs (for example,
+refs retained by the scheduled agent while they were in its inbox) to
+`pr activity`.
+
 ## Reviewing
 
 - Approve: `bitbucket-cli pr approve <ref>`

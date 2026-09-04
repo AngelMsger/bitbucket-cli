@@ -21,6 +21,8 @@ const (
 	CapPRCrossForkCreate Capability = "pr.cross-fork-create"
 	// CapRepoForkImplicitTarget: omitting a fork's destination namespace.
 	CapRepoForkImplicitTarget Capability = "repo.fork-implicit-target"
+	// CapPRInboxClosedSince: limiting an inbox query by PR close time.
+	CapPRInboxClosedSince Capability = "pr.inbox-closed-since"
 )
 
 // SupportLevel describes how a flavor provides a capability.
@@ -66,6 +68,11 @@ var capabilitySupport = map[Capability]map[Flavor]Support{
 	CapRepoForkImplicitTarget: {
 		FlavorCloud: {Level: SupportUnsupported,
 			Reason: "Bitbucket Cloud requires the destination workspace in every fork request"},
+		FlavorDataCenter: {Level: SupportNative},
+	},
+	CapPRInboxClosedSince: {
+		FlavorCloud: {Level: SupportUnsupported,
+			Reason: "Bitbucket Cloud exposes no equivalent close-time filter for cross-repository PR listings"},
 		FlavorDataCenter: {Level: SupportNative},
 	},
 }

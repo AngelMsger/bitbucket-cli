@@ -63,10 +63,10 @@ the site root):
 | PR diff (whole) | `GET .../pullrequests/{id}/diff` (text) | `GET .../pull-requests/{id}/diff` (JSON hunks; `Accept: text/plain` for raw text) |
 | PR diff (per file) | `GET .../pullrequests/{id}/diff?path=` | `GET .../pull-requests/{id}/diff/{path}` |
 | PR diffstat | `GET .../pullrequests/{id}/diffstat` | `GET .../pull-requests/{id}/changes` |
-| PR activity feed | `GET .../pullrequests/{id}/activity` | `GET .../pull-requests/{id}/activities` |
+| PR activity feed | `GET .../pullrequests/{id}/activity`; activity filters interpret merge/decline state updates without reshaping the response | `GET .../pull-requests/{id}/activities` |
 | PR merge precheck | Derived from `pullrequests/{id}` + `/statuses` | `GET .../pull-requests/{id}/merge` returns `{canMerge,conflicted,outcome,vetoes}` directly |
 | CI build status | `GET /2.0/repositories/{ws}/{repo}/commit/{hash}/statuses` | `GET /rest/build-status/1.0/commits/{hash}` (not under `/rest/api/1.0`) |
-| Inbox (my PRs) | `/2.0/pullrequests/{uuid}` (author) or workspace-scoped fan-out (reviewer) | `GET /rest/api/1.0/dashboard/pull-requests?role=` |
+| Inbox (my PRs) | `/2.0/pullrequests/{uuid}` (author) or workspace-scoped fan-out (reviewer/participant/any); no cross-repository close-time filter | `GET /rest/api/1.0/dashboard/pull-requests?role=&closedSince=`; `role` is omitted for any role |
 | List branches | `GET .../refs/branches` | `GET .../branches` |
 | List tags | `GET .../refs/tags` | `GET .../tags` |
 | Source file metadata | `GET .../src/{ref}/{path}?format=meta` | `GET .../files/{path}?at={ref}` |
@@ -114,7 +114,7 @@ PullRequest { ID, Ref, Title, Description, State, Author, Source, Destination,
 InlineAnchor{ Path, Line, From, To }
 Comment     { ID, Content, Author, Inline, ParentID, PRID, CommitID,
               URL, CreatedAt, UpdatedAt }
-Activity    { Kind, Actor, When, Comment, Approved, State }
+Activity    { Kind, Actor, When, PullRequest, Comment, Approved, State }
 Diffstat    { Path, OldPath, Status, LinesAdded, LinesRemoved, Binary }
 Thread      { File, Anchor, Comments[] }              // inline threads grouped by file
 MergeCheck  { CanMerge, Conflicted, Outcome, Vetoes }

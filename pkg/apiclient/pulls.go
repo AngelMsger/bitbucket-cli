@@ -215,6 +215,9 @@ func (c *apiClient) ListPRActivity(ctx context.Context, opt PRListOpts) (ListRes
 		return ListResult[Activity]{}, cerrors.New(cerrors.CategoryUsage, "PR_NO_ID",
 			"a PR ID is required (passed via opt.Query)")
 	}
+	prRef := &ActivityPullRequestRef{
+		ID: prID, Ref: normalizedPRRef(opt.Repo, prID), Repository: opt.Repo,
+	}
 	limit := c.limitOf(opt.ListOpts)
 	q := c.queryWithLimit(opt.Cursor, limit)
 	// Cloud's path is `/activity`; Data Center uses `/activities`.
@@ -251,11 +254,11 @@ func (c *apiClient) ListPRActivity(ctx context.Context, opt PRListOpts) (ListRes
 			switch {
 			case v.Comment != nil:
 				cm := mapCloudComment(prID, *v.Comment)
-				res.Items = append(res.Items, Activity{Kind: "comment", Actor: cm.Author, When: v.Comment.CreatedOn, Comment: &cm})
+				res.Items = append(res.Items, Activity{Kind: "comment", Actor: cm.Author, When: v.Comment.CreatedOn, PullRequest: prRef, Comment: &cm})
 			case v.Approval != nil:
-				res.Items = append(res.Items, Activity{Kind: "approval", Actor: mapCloudUser(v.Approval.User), When: v.Approval.Date, Approved: true})
+				res.Items = append(res.Items, Activity{Kind: "approval", Actor: mapCloudUser(v.Approval.User), When: v.Approval.Date, PullRequest: prRef, Approved: true})
 			case v.Update != nil:
-				res.Items = append(res.Items, Activity{Kind: "update", Actor: mapCloudUser(v.Update.Author), When: v.Update.Date, State: v.Update.State})
+				res.Items = append(res.Items, Activity{Kind: "update", Actor: mapCloudUser(v.Update.Author), When: v.Update.Date, PullRequest: prRef, State: v.Update.State})
 			}
 		}
 		return res, nil
@@ -267,9 +270,10 @@ func (c *apiClient) ListPRActivity(ctx context.Context, opt PRListOpts) (ListRes
 	res := ListResult[Activity]{Next: nextOffsetToken(raw.dcPage)}
 	for _, a := range raw.Values {
 		entry := Activity{
-			Kind:  strings.ToLower(a.Action),
-			Actor: mapDCUser(a.User),
-			When:  epochToISO(a.CreatedDate),
+			Kind:        strings.ToLower(a.Action),
+			Actor:       mapDCUser(a.User),
+			When:        epochToISO(a.CreatedDate),
+			PullRequest: prRef,
 		}
 		if a.Comment != nil {
 			cm := mapDCComment(prID, *a.Comment)

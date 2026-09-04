@@ -214,12 +214,20 @@ type Comment struct {
 
 // Activity is one entry in a PR's activity stream.
 type Activity struct {
-	Kind     string   `json:"kind"` // comment / approval / update / merge / decline
-	Actor    User     `json:"actor"`
-	When     string   `json:"when,omitempty"`
-	Comment  *Comment `json:"comment,omitempty"`
-	Approved bool     `json:"approved,omitempty"`
-	State    string   `json:"state,omitempty"`
+	Kind        string                  `json:"kind"` // comment / approval / update / merge / decline
+	Actor       User                    `json:"actor"`
+	When        string                  `json:"when,omitempty"`
+	PullRequest *ActivityPullRequestRef `json:"pull_request,omitempty"`
+	Comment     *Comment                `json:"comment,omitempty"`
+	Approved    bool                    `json:"approved,omitempty"`
+	State       string                  `json:"state,omitempty"`
+}
+
+// ActivityPullRequestRef identifies the PR that produced an activity entry.
+type ActivityPullRequestRef struct {
+	ID         int     `json:"id"`
+	Ref        string  `json:"ref"`
+	Repository RepoRef `json:"repository"`
 }
 
 // ListResult is one page of a paginated listing. Next is an opaque cursor for
@@ -544,7 +552,7 @@ type TreeOpts struct {
 
 // MyPRListOpts narrows a cross-repo "PRs involving me" listing.
 //
-// Role values: "REVIEWER" (default) | "AUTHOR" | "PARTICIPANT".
+// Role values: "REVIEWER" (default) | "AUTHOR" | "PARTICIPANT" | "ANY".
 // State values: "OPEN" (default) | "MERGED" | "DECLINED" | "ALL".
 //
 // Workspace is optional on Data Center (the dashboard endpoint searches every
@@ -553,7 +561,8 @@ type TreeOpts struct {
 // in the named workspace.
 type MyPRListOpts struct {
 	ListOpts
-	Role      string
-	State     string
-	Workspace string
+	Role               string
+	State              string
+	Workspace          string
+	ClosedSinceSeconds int64 // DC only: keep PRs closed within this many seconds
 }

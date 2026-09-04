@@ -149,12 +149,12 @@ written to the config file.
 | `user list` / `user get` / `user me` | discover Bitbucket users — the values `--reviewer` / `--author` accept (Cloud: workspace-scoped via `--workspace`; DC: global) |
 | `tag list` / `tag get` | discover repository tags — the values `--ref` accepts (alongside branches and commit hashes) |
 | `pr list` / `pr get` | list pull requests; show details (`--scope summary/full/commits/activity`) |
-| `pr inbox` | cross-repo "PRs involving me" (`--role reviewer/author/participant`, `--state ...`) — single dashboard call on DC; on Cloud, `--workspace` required for reviewer/participant |
+| `pr inbox` | cross-repo "PRs involving me" (`--role reviewer/author/participant/any`, `--state ...`); DC also supports `--closed-since 48h` to avoid scanning old closed PRs |
 | `pr status` | aggregated merge readiness: mergeable, conflicts, reviewers, CI builds |
 | `pr files` | per-file diffstat (`path`/`status`/`added`/`removed`), sorted by churn |
 | `pr diff` | unified diff; `--path` scopes to one file |
 | `pr threads` | PR comments regrouped into inline threads (by file + anchor) |
-| `pr commits` / `pr activity` | commits in the PR; activity timeline |
+| `pr commits` / `pr activity` | commits in the PR; activity timeline, including multi-PR/stdin queries filtered by actor, kind and time |
 | `pr create` / `update` / `decline` / `merge` | open / edit / close / merge PRs; `--dry-run`, destructive ones need `--yes` |
 | `pr approve` / `unapprove` / `request-changes` | review verdicts (`request-changes` is Cloud only) |
 | `pr fetch` / `pr checkout` | print the equivalent `git` commands; `--exec` runs them in your current checkout |

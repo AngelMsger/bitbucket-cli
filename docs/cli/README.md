@@ -75,7 +75,7 @@ is published at <https://angelmsger.github.io/bitbucket-cli/cli/>.
 | Command | Description |
 | --- | --- |
 | [`bitbucket-cli pr`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr) | Drive Bitbucket pull requests (list, review, merge) |
-| [`bitbucket-cli pr activity`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-activity) | List the activity timeline of a PR |
+| [`bitbucket-cli pr activity`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-activity) | List and filter the activity timeline of one or more PRs |
 | [`bitbucket-cli pr approve`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-approve) | Approve one or more PRs |
 | [`bitbucket-cli pr checkout`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-checkout) | Print (or run, with --exec) git fetch (source + base) + checkout for a PR |
 | [`bitbucket-cli pr commits`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-commits) | List commits included in a PR |

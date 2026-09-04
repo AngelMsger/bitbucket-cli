@@ -179,6 +179,9 @@ assert_contains  "pr fetch print-only"       "git fetch"      "${CLI[@]}" pr fet
 assert_contains  "pr checkout print-only"    "git checkout"   "${CLI[@]}" pr checkout PROJ/demo/1
 assert_contains  "pr inbox (DC dashboard)"   "Wire payment retry" "${CLI[@]}" pr inbox --role reviewer
 assert_contains  "pr inbox exposes batch ref" '"ref": "PROJ/demo/7"' "${CLI[@]}" pr inbox --role reviewer
+assert_contains  "pr inbox closed-since"      "Wire payment retry" "${CLI[@]}" pr inbox --role any --state ALL --closed-since 48h
+assert_err_contains "pr inbox Cloud closed-since rejected" "INBOX_CLOSED_SINCE_UNSUPPORTED" \
+                                             "${CLI[@]}" --flavor cloud pr inbox --workspace team --closed-since 48h
 assert_contains  "fields projection is item-relative" '"repository.workspace": "PROJ"' \
                                              "${CLI[@]}" pr inbox --role reviewer --fields id,repository.workspace
 assert_contains  "fields help explains list scope" "omit the items envelope prefix" \
@@ -190,6 +193,14 @@ if [[ "$out" == *'"approved": true'* ]]; then
   pass "Skill inbox-to-approve pipeline"
 else
   fail "Skill inbox-to-approve pipeline (output did not contain an approval result)"
+fi
+out="$("${CLI[@]}" pr inbox --role any --state ALL --closed-since 48h --fields ref 2>/dev/null \
+  | jq -r '.items[].ref' \
+  | "${CLI[@]}" pr activity - --actor me --from 1970-01-01 --to 1970-01-02 --kind approval 2>/dev/null)"
+if [[ "$out" == *'"kind": "approval"'* && "$out" == *'"ref": "PROJ/demo/7"'* && "$out" != *'Looks good'* ]]; then
+  pass "Skill inbox-to-activity pipeline"
+else
+  fail "Skill inbox-to-activity pipeline (output did not contain only the matching activity)"
 fi
 assert_contains  "workspace list"            "PROJ"           "${CLI[@]}" workspace list
 assert_contains  "workspace get"             "Demo project"   "${CLI[@]}" workspace get PROJ
@@ -294,7 +305,7 @@ if [[ "${BITBUCKET_E2E_LIVE:-0}" == "1" ]]; then
   unset BITBUCKET_SERVER BITBUCKET_FLAVOR BITBUCKET_PERSONAL_ACCESS_TOKEN BITBUCKET_RELEASE_API
   LIVECLI=("$BIN" --config "$(mktemp -d)")
   assert_ok "live doctor"        "${LIVECLI[@]}" doctor
-  assert_ok "live whoami"        "${LIVECLI[@]}" whoami
+  assert_contains "live whoami identity" '"slug"' "${LIVECLI[@]}" whoami
 fi
 
 echo
