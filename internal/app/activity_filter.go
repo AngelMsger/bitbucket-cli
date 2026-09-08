@@ -135,9 +135,12 @@ func normalizeActivityKinds(values []string) (map[string]struct{}, error) {
 	return out, nil
 }
 
-func filterActivities(items []apiclient.Activity, window activityWindow, actor *apiclient.User, kinds map[string]struct{}) ([]apiclient.Activity, error) {
+func filterActivities(items []apiclient.Activity, window activityWindow, actor *apiclient.User, kinds map[string]struct{}, includeSystem bool) ([]apiclient.Activity, error) {
 	out := make([]apiclient.Activity, 0, len(items))
 	for _, item := range items {
+		if item.System && !includeSystem {
+			continue
+		}
 		if len(kinds) > 0 {
 			if _, ok := kinds[canonicalActivityKind(item)]; !ok {
 				continue

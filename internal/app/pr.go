@@ -39,6 +39,9 @@ func newPRListCmd(s *appState) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List pull requests in a repository",
+		Long: "List pull requests in a repository. Cloud applies --author and --reviewer\n" +
+			"server-side after resolving the user to a stable UUID. Data Center requires\n" +
+			"--all and filters the explicitly fetched repository history client-side.",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if repoArg == "" {
 				return cerrors.New(cerrors.CategoryUsage, "PR_NO_REPO",
@@ -59,7 +62,7 @@ func newPRListCmd(s *appState) *cobra.Command {
 				return client.ListPRs(ctx, apiclient.PRListOpts{
 					ListOpts: apiclient.ListOpts{Limit: limit, Cursor: c},
 					Repo:     ref,
-					State:    state, Author: author, Reviewer: reviewer,
+					State:    state, Author: author, Reviewer: reviewer, FilterAll: all,
 					Source: source, Target: target, Query: query,
 				})
 			}
@@ -73,8 +76,8 @@ func newPRListCmd(s *appState) *cobra.Command {
 	f := cmd.Flags()
 	f.StringVar(&repoArg, "repo", "", "<workspace>/<repo> or Bitbucket repo URL")
 	f.StringVar(&state, "state", "OPEN", "OPEN | MERGED | DECLINED | ALL")
-	f.StringVar(&author, "author", "", "filter by author username")
-	f.StringVar(&reviewer, "reviewer", "", "filter by reviewer username")
+	f.StringVar(&author, "author", "", "filter by author selector (Data Center requires --all)")
+	f.StringVar(&reviewer, "reviewer", "", "filter by reviewer selector (Data Center requires --all)")
 	f.StringVar(&source, "source", "", "filter by source branch")
 	f.StringVar(&target, "target", "", "filter by destination branch")
 	f.StringVar(&query, "query", "", "server-side filter (Cloud `q=`)")
@@ -419,6 +422,7 @@ func newPRActivityCmd(s *appState) *cobra.Command {
 		kinds                  []string
 		limit                  int
 		all                    bool
+		includeSystem          bool
 		cursor                 string
 	)
 	cmd := &cobra.Command{
@@ -495,7 +499,7 @@ func newPRActivityCmd(s *appState) *cobra.Command {
 				if !filteredMode {
 					return s.emitList(items, info)
 				}
-				items, err = filterActivities(items, window, targetActor, kindSet)
+				items, err = filterActivities(items, window, targetActor, kindSet, includeSystem)
 				if err != nil {
 					return cerrors.Wrap(err, cerrors.CategoryParse, "ACTIVITY_TIME_INVALID",
 						"could not interpret an activity timestamp")
@@ -512,6 +516,7 @@ func newPRActivityCmd(s *appState) *cobra.Command {
 	f.StringVar(&from, "from", "", "activity at or after this RFC3339 timestamp or UTC date")
 	f.StringVar(&to, "to", "", "activity before this RFC3339 timestamp or UTC date (defaults to now)")
 	f.StringSliceVar(&kinds, "kind", nil, "activity kinds to include (comma-separated or repeatable)")
+	f.BoolVar(&includeSystem, "include-system", false, "include system-generated comments in filtered activity results")
 	addListFlags(cmd, &limit, &all, &cursor)
 	return cmd
 }

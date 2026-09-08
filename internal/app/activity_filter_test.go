@@ -58,7 +58,7 @@ func TestFilterActivitiesAcrossFlavorTimestamps(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := filterActivities(items, window, actor, kinds)
+	got, err := filterActivities(items, window, actor, kinds, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,12 +81,35 @@ func TestDeclineFilterMatchesCloudStateUpdate(t *testing.T) {
 	got, err := filterActivities([]apiclient.Activity{
 		{Kind: "update", State: "DECLINED"},
 		{Kind: "update", State: "OPEN"},
-	}, activityWindow{}, nil, kinds)
+	}, activityWindow{}, nil, kinds, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(got) != 1 || got[0].State != "DECLINED" {
 		t.Fatalf("decline filter returned %+v", got)
+	}
+}
+
+func TestFilterActivitiesExcludesSystemActivityByDefault(t *testing.T) {
+	items := []apiclient.Activity{
+		{Kind: "comment", System: true},
+		{Kind: "comment"},
+	}
+
+	got, err := filterActivities(items, activityWindow{}, nil, nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0].System {
+		t.Fatalf("default evidence filter returned %+v; want only human activity", got)
+	}
+
+	got, err = filterActivities(items, activityWindow{}, nil, nil, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("include-system filter returned %d activities; want 2", len(got))
 	}
 }
 

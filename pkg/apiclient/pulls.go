@@ -39,19 +39,18 @@ func (c *apiClient) ListPRs(ctx context.Context, opt PRListOpts) (ListResult[Pul
 		if cloudFollowURL(opt.Cursor) {
 			path = opt.Cursor
 			q = nil
-		}
-		state := strings.ToUpper(strings.TrimSpace(opt.State))
-		if state != "" {
-			if q == nil {
-				q = url.Values{}
+		} else {
+			state := strings.ToUpper(strings.TrimSpace(opt.State))
+			if state != "" {
+				addCloudStateParams(q, state)
 			}
-			addCloudStateParams(q, state)
-		}
-		if opt.Query != "" {
-			if q == nil {
-				q = url.Values{}
+			filter, err := c.cloudPRFilter(ctx, opt)
+			if err != nil {
+				return ListResult[PullRequest]{}, err
 			}
-			q.Set("q", opt.Query)
+			if filter != "" {
+				q.Set("q", filter)
+			}
 		}
 		var raw cloudPRList
 		if err := c.getJSON(ctx, path, q, &raw); err != nil {
@@ -63,6 +62,106 @@ func (c *apiClient) ListPRs(ctx context.Context, opt PRListOpts) (ListResult[Pul
 		}
 		return res, nil
 	}
+	if opt.Author != "" || opt.Reviewer != "" {
+		if !opt.FilterAll {
+			sup := c.supportFor(CapPRListUserFilters)
+			example := "--author <username>"
+			if opt.Author == "" {
+				example = "--reviewer <username>"
+			}
+			return ListResult[PullRequest]{}, cerrors.New(cerrors.CategoryUsage, "PR_USER_FILTER_REQUIRES_ALL",
+				"Data Center requires --all for --author or --reviewer: "+sup.Reason).
+				WithHint("Use --all to opt into a complete scan of this repository before client-side filtering.").
+				WithNextSteps("bitbucket-cli pr list --repo <project>/<repo> " + example + " --all")
+		}
+		return c.listAllDCFilteredPRs(ctx, opt)
+	}
+	return c.listDCPrPage(ctx, opt)
+}
+
+func (c *apiClient) cloudPRFilter(ctx context.Context, opt PRListOpts) (string, error) {
+	if strings.TrimSpace(opt.Author) == "" && strings.TrimSpace(opt.Reviewer) == "" {
+		return opt.Query, nil
+	}
+	parts := make([]string, 0, 3)
+	if opt.Query != "" {
+		parts = append(parts, "("+opt.Query+")")
+	}
+	for _, filter := range []struct {
+		field    string
+		selector string
+	}{{"author.uuid", opt.Author}, {"reviewers.uuid", opt.Reviewer}} {
+		if strings.TrimSpace(filter.selector) == "" {
+			continue
+		}
+		user, err := c.GetUser(ctx, filter.selector)
+		if err != nil {
+			return "", err
+		}
+		uuid := strings.Trim(strings.TrimSpace(user.UUID), "{}")
+		if uuid == "" {
+			return "", cerrors.New(cerrors.CategoryInternal, "NO_USER_SELECTOR",
+				"Bitbucket Cloud did not return a UUID for user "+filter.selector)
+		}
+		parts = append(parts, filter.field+"="+strconv.Quote(uuid))
+	}
+	return strings.Join(parts, " AND "), nil
+}
+
+func (c *apiClient) listAllDCFilteredPRs(ctx context.Context, opt PRListOpts) (ListResult[PullRequest], error) {
+	var items []PullRequest
+	cursor := opt.Cursor
+	for {
+		pageOpt := opt
+		pageOpt.Cursor = cursor
+		pageOpt.Author = ""
+		pageOpt.Reviewer = ""
+		pageOpt.FilterAll = false
+		page, err := c.listDCPrPage(ctx, pageOpt)
+		if err != nil {
+			return ListResult[PullRequest]{}, err
+		}
+		for _, pr := range page.Items {
+			if prMatchesUsers(pr, opt.Author, opt.Reviewer) {
+				items = append(items, pr)
+			}
+		}
+		if page.Next == "" {
+			return ListResult[PullRequest]{Items: items}, nil
+		}
+		cursor = page.Next
+	}
+}
+
+func prMatchesUsers(pr PullRequest, author, reviewer string) bool {
+	if author != "" && !userMatchesSelector(pr.Author, author) {
+		return false
+	}
+	if reviewer == "" {
+		return true
+	}
+	for _, participant := range pr.Reviewers {
+		if userMatchesSelector(participant.User, reviewer) {
+			return true
+		}
+	}
+	return false
+}
+
+func userMatchesSelector(user User, selector string) bool {
+	selector = strings.ToLower(strings.Trim(strings.TrimSpace(selector), "{}"))
+	for _, value := range []string{user.AccountID, user.UUID, user.Name, user.Slug} {
+		if strings.ToLower(strings.Trim(strings.TrimSpace(value), "{}")) == selector {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *apiClient) listDCPrPage(ctx context.Context, opt PRListOpts) (ListResult[PullRequest], error) {
+	limit := c.limitOf(opt.ListOpts)
+	q := c.queryWithLimit(opt.Cursor, limit)
+	path := c.prsPath(opt.Repo)
 	// Data Center: the repo endpoint accepts state=ALL natively; omitting the
 	// param would make the server default to OPEN.
 	if opt.State != "" {
@@ -283,6 +382,7 @@ func (c *apiClient) ListPRActivity(ctx context.Context, opt PRListOpts) (ListRes
 			}
 			entry.Kind = "comment"
 			entry.Comment = &cm
+			entry.System = isDCSystemComment(a.CommentAction, a.Comment.Text)
 		}
 		switch strings.ToUpper(a.Action) {
 		case "APPROVED":

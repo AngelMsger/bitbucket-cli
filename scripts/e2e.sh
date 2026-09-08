@@ -126,11 +126,23 @@ assert_err_contains "repo fork Cloud same workspace requires --name" "--name" \
 assert_contains  "repo fork Cloud --into dry-run" '"slug": "target"' \
                                              "${CLI[@]}" --flavor cloud repo fork team/repo --into target --dry-run
 assert_contains  "pr list"                   "Add login flow" "${CLI[@]}" pr list --repo PROJ/demo
+assert_err_contains "pr list DC user filter requires --all" "PR_USER_FILTER_REQUIRES_ALL" \
+                                             "${CLI[@]}" pr list --repo PROJ/demo --author alice
+assert_contains  "pr list DC --author --all" "Add login flow" "${CLI[@]}" pr list --repo PROJ/demo --author alice --all
+assert_not_contains "pr list DC --author filters" "Bob cache change" \
+                                             "${CLI[@]}" pr list --repo PROJ/demo --author alice --all
+assert_contains  "pr list DC --reviewer --all" "Add login flow" "${CLI[@]}" pr list --repo PROJ/demo --reviewer alice --all
+assert_not_contains "pr list DC --reviewer filters" "Bob cache change" \
+                                             "${CLI[@]}" pr list --repo PROJ/demo --reviewer alice --all
 assert_contains  "pr get summary"            "Add login flow" "${CLI[@]}" pr get PROJ/demo/1
 assert_contains  "pr get diff"               "@@ -1 +1 @@"    "${CLI[@]}" pr get PROJ/demo/1 --scope diff
 assert_contains  "pr diff command"           "@@ -1 +1 @@"    "${CLI[@]}" pr diff PROJ/demo/1
 assert_contains  "pr commits"                "aaaa111"        "${CLI[@]}" pr commits PROJ/demo/1
 assert_contains  "pr activity"               "Looks good"     "${CLI[@]}" pr activity PROJ/demo/1
+assert_not_contains "pr activity evidence excludes system comments" "predefined branch reviewers" \
+                                             "${CLI[@]}" pr activity PROJ/demo/1 --actor me --from 1970-01-01 --to 1970-01-02 --kind comment
+assert_contains  "pr activity --include-system" "predefined branch reviewers" \
+                                             "${CLI[@]}" pr activity PROJ/demo/1 --actor me --from 1970-01-01 --to 1970-01-02 --kind comment --include-system
 assert_contains  "comment list"              "Looks good"     "${CLI[@]}" comment list --pr PROJ/demo/1
 assert_contains  "comment add"               "added"          "${CLI[@]}" comment add --pr PROJ/demo/1 --content "added"
 assert_contains  "pr approve"                '"approved": true' "${CLI[@]}" pr approve PROJ/demo/1

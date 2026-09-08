@@ -2,6 +2,29 @@
 
 ## [Unreleased]
 
+## [0.16.1] - 2026-09-08
+
+### Fixed
+
+- Filtered `pr activity` queries no longer treat Data Center's automatic
+  predefined-reviewer comments as human review evidence. The complete
+  single-PR timeline marks recognized entries with `system: true`, filtered
+  queries omit them by default, and `--include-system` opts back into them.
+- `pr list --author` and `--reviewer` now apply the requested user filters
+  instead of silently ignoring them. Cloud resolves selectors to stable UUIDs
+  and filters server-side. Data Center requires explicit `--all`, scans only
+  the named repository using server-provided cursors, then filters locally; a
+  paginated invocation fails with `PR_USER_FILTER_REQUIRES_ALL`.
+
+### Known limitations
+
+- `pr inbox` remains scoped to the authenticated user. Bitbucket Data Center's
+  dashboard API has no arbitrary-user selector. Repository-scoped discovery is
+  available through `pr list --repo ... --author/--reviewer ... --all`, but the
+  caller must already know and enumerate each repository. `pr activity --actor
+  <user>` therefore cannot discover a complete cross-repository candidate set,
+  and the CLI does not emulate this with an unbounded repository scan.
+
 ## [0.16.0] - 2026-09-04
 
 ### Added
@@ -658,7 +681,8 @@ PR-centric MVP supporting Bitbucket Cloud (REST 2.0) and Data Center (REST
 subtrees; layered configuration with keychain-backed auth; structured error
 model; and an embedded companion Skill.
 
-[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.16.0...HEAD
+[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.16.1...HEAD
+[0.16.1]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.16.0...v0.16.1
 [0.16.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.14.2...v0.15.0
 [0.14.2]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.14.1...v0.14.2
