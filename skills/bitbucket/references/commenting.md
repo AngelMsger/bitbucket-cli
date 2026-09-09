@@ -154,6 +154,12 @@ bitbucket-cli comment add --pr myws/myrepo/42 \
   --content "Yep, opening a follow-up PR."
 ```
 
+**Check who you are replying to first.** If comment `9876` was written by a person,
+the reply belongs to the human whose name it will carry: draft it, show them the
+reviewer's point and your reasoning, and post only that reply once they approve it.
+Threads opened by a bot or another agent (recognizable by the `[[AI]](…)` marker or
+an app `author.type`) take a lighter path. See `replying-to-people.md`.
+
 ## Listing, editing, deleting
 
 ```sh

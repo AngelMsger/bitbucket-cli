@@ -167,6 +167,12 @@ answer in and finish the deferred items, otherwise tell the user the question
 is still open. While a blocking question is unanswered, don't `pr approve`,
 `pr request-changes`, or `pr decline` on guesswork.
 
+**An author's reply is for you to read, not to auto-answer.** When the answer comes
+back from a person, work it into the review yourself — judge whether it actually
+resolves the concern, and say so. Do not fire a reply straight back into the thread
+without the reviewing human seeing what was said; the same courtesy applies in this
+direction as in `replying-to-people.md`.
+
 ## Reviewing against the right base
 
 A PR is "what changed **relative to its base**". Reading the PR's files at their

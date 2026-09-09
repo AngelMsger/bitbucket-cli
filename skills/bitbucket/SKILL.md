@@ -1,10 +1,11 @@
 ---
 name: bitbucket
-version: 0.12.1
+version: 0.13.0
 description: "Use Bitbucket as a code-hosting backend for coding agents. Browse repositories and source files at any ref, drive pull request review and merge workflows, see per-file diffs and diffstats, check mergeability and CI build status, fetch a PR into a local git checkout, post inline review comments, resolve or reopen comment threads, triage and respond to received review comments (with resolution / task status and --unresolved filters), and preview every write with --dry-run or lock the session with read-only mode. Supports Bitbucket Cloud and Data Center / Server. Use when the user mentions Bitbucket, a PR or pull-request URL or ID, repository browsing, file content at a ref, code review, responding to or addressing PR review comments, resolving a comment thread or task, approve/decline/merge a PR, asks to read a diff, or wants a dry-run / read-only / safe-mode session."
 metadata:
   requires:
     bins: ["bitbucket-cli"]
+  cliHelp: "bitbucket-cli --help; bitbucket-cli pr --help; bitbucket-cli comment --help; bitbucket-cli file --help"
 ---
 
 # Bitbucket
@@ -59,8 +60,12 @@ TTY — agents should never pass it.
   user named with `pr threads <ref> --comment <id>`. (No PR in hand? Discover with
   `pr inbox --role author`.) For each thread, locate the code (local checkout
   preferred for real verification), judge whether the comment is valid, propose a
-  fix + verification, and draft a reply. Read-only analysis by default; post
-  replies only after confirmation. See `references/responding-to-review-comments.md`.
+  fix + verification, and draft a reply. Read-only analysis by default, and a comment
+  a person wrote is answered by that person: classify each thread's author, and post
+  a reply to a human-authored thread only once the author has seen the reviewer's
+  point and approved that specific reply. See
+  `references/responding-to-review-comments.md` for the triage flow and
+  `references/replying-to-people.md` for the confirmation gate.
 - **Collect review activity for a worklog** — narrow Data Center candidates with
   `pr inbox --role any --state MERGED --closed-since 48h` (repeat for declined;
   query open PRs separately), pipe `.items[].ref` into `pr activity -`, then use
@@ -85,6 +90,59 @@ TTY — agents should never pass it.
   `pr inbox --format json | jq -r '.items[].ref' | bitbucket-cli pr approve -`).
   With more than one, output is an `{items, has_more}` aggregate with a per-item
   `ok`/`error`; the run continues past failures and exits non-zero if any failed.
+
+## Commands
+
+A PR reference is `<workspace>/<repo>/<id>` or a PR URL; a repo reference is
+`<workspace>/<repo>` or a repo URL. On Data Center, `<workspace>` is the project key.
+
+```
+bitbucket-cli pr list <workspace>/<repo>     # PRs in a repository (--author/--reviewer/--state)
+bitbucket-cli pr inbox                       # PRs involving me across repos (--role reviewer|author|any)
+bitbucket-cli pr get <ref>                   # one PR (--scope summary trims the body)
+bitbucket-cli pr status <ref>                # merge readiness: mergeable, conflicts, reviewers, CI
+bitbucket-cli pr files <ref>                 # changed files (diffstat) — budget context before diffing
+bitbucket-cli pr diff <ref>                  # unified diff (--path scopes to one file)
+bitbucket-cli pr commits <ref>               # commits included in the PR
+bitbucket-cli pr threads <ref>               # review threads by file (--unresolved, --comment <id>)
+bitbucket-cli pr activity <ref>...           # activity timeline; '-' reads refs from stdin
+bitbucket-cli pr fetch <ref>                 # print (or --exec) git fetch for the PR source + base
+bitbucket-cli pr checkout <ref>              # print (or --exec) fetch + checkout of the PR source
+bitbucket-cli pr create                      # open a PR (--repo --source --target --title)
+bitbucket-cli pr update <ref>                # edit --title / --description / --reviewer
+bitbucket-cli pr approve <ref>...            # approve one or more PRs ('-' reads from stdin)
+bitbucket-cli pr unapprove <ref>             # withdraw an approval
+bitbucket-cli pr request-changes <ref>       # request-changes / needs-work vote (Cloud only)
+bitbucket-cli pr decline <ref>...            # close without merging (needs --yes)
+bitbucket-cli pr merge <ref>                 # merge (--strategy, needs --yes)
+bitbucket-cli comment list --pr <ref>        # PR comments (--unresolved, --tasks)
+bitbucket-cli comment add --pr <ref>         # comment (--inline <path>:<line>, --reply-to <id>)
+bitbucket-cli comment update <comment-id>    # edit a comment (--pr <ref>)
+bitbucket-cli comment resolve <comment-id>   # resolve a thread (--unresolve reopens; --pr <ref>)
+bitbucket-cli comment delete <comment-id>... # delete one or more comments (needs --yes)
+bitbucket-cli file list <repo-ref>           # directory entries at a ref (--ref, --path)
+bitbucket-cli file get <repo-ref>            # raw file contents at a ref (-o writes to a file)
+bitbucket-cli file tree <repo-ref>           # recursive file listing under a path
+bitbucket-cli repo list <workspace>          # repositories in a workspace / project
+bitbucket-cli repo get <repo-ref>            # one repository
+bitbucket-cli repo create <slug>             # create a repository
+bitbucket-cli repo fork <repo-ref>           # fork (--into / --name)
+bitbucket-cli repo delete <repo-ref>         # delete a repository (irreversible; needs --yes)
+bitbucket-cli repo clone-url <repo-ref>      # HTTPS or SSH clone URL
+bitbucket-cli branch list <repo-ref>         # branches (also: get, create, delete — delete needs --yes)
+bitbucket-cli tag list <repo-ref>            # tags (also: get)
+bitbucket-cli commit list <repo-ref>         # commits (also: get <hash>, compare)
+bitbucket-cli workspace list|get <name>      # workspaces (Cloud) / projects (Data Center)
+bitbucket-cli user list|get <selector>       # discover users; resolves --author/--reviewer selectors
+bitbucket-cli whoami                         # the user the credentials act as (alias: user me)
+bitbucket-cli config init|show|path          # configuration
+bitbucket-cli config get-contexts|use-context|delete-context   # named contexts
+bitbucket-cli auth login|logout|status       # stored credentials
+bitbucket-cli doctor                         # diagnose setup + connectivity
+bitbucket-cli skill install|status|path|show|uninstall   # manage the companion Skill
+```
+
+Every write above accepts `--dry-run`; see `references/safety-modes.md`.
 
 ## Agent-facing conventions
 
@@ -122,6 +180,26 @@ TTY — agents should never pass it.
 
 See the topic references in `references/` for details and decision trees.
 
+## Replying to people, not to bots
+
+Review is where a team exchanges reasoning. When you answer a human reviewer's
+comment on the author's behalf, both sides lose that exchange — so **help the
+author answer, do not answer for them.**
+
+- **Classify the thread's root author first** — the `[[AI]](…)` marker in the body,
+  or an app/bot `author.type`, means a machine wrote it. Anything else is a person.
+- **For a human-authored thread:** state the reason once per session, then go one
+  thread at a time — quote the reviewer's point, show the code, give your reasoning,
+  and hand over a labeled *draft* for the author to approve or rewrite. One approval
+  covers one thread. If the author knowingly asks for bulk replies anyway, comply and
+  keep the `[AI]` marker on every one.
+- **Never on your own:** `comment resolve` a person's thread, fan `comment add
+  --reply-to` across threads in one pass, or push code fixes.
+- **Bot or agent counterparts** (linters, CI reporters, another agent's review) do
+  not need the per-thread gate — confirm the first write and keep attribution.
+
+Full protocol: `references/replying-to-people.md`.
+
 ## AI attribution (agent writes)
 
 When you, as an AI agent, write to Bitbucket on the user's behalf, mark the content as
@@ -139,8 +217,10 @@ bitbucket-cli comment add --pr myws/myrepo/42 \
   --content "[[AI]](https://angelmsger.github.io/bitbucket-cli/) XXX 有 YYY 问题。"
 ```
 
-Write the rest of the text in the **user's language**; keep the `[AI]` label and the
-URL `https://angelmsger.github.io/bitbucket-cli/` constant. For PR descriptions use the
+When the human writes or rewrites the text themselves, post it verbatim **without**
+the `[AI]` marker — they authored it. Write the rest of the text in the **user's
+language**; keep the `[AI]` label and the URL
+`https://angelmsger.github.io/bitbucket-cli/` constant. For PR descriptions use the
 attribution line in `references/pr-workflows.md`. See also `references/commenting.md`.
 
 ## Configuration & credentials (agents)

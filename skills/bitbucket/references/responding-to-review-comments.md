@@ -29,6 +29,15 @@ push code, or change PR state until the human confirms. Preview every write with
 `--dry-run` first, and respect `BITBUCKET_CLI_READ_ONLY` when the user asks for a
 locked session. See `safety-modes.md`.
 
+**Who wrote the comment decides how strict that confirmation is.** A thread whose
+root comment a person wrote is half of a conversation, and the author is the one
+who has to hold up their end: they read the reviewer's point, they form a view,
+they own the words posted under their name. So for human-authored threads, confirm
+**per thread** — one approval does not carry to the next — and say why once at the
+start of the session, not on every thread. Threads opened by a bot or another agent
+take the lighter path. Classify first, then apply the gate:
+`replying-to-people.md` is the full protocol and this workflow assumes it.
+
 ## The decision tree
 
 ```
@@ -89,6 +98,10 @@ clone is opportunistic but strongly encouraged.
 For each open thread, read the anchored code (local Read/Grep when available,
 else `pr diff --path <file>` mapping the inline `line` to its hunk), then:
 
+0. **Identify who wrote it** — check the root comment for the `[[AI]](…)` marker
+   and look at `author.type` / `author.display_name`. Marker or bot account →
+   AI-authored; anything you cannot classify → treat it as a person. This decides
+   which confirmation gate applies (`replying-to-people.md`).
 1. **Understand / reproduce** the concern before judging — *run it locally if a
    checkout exists* (failing test, build error, the actual behaviour).
 2. **Classify** the comment: bug · style/nit · question · out-of-scope ·
@@ -108,11 +121,20 @@ else `pr diff --path <file>` mapping the inline `line` to its hunk), then:
 
 Summarize before writing anything back. A compact table the human can scan:
 
-| Thread | Location | Comment (summary) | Verdict | Action | Verification | Draft reply |
-|--------|----------|-------------------|---------|--------|--------------|-------------|
-| 9003 | src/app.go:20 | "Please rename this" | valid (nit) | fix | `go build` | "Renamed to `…`." |
+| Thread | Author | Location | Comment (summary) | Verdict | Action | Verification | Draft reply |
+|--------|--------|----------|-------------------|---------|--------|--------------|-------------|
+| 9003 | human | src/app.go:20 | "Please rename this" | valid (nit) | fix | `go build` | "Renamed to `…`." |
+| 9014 | bot (linter) | src/app.go:88 | "unchecked error" | valid | fix | `go test ./...` | "Handled; test added." |
+
+The **Author** column tells the human which threads they need to answer themselves
+and which ones you can close out with a lighter touch.
 
 ## Writing back (only after confirmation)
+
+For a human-authored thread, "confirmation" means the author saw the reviewer's
+point in the reviewer's own words, saw your reasoning, and approved *that* reply —
+one thread at a time. If they rewrite the draft, post their text verbatim and drop
+the `[AI]` marker. See `replying-to-people.md`.
 
 - **Reply to a thread** — preview, then post:
   ```sh
@@ -127,6 +149,9 @@ Summarize before writing anything back. A compact table the human can scan:
   (add `--unresolve` to reopen). Filter to open threads when listing with
   `comment list --pr <ref> --unresolved`. On Data Center this also completes /
   reopens the associated task. Works on both flavors; `--dry-run` previews it.
+  **Do not resolve a person's thread on your own** — it asserts "I agree, and this
+  is handled" under the author's name. Propose it and let them confirm; if they
+  disagree with the reviewer, leave it open for the reviewer to answer.
 
 ## Inputs the agent needs
 
