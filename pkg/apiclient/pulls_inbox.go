@@ -3,6 +3,7 @@ package apiclient
 import (
 	"context"
 	"net/url"
+	"strconv"
 	"strings"
 
 	cerrors "github.com/angelmsger/bitbucket-cli/pkg/errors"
@@ -28,6 +29,8 @@ func normalizeInboxRole(r string) string {
 		return "AUTHOR"
 	case "PARTICIPANT":
 		return "PARTICIPANT"
+	case "ANY", "ALL":
+		return ""
 	}
 	return strings.ToUpper(r)
 }
@@ -52,9 +55,15 @@ func normalizeInboxState(s string) string {
 func (c *apiClient) dcListDashboardPRs(ctx context.Context, opt MyPRListOpts, role, state string) (ListResult[PullRequest], error) {
 	limit := c.limitOf(opt.ListOpts)
 	q := c.queryWithLimit(opt.Cursor, limit)
-	q.Set("role", role)
+	if role != "" {
+		q.Set("role", role)
+	}
 	if state != "ALL" {
 		q.Set("state", state)
+	}
+	if opt.ClosedSinceSeconds > 0 {
+		q.Set("closedSince", strconv.FormatInt(opt.ClosedSinceSeconds, 10))
+		q.Set("order", "CLOSED_DATE")
 	}
 	var raw dcPRList
 	if err := c.getJSON(ctx, "/rest/api/1.0/dashboard/pull-requests", q, &raw); err != nil {
@@ -82,6 +91,12 @@ func (c *apiClient) dcListDashboardPRs(ctx context.Context, opt MyPRListOpts, ro
 //     queries would have to enumerate the user's workspaces — left to a
 //     future iteration; the CLI surfaces a clear usage error for now.
 func (c *apiClient) cloudListMyPRs(ctx context.Context, opt MyPRListOpts, role, state string) (ListResult[PullRequest], error) {
+	if opt.ClosedSinceSeconds > 0 {
+		sup := c.supportFor(CapPRInboxClosedSince)
+		return ListResult[PullRequest]{}, cerrors.New(cerrors.CategoryUsage, "INBOX_CLOSED_SINCE_UNSUPPORTED",
+			"--closed-since is not available on Bitbucket Cloud: "+sup.Reason).
+			WithHint("Scope Cloud activity by repository or pass explicit PR refs to `pr activity`.")
+	}
 	me, err := c.CurrentUser(ctx)
 	if err != nil {
 		return ListResult[PullRequest]{}, err
@@ -114,7 +129,7 @@ func (c *apiClient) cloudListMyPRs(ctx context.Context, opt MyPRListOpts, role, 
 
 	if opt.Workspace == "" {
 		return ListResult[PullRequest]{}, cerrors.New(cerrors.CategoryUsage, "INBOX_NO_WORKSPACE",
-			"Bitbucket Cloud requires --workspace for `pr inbox --role reviewer` (and --role participant)").
+			"Bitbucket Cloud requires --workspace for `pr inbox --role reviewer`, participant, or any").
 			WithHint("Cloud has no global reviewer index. Pass --workspace <ws> to scope "+
 				"the search to one workspace.").
 			WithNextSteps(
@@ -129,8 +144,12 @@ func (c *apiClient) cloudListMyPRs(ctx context.Context, opt MyPRListOpts, role, 
 		uuidFilter = selector
 	}
 	q := `reviewers.uuid="` + uuidFilter + `"`
-	if role == "PARTICIPANT" {
+	switch role {
+	case "PARTICIPANT":
 		q = `participants.uuid="` + uuidFilter + `"`
+	case "":
+		q = `(author.uuid="` + uuidFilter + `" OR reviewers.uuid="` + uuidFilter +
+			`" OR participants.uuid="` + uuidFilter + `")`
 	}
 	if state != "ALL" {
 		q = q + ` AND state="` + state + `"`

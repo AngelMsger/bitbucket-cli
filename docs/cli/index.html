@@ -635,19 +635,29 @@ a single command with the global --use-context flag instead.</p>
 
     <section class="cmd" id="bitbucket-cli-pr-activity">
       <h2>bitbucket-cli pr activity</h2>
-      <p class="short">List the activity timeline of a PR</p>
-      <pre>bitbucket-cli pr activity &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt; [flags]</pre>
-      
+      <p class="short">List and filter the activity timeline of one or more PRs</p>
+      <pre>bitbucket-cli pr activity &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt;... [flags]</pre>
+      <p class="long">List pull-request activity. Pass several PR references, or a single &#39;-&#39; to
+read newline-separated references from stdin. Batch mode requires --since or
+--from so an automation cannot accidentally scan unbounded history.</p>
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
+        <tr><td><code>--actor</code></td><td></td><td>only activity by this user selector; use &#39;me&#39; for the authenticated user</td></tr>
         <tr><td><code>--all</code></td><td><code>false</code></td><td>fetch every page of results</td></tr>
         <tr><td><code>--cursor</code></td><td></td><td>start from this pagination cursor (the &#39;next&#39; of a prior page)</td></tr>
+        <tr><td><code>--from</code></td><td></td><td>activity at or after this RFC3339 timestamp or UTC date</td></tr>
+        <tr><td><code>--include-system</code></td><td><code>false</code></td><td>include system-generated comments in filtered activity results</td></tr>
+        <tr><td><code>--kind</code></td><td><code>[]</code></td><td>activity kinds to include (comma-separated or repeatable)</td></tr>
         <tr><td><code>--limit</code></td><td><code>0</code></td><td>page size (default from config)</td></tr>
+        <tr><td><code>--since</code></td><td></td><td>only activity within this recent duration, such as 24h or 7d</td></tr>
+        <tr><td><code>--to</code></td><td></td><td>activity before this RFC3339 timestamp or UTC date (defaults to now)</td></tr>
         </tbody>
       </table>
-      
+      <h3>Examples</h3><pre>  bitbucket-cli pr activity myws/myrepo/7
+  bitbucket-cli pr activity myws/myrepo/7 --actor me --since 24h --kind approval,comment
+  bitbucket-cli pr inbox --state MERGED --closed-since 48h --fields ref | jq -r &#39;.items[].ref&#39; | bitbucket-cli pr activity - --actor me --since 24h --kind approval,comment,decline</pre>
     </section>
 
     <section class="cmd" id="bitbucket-cli-pr-approve">
@@ -815,17 +825,18 @@ single &#39;-&#39; to read newline-separated references from stdin. --yes (or
 repository.
 
 Data Center uses the dashboard endpoint — a single call covers every project.
-Bitbucket Cloud has no global reviewer index, so --role reviewer (and --role
-participant) require --workspace; --role author works globally via the user&#39;s
+Bitbucket Cloud has no global reviewer index, so --role reviewer, participant,
+or any require --workspace; --role author works globally via the user&#39;s
 `/pullrequests/&lt;uuid&gt;` endpoint.</p>
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
         <tr><td><code>--all</code></td><td><code>false</code></td><td>fetch every page of results</td></tr>
+        <tr><td><code>--closed-since</code></td><td></td><td>only PRs closed within this duration, such as 24h or 7d (Data Center only)</td></tr>
         <tr><td><code>--cursor</code></td><td></td><td>start from this pagination cursor (the &#39;next&#39; of a prior page)</td></tr>
         <tr><td><code>--limit</code></td><td><code>0</code></td><td>page size (default from config)</td></tr>
-        <tr><td><code>--role</code></td><td><code>reviewer</code></td><td>reviewer | author | participant</td></tr>
+        <tr><td><code>--role</code></td><td><code>reviewer</code></td><td>reviewer | author | participant | any</td></tr>
         <tr><td><code>--state</code></td><td><code>OPEN</code></td><td>OPEN | MERGED | DECLINED | ALL</td></tr>
         <tr><td><code>--workspace</code></td><td></td><td>Cloud workspace to scope reviewer / participant queries to (ignored on Data Center)</td></tr>
         </tbody>
@@ -837,18 +848,20 @@ participant) require --workspace; --role author works globally via the user&#39;
       <h2>bitbucket-cli pr list</h2>
       <p class="short">List pull requests in a repository</p>
       <pre>bitbucket-cli pr list [flags]</pre>
-      
+      <p class="long">List pull requests in a repository. Cloud applies --author and --reviewer
+server-side after resolving the user to a stable UUID. Data Center requires
+--all and filters the explicitly fetched repository history client-side.</p>
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
         <tr><td><code>--all</code></td><td><code>false</code></td><td>fetch every page of results</td></tr>
-        <tr><td><code>--author</code></td><td></td><td>filter by author username</td></tr>
+        <tr><td><code>--author</code></td><td></td><td>filter by author selector (Data Center requires --all)</td></tr>
         <tr><td><code>--cursor</code></td><td></td><td>start from this pagination cursor (the &#39;next&#39; of a prior page)</td></tr>
         <tr><td><code>--limit</code></td><td><code>0</code></td><td>page size (default from config)</td></tr>
         <tr><td><code>--query</code></td><td></td><td>server-side filter (Cloud `q=`)</td></tr>
         <tr><td><code>--repo</code></td><td></td><td>&lt;workspace&gt;/&lt;repo&gt; or Bitbucket repo URL</td></tr>
-        <tr><td><code>--reviewer</code></td><td></td><td>filter by reviewer username</td></tr>
+        <tr><td><code>--reviewer</code></td><td></td><td>filter by reviewer selector (Data Center requires --all)</td></tr>
         <tr><td><code>--source</code></td><td></td><td>filter by source branch</td></tr>
         <tr><td><code>--state</code></td><td><code>OPEN</code></td><td>OPEN | MERGED | DECLINED | ALL</td></tr>
         <tr><td><code>--target</code></td><td></td><td>filter by destination branch</td></tr>

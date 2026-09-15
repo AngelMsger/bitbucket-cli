@@ -57,6 +57,15 @@ When you touch any read/write path that branches on `c.flavor`:
 4. **Never write `flavor-only` without a registry entry.** A mislabelled
    "Cloud-only" that the other flavor actually supports is itself the bug.
 
+## Activity evidence — distinguish humans from automation
+
+Keep the unfiltered PR timeline complete, but mark known server-generated
+entries with `Activity.System`. Filtered `pr activity` queries exclude those
+entries unless `--include-system` is explicit, so automation cannot count a
+Bitbucket action attributed to the PR author as a human review. Keep Data
+Center classifiers in the API mapping layer and pin native payload templates
+with tests; do not scatter text matching through commands.
+
 ## Discoverability — no dead-end inputs
 
 **Every non-trivial identifier a command accepts as input must be discoverable

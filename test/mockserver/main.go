@@ -144,9 +144,12 @@ func routes() http.Handler {
 
 	prKey := "/rest/api/1.0/projects/{key}/repos/{slug}/pull-requests"
 	mux.HandleFunc("GET "+prKey, func(w http.ResponseWriter, _ *http.Request) {
+		bobPR := pr(2, "Bob cache change", "OPEN")
+		bobPR["author"] = map[string]any{"user": namedUser("bob"), "role": "AUTHOR", "approved": false, "status": "UNAPPROVED"}
+		bobPR["reviewers"] = []any{map[string]any{"user": namedUser("bob"), "role": "REVIEWER", "approved": false, "status": "UNAPPROVED"}}
 		writeJSON(w, map[string]any{
-			"values":     []any{pr(1, "Add login flow", "OPEN")},
-			"size":       1,
+			"values":     []any{pr(1, "Add login flow", "OPEN"), bobPR},
+			"size":       2,
 			"limit":      25,
 			"start":      0,
 			"isLastPage": true,
@@ -184,6 +187,10 @@ func routes() http.Handler {
 	mux.HandleFunc("GET "+prKey+"/{id}/activities", func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, map[string]any{
 			"values": []any{
+				map[string]any{"id": 99, "action": "COMMENTED", "commentAction": "ADDED", "user": user(), "createdDate": 1, "comment": map[string]any{
+					"id": 9000, "text": "User(s) Bob and Carol have been added automatically as predefined branch reviewers. ", "author": user(), "createdDate": 1, "version": 0,
+					"state": "OPEN", "severity": "NORMAL",
+				}},
 				map[string]any{"id": 100, "action": "COMMENTED", "user": user(), "createdDate": 1, "comment": map[string]any{
 					"id": 9001, "text": "Looks good", "author": user(), "createdDate": 1, "version": 0,
 					"state": "OPEN", "severity": "NORMAL",
@@ -430,13 +437,17 @@ func commit(hash, message string) map[string]any {
 }
 
 func user() map[string]any {
+	return namedUser("alice")
+}
+
+func namedUser(name string) map[string]any {
 	return map[string]any{
-		"name":         "alice",
-		"emailAddress": "alice@example.com",
+		"name":         name,
+		"emailAddress": name + "@example.com",
 		"id":           1,
-		"displayName":  "Alice Example",
+		"displayName":  strings.ToUpper(name[:1]) + name[1:] + " Example",
 		"active":       true,
-		"slug":         "alice",
+		"slug":         name,
 		"type":         "NORMAL",
 	}
 }

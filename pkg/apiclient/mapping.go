@@ -679,6 +679,21 @@ type dcActivityList struct {
 	dcPage
 }
 
+func isDCSystemComment(action, text string) bool {
+	// Data Center exposes predefined-reviewer automation as an ordinary comment
+	// attributed to the PR author. Its exact native template is the only reliable
+	// discriminator present in the activity payload.
+	if !strings.EqualFold(strings.TrimSpace(action), "ADDED") {
+		return false
+	}
+	text = strings.TrimSpace(text)
+	if !strings.HasPrefix(text, "User(s) ") {
+		return false
+	}
+	return strings.HasSuffix(text, " have been added automatically as predefined branch reviewers.") ||
+		strings.HasSuffix(text, " has been added automatically as a predefined branch reviewer.")
+}
+
 // epochToISO converts a Bitbucket Data Center millisecond epoch to an ISO-8601
 // string. An empty / zero timestamp is rendered as "".
 func epochToISO(ms int64) string {

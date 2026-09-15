@@ -16,6 +16,69 @@
   `--default-reviewers=false` to opt out; the command flag can also re-enable the
   behavior for one invocation.
 
+## [0.17.0] - 2026-09-09
+
+### Skill
+
+- **Keep a person in the loop when replying to review feedback.** The Skill now
+  requires an agent to classify each thread's root author before drafting a reply
+  (the `[[AI]]` attribution marker or an app `author.type` means a machine wrote
+  it; anything unclassifiable is a person), and to gate human-authored threads
+  behind a per-thread confirmation: state the reason once per session, then quote
+  the reviewer's point, show the reasoning, and hand over a labeled draft for the
+  author to approve or rewrite. One approval covers one thread; a reply the human
+  writes is posted verbatim without the `[AI]` marker. The agent no longer
+  resolves a person's thread, batches `comment add --reply-to` across threads, or
+  pushes fixes on its own. Bot and agent counterparts keep the lighter path. New
+  `references/replying-to-people.md`, wired into `SKILL.md`,
+  `responding-to-review-comments.md` (author classification step, an **Author**
+  column in the triage table), `commenting.md` › "Replies", and
+  `reviewing-locally.md`.
+- **The Skill now carries the `## Commands` list its own maintenance rule
+  requires.** `SKILL.md` documented workflows but never enumerated the command
+  tree, so agents reading the Skill instead of `--help` had no index of what
+  exists. Added a verified list of every command group with its primary flags,
+  plus the `metadata.cliHelp` frontmatter key every sibling Skill already had.
+  Skill bumped to `0.13.0`.
+
+## [0.16.1] - 2026-09-08
+
+### Fixed
+
+- Filtered `pr activity` queries no longer treat Data Center's automatic
+  predefined-reviewer comments as human review evidence. The complete
+  single-PR timeline marks recognized entries with `system: true`, filtered
+  queries omit them by default, and `--include-system` opts back into them.
+- `pr list --author` and `--reviewer` now apply the requested user filters
+  instead of silently ignoring them. Cloud resolves selectors to stable UUIDs
+  and filters server-side. Data Center requires explicit `--all`, scans only
+  the named repository using server-provided cursors, then filters locally; a
+  paginated invocation fails with `PR_USER_FILTER_REQUIRES_ALL`.
+
+### Known limitations
+
+- `pr inbox` remains scoped to the authenticated user. Bitbucket Data Center's
+  dashboard API has no arbitrary-user selector. Repository-scoped discovery is
+  available through `pr list --repo ... --author/--reviewer ... --all`, but the
+  caller must already know and enumerate each repository. `pr activity --actor
+  <user>` therefore cannot discover a complete cross-repository candidate set,
+  and the CLI does not emulate this with an unbounded repository scan.
+
+## [0.16.0] - 2026-09-04
+
+### Added
+
+- **Time-bounded review activity for worklog automation.** `pr inbox` accepts
+  `--role any` on both flavors and `--closed-since 24h|7d` on Data Center, using
+  the dashboard API's native close-time filter instead of paging through every
+  historical merged or declined PR. `pr activity` now accepts several PR refs
+  or newline-delimited refs from stdin and filters by `--actor`, `--kind`,
+  `--since`, or `--from` / `--to`; batch queries require a time bound. Activity
+  records include their canonical `pull_request.ref`; `--kind merge|decline`
+  matches Cloud state-update records without changing their historical JSON
+  shape. Cloud rejects `--closed-since` explicitly because it has no equivalent
+  cross-repository close-time filter.
+
 ## [0.15.0] - 2026-08-12
 
 ### Added
@@ -657,7 +720,10 @@ PR-centric MVP supporting Bitbucket Cloud (REST 2.0) and Data Center (REST
 subtrees; layered configuration with keychain-backed auth; structured error
 model; and an embedded companion Skill.
 
-[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.15.0...HEAD
+[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.17.0...HEAD
+[0.17.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.16.1...v0.17.0
+[0.16.1]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.16.0...v0.16.1
+[0.16.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.14.2...v0.15.0
 [0.14.2]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.14.1...v0.14.2
 [0.14.1]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.14.0...v0.14.1

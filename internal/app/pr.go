@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/angelmsger/bitbucket-cli/pkg/apiclient"
 	cerrors "github.com/angelmsger/bitbucket-cli/pkg/errors"
@@ -37,6 +39,9 @@ func newPRListCmd(s *appState) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List pull requests in a repository",
+		Long: "List pull requests in a repository. Cloud applies --author and --reviewer\n" +
+			"server-side after resolving the user to a stable UUID. Data Center requires\n" +
+			"--all and filters the explicitly fetched repository history client-side.",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if repoArg == "" {
 				return cerrors.New(cerrors.CategoryUsage, "PR_NO_REPO",
@@ -57,7 +62,7 @@ func newPRListCmd(s *appState) *cobra.Command {
 				return client.ListPRs(ctx, apiclient.PRListOpts{
 					ListOpts: apiclient.ListOpts{Limit: limit, Cursor: c},
 					Repo:     ref,
-					State:    state, Author: author, Reviewer: reviewer,
+					State:    state, Author: author, Reviewer: reviewer, FilterAll: all,
 					Source: source, Target: target, Query: query,
 				})
 			}
@@ -71,8 +76,8 @@ func newPRListCmd(s *appState) *cobra.Command {
 	f := cmd.Flags()
 	f.StringVar(&repoArg, "repo", "", "<workspace>/<repo> or Bitbucket repo URL")
 	f.StringVar(&state, "state", "OPEN", "OPEN | MERGED | DECLINED | ALL")
-	f.StringVar(&author, "author", "", "filter by author username")
-	f.StringVar(&reviewer, "reviewer", "", "filter by reviewer username")
+	f.StringVar(&author, "author", "", "filter by author selector (Data Center requires --all)")
+	f.StringVar(&reviewer, "reviewer", "", "filter by reviewer selector (Data Center requires --all)")
 	f.StringVar(&source, "source", "", "filter by source branch")
 	f.StringVar(&target, "target", "", "filter by destination branch")
 	f.StringVar(&query, "query", "", "server-side filter (Cloud `q=`)")
@@ -82,10 +87,10 @@ func newPRListCmd(s *appState) *cobra.Command {
 
 func newPRInboxCmd(s *appState) *cobra.Command {
 	var (
-		role, state, workspace string
-		limit                  int
-		all                    bool
-		cursor                 string
+		role, state, workspace, closedSince string
+		limit                               int
+		all                                 bool
+		cursor                              string
 	)
 	cmd := &cobra.Command{
 		Use:   "inbox",
@@ -93,10 +98,15 @@ func newPRInboxCmd(s *appState) *cobra.Command {
 		Long: "List pull requests involving the authenticated user across every accessible\n" +
 			"repository.\n\n" +
 			"Data Center uses the dashboard endpoint — a single call covers every project.\n" +
-			"Bitbucket Cloud has no global reviewer index, so --role reviewer (and --role\n" +
-			"participant) require --workspace; --role author works globally via the user's\n" +
+			"Bitbucket Cloud has no global reviewer index, so --role reviewer, participant,\n" +
+			"or any require --workspace; --role author works globally via the user's\n" +
 			"`/pullrequests/<uuid>` endpoint.",
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			closedSinceSeconds, err := parseClosedSince(closedSince)
+			if err != nil {
+				return cerrors.Wrap(err, cerrors.CategoryUsage, "BAD_CLOSED_SINCE",
+					"invalid --closed-since value")
+			}
 			ws := defaultWorkspace(s, workspace)
 			ctx, cancel := cmdContext(s)
 			defer cancel()
@@ -106,10 +116,11 @@ func newPRInboxCmd(s *appState) *cobra.Command {
 			}
 			fetch := func(c string) (apiclient.ListResult[apiclient.PullRequest], error) {
 				return client.ListMyPRs(ctx, apiclient.MyPRListOpts{
-					ListOpts:  apiclient.ListOpts{Limit: limit, Cursor: c},
-					Role:      role,
-					State:     state,
-					Workspace: ws,
+					ListOpts:           apiclient.ListOpts{Limit: limit, Cursor: c},
+					Role:               role,
+					State:              state,
+					Workspace:          ws,
+					ClosedSinceSeconds: closedSinceSeconds,
 				})
 			}
 			items, info, err := collectPage(fetch, cursor, all)
@@ -120,12 +131,14 @@ func newPRInboxCmd(s *appState) *cobra.Command {
 		},
 	}
 	f := cmd.Flags()
-	f.StringVar(&role, "role", "reviewer", "reviewer | author | participant")
+	f.StringVar(&role, "role", "reviewer", "reviewer | author | participant | any")
 	f.StringVar(&state, "state", "OPEN", "OPEN | MERGED | DECLINED | ALL")
 	f.StringVar(&workspace, "workspace", "",
 		"Cloud workspace to scope reviewer / participant queries to (ignored on Data Center)")
+	f.StringVar(&closedSince, "closed-since", "",
+		"only PRs closed within this duration, such as 24h or 7d (Data Center only)")
 	addListFlags(cmd, &limit, &all, &cursor)
-	enumComplete(cmd, "role", "reviewer", "author", "participant")
+	enumComplete(cmd, "role", "reviewer", "author", "participant", "any")
 	enumComplete(cmd, "state", "OPEN", "MERGED", "DECLINED", "ALL")
 	return cmd
 }
@@ -413,17 +426,49 @@ func newPRCommitsCmd(s *appState) *cobra.Command {
 }
 
 func newPRActivityCmd(s *appState) *cobra.Command {
-	var limit int
-	var all bool
-	var cursor string
+	var (
+		actor, since, from, to string
+		kinds                  []string
+		limit                  int
+		all                    bool
+		includeSystem          bool
+		cursor                 string
+	)
 	cmd := &cobra.Command{
-		Use:   "activity <workspace>/<repo>/<id>",
-		Short: "List the activity timeline of a PR",
-		Args:  cobra.ExactArgs(1),
+		Use:   "activity <workspace>/<repo>/<id>...",
+		Short: "List and filter the activity timeline of one or more PRs",
+		Long: "List pull-request activity. Pass several PR references, or a single '-' to\n" +
+			"read newline-separated references from stdin. Batch mode requires --since or\n" +
+			"--from so an automation cannot accidentally scan unbounded history.",
+		Example: "  bitbucket-cli pr activity myws/myrepo/7\n" +
+			"  bitbucket-cli pr activity myws/myrepo/7 --actor me --since 24h --kind approval,comment\n" +
+			"  bitbucket-cli pr inbox --state MERGED --closed-since 48h --fields ref | jq -r '.items[].ref' | bitbucket-cli pr activity - --actor me --since 24h --kind approval,comment,decline",
+		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ref, id, err := resolvePRRef(args[0], apiclient.RepoRef{})
+			stdinMode := len(args) == 1 && args[0] == "-"
+			refs, err := collectBatchArgs(args, cmd.InOrStdin())
 			if err != nil {
 				return err
+			}
+			refs = uniqueActivityRefs(refs)
+			if (stdinMode || len(refs) > 1) && since == "" && from == "" {
+				return cerrors.New(cerrors.CategoryUsage, "ACTIVITY_TIME_REQUIRED",
+					"batch activity queries require --since or --from").
+					WithHint("Bound the activity window so the command does not scan every PR's full history.")
+			}
+			if (stdinMode || len(refs) > 1) && cursor != "" {
+				return cerrors.New(cerrors.CategoryUsage, "ACTIVITY_BATCH_CURSOR",
+					"--cursor cannot be used with batch or stdin activity queries")
+			}
+			window, err := resolveActivityWindow(since, from, to, time.Time{})
+			if err != nil {
+				return cerrors.Wrap(err, cerrors.CategoryUsage, "BAD_TIME_RANGE",
+					"invalid activity time range")
+			}
+			kindSet, err := normalizeActivityKinds(kinds)
+			if err != nil {
+				return cerrors.Wrap(err, cerrors.CategoryUsage, "BAD_ACTIVITY_KIND",
+					"invalid --kind value")
 			}
 			ctx, cancel := cmdContext(s)
 			defer cancel()
@@ -431,19 +476,56 @@ func newPRActivityCmd(s *appState) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fetch := func(c string) (apiclient.ListResult[apiclient.Activity], error) {
-				return client.ListPRActivity(ctx, apiclient.PRListOpts{
-					Repo: ref, ListOpts: apiclient.ListOpts{Limit: limit, Cursor: c},
-					Query: strconv.Itoa(id),
-				})
+			var targetActor *apiclient.User
+			if actor != "" {
+				if strings.EqualFold(actor, "me") {
+					targetActor, err = client.CurrentUser(ctx)
+				} else {
+					targetActor, err = client.GetUser(ctx, actor)
+				}
+				if err != nil {
+					return err
+				}
 			}
-			items, info, err := collectPage(fetch, cursor, all)
-			if err != nil {
-				return err
+
+			filteredMode := len(refs) > 1 || window.set || targetActor != nil || len(kindSet) > 0
+			var activities []apiclient.Activity
+			for _, arg := range refs {
+				ref, id, err := resolvePRRef(arg, apiclient.RepoRef{})
+				if err != nil {
+					return err
+				}
+				fetch := func(c string) (apiclient.ListResult[apiclient.Activity], error) {
+					return client.ListPRActivity(ctx, apiclient.PRListOpts{
+						Repo: ref, ListOpts: apiclient.ListOpts{Limit: limit, Cursor: c},
+						Query: strconv.Itoa(id),
+					})
+				}
+				items, info, err := collectPage(fetch, cursor, all || filteredMode)
+				if err != nil {
+					return err
+				}
+				if !filteredMode {
+					return s.emitList(items, info)
+				}
+				items, err = filterActivities(items, window, targetActor, kindSet, includeSystem)
+				if err != nil {
+					return cerrors.Wrap(err, cerrors.CategoryParse, "ACTIVITY_TIME_INVALID",
+						"could not interpret an activity timestamp")
+				}
+				activities = append(activities, items...)
 			}
-			return s.emitList(items, info)
+			sortActivitiesNewestFirst(activities)
+			return s.emitList(activities, pageInfo{})
 		},
 	}
+	f := cmd.Flags()
+	f.StringVar(&actor, "actor", "", "only activity by this user selector; use 'me' for the authenticated user")
+	f.StringVar(&since, "since", "", "only activity within this recent duration, such as 24h or 7d")
+	f.StringVar(&from, "from", "", "activity at or after this RFC3339 timestamp or UTC date")
+	f.StringVar(&to, "to", "", "activity before this RFC3339 timestamp or UTC date (defaults to now)")
+	f.StringSliceVar(&kinds, "kind", nil, "activity kinds to include (comma-separated or repeatable)")
+	f.BoolVar(&includeSystem, "include-system", false, "include system-generated comments in filtered activity results")
 	addListFlags(cmd, &limit, &all, &cursor)
 	return cmd
 }

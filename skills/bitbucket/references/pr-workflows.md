@@ -36,6 +36,64 @@ mirror the standalone `pr diff`/`pr commits`/`pr activity` subcommands.
 See `reviewing-locally.md` for the end-to-end review decision tree (combines
 diffstat-first navigation with a local clone).
 
+## Collecting review activity for a worklog
+
+`pr activity` accepts one or more PR refs, or a single `-` to read
+newline-delimited refs from stdin. Filter the resulting timelines by the
+authenticated user, activity kind and a half-open time window:
+
+```sh
+bitbucket-cli pr activity PROJ/repo/42 PROJ/other/7 \
+  --actor me \
+  --from 2026-09-03T00:00:00+08:00 \
+  --to 2026-09-04T00:00:00+08:00 \
+  --kind approval,comment,decline
+```
+
+Batch queries require `--since` or `--from`, preventing an automation from
+accidentally walking every candidate PR's full history. Each activity carries
+`pull_request.id`, `pull_request.ref`, and `pull_request.repository`, so the
+result can be associated with an issue or deduplicated by PR without another
+lookup. `--from` is inclusive and `--to` is exclusive. Date-only values are UTC;
+use RFC 3339 with an explicit offset for a local calendar day. Filtered queries
+exclude recognized system-generated comments by default. Those records remain
+available in an unfiltered single-PR timeline, where `system: true` distinguishes
+them, or with `--include-system` on a filtered query. Do not count them as human
+review evidence.
+
+On Data Center, avoid listing years of merged or declined PRs by using its
+native close-time filter before reading the activity streams:
+
+```sh
+bitbucket-cli pr inbox --role any --state MERGED --closed-since 48h --all \
+  --fields ref \
+  | jq -r '.items[].ref' \
+  | bitbucket-cli pr activity - --actor me --since 24h \
+      --kind approval,comment,decline
+```
+
+Run the inbox query separately for `OPEN`, `MERGED`, and `DECLINED` when all
+three states matter; `--closed-since` describes the PR's close time and is not
+an update-time filter. Bitbucket Cloud has no equivalent cross-repository
+close-time filter, so it rejects `--closed-since` rather than silently treating
+`updated_on` as the same concept. On Cloud, feed known PR refs (for example,
+refs retained by the scheduled agent while they were in its inbox) to
+`pr activity`.
+
+`pr inbox` is always scoped to the authenticated user. `pr activity --actor
+<user>` can filter timelines for another user after the PR refs are known, but
+it does not widen the candidate set. For each known repository, `pr list --repo
+<project>/<repo> --author <user> --all` and `--reviewer <user> --all` provide
+repository-scoped Data Center discovery; `--all` is mandatory because the
+server has no native user predicate and filtering a single server page would
+break pagination correctness. Cloud resolves the selector and filters natively,
+so it does not require `--all`. The Data Center scan can be expensive for a
+large repository; narrow `--state` whenever possible. Data Center's dashboard
+endpoint still has no arbitrary-user selector, and a complete substitute would
+require an unbounded scan across accessible projects and repositories. The CLI
+deliberately does not present such a scan as complete. Treat cross-repository
+results for another user as partial coverage.
+
 ## Reviewing
 
 - Approve: `bitbucket-cli pr approve <ref>`
