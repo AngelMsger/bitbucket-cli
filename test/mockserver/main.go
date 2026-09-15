@@ -109,6 +109,19 @@ func routes() http.Handler {
 	mux.HandleFunc("GET /rest/api/1.0/projects/{key}/repos/{slug}", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, repo(r.PathValue("key"), r.PathValue("slug"), "Demo"))
 	})
+	mux.HandleFunc("GET /rest/default-reviewers/latest/projects/{key}/repos/{slug}/reviewers", func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		if q.Get("sourceRefId") == "refs/heads/feature/defaults-unavailable" {
+			http.Error(w, `{"errors":[{"message":"defaults unavailable"}]}`, http.StatusForbidden)
+			return
+		}
+		if q.Get("sourceRepoId") != "1" || q.Get("targetRepoId") != "1" ||
+			q.Get("sourceRefId") != "refs/heads/feature/x" || q.Get("targetRefId") != "refs/heads/main" {
+			http.Error(w, `{"errors":[{"message":"invalid default reviewer query"}]}`, http.StatusBadRequest)
+			return
+		}
+		writeJSON(w, []any{user()})
+	})
 	mux.HandleFunc("POST /rest/api/1.0/projects/{key}/repos/{slug}", func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
 			Name    string `json:"name"`

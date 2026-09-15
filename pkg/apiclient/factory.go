@@ -18,6 +18,7 @@ type BuildParams struct {
 	Timeout       time.Duration
 	MaxRetries    int
 	PageSize      int
+	WarningSink   WarningSink
 }
 
 // Build assembles a ready-to-use Client: it constructs the HTTP transport,
@@ -50,10 +51,11 @@ func Build(ctx context.Context, p BuildParams) (Client, Flavor, error) {
 	}
 
 	client := New(Config{
-		Flavor:    flavor,
-		BaseURL:   base,
-		PageSize:  p.PageSize,
-		Transport: tc,
+		Flavor:      flavor,
+		BaseURL:     base,
+		PageSize:    p.PageSize,
+		Transport:   tc,
+		WarningSink: p.WarningSink,
 	})
 	return client, flavor, nil
 }

@@ -117,6 +117,20 @@ have a Workspace / Repository / Project Access Token instead, pick **pat**
 (Bearer) at the scheme prompt. Data Center / Server defaults to **pat** for
 HTTP Access Tokens.
 
+By default, `pr create` resolves and adds the target repository's effective
+default reviewers when `--reviewer` is omitted. To keep PR creation reviewer-less
+unless reviewers are explicitly supplied, add this to `config.yaml`:
+
+```yaml
+defaults:
+  auto_add_default_reviewers: false
+```
+
+The environment equivalent is
+`BITBUCKET_CLI_AUTO_ADD_DEFAULT_REVIEWERS=false`. For one invocation,
+`--default-reviewers=false` disables the lookup and
+`--default-reviewers=true` re-enables it over either persistent setting.
+
 ---
 
 ## 2. Enable shell completion

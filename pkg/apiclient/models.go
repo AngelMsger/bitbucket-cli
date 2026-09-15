@@ -290,10 +290,10 @@ type CreatePRReq struct {
 	Repo              RepoRef
 	Title             string
 	Description       string
-	Source            string // source branch
-	SourceRepo        string // optional, defaults to Repo for non-fork PRs
-	Destination       string // target branch; empty -> repo default branch
-	Reviewers         []string
+	Source            string   // source branch
+	SourceRepo        string   // optional, defaults to Repo for non-fork PRs
+	Destination       string   // target branch; empty -> repo default branch
+	Reviewers         []string // nil resolves effective defaults; non-nil is an explicit list
 	CloseSourceBranch bool
 }
 
@@ -457,6 +457,18 @@ type WriteRequestPlan struct {
 	URL     string `json:"url"`
 	Payload any    `json:"payload,omitempty"`
 }
+
+// Warning describes a recoverable API-client problem that did not prevent the
+// requested operation from continuing.
+type Warning struct {
+	Code      string   `json:"code"`
+	Message   string   `json:"message"`
+	Detail    string   `json:"detail,omitempty"`
+	NextSteps []string `json:"next_steps,omitempty"`
+}
+
+// WarningSink receives recoverable warnings without changing method results.
+type WarningSink func(Warning)
 
 // --- v0.2 file browsing + PR review aggregation models ---
 

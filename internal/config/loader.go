@@ -135,6 +135,9 @@ func buildFileLayer(f File, ctxName string) map[string]string {
 	if f.Defaults.ReadOnly {
 		m[fieldReadOnly] = "true"
 	}
+	if f.Defaults.AutoAddDefaultReviewers != nil {
+		m[fieldAutoAddDefaultReviewers] = strconv.FormatBool(*f.Defaults.AutoAddDefaultReviewers)
+	}
 	return m
 }
 
@@ -211,13 +214,14 @@ func ExplainField(sources map[string]string, field string) string {
 
 // Field key accessors for callers outside this package (e.g. config show).
 const (
-	FieldServer     = fieldServer
-	FieldFlavor     = fieldFlavor
-	FieldAuthScheme = fieldAuthScheme
-	FieldAuthUser   = fieldAuthUsername
-	FieldFormat     = fieldFormat
-	FieldTimeout    = fieldTimeout
-	FieldPageSize   = fieldPageSize
-	FieldMaxRetries = fieldMaxRetries
-	FieldReadOnly   = fieldReadOnly
+	FieldServer                  = fieldServer
+	FieldFlavor                  = fieldFlavor
+	FieldAuthScheme              = fieldAuthScheme
+	FieldAuthUser                = fieldAuthUsername
+	FieldFormat                  = fieldFormat
+	FieldTimeout                 = fieldTimeout
+	FieldPageSize                = fieldPageSize
+	FieldMaxRetries              = fieldMaxRetries
+	FieldReadOnly                = fieldReadOnly
+	FieldAutoAddDefaultReviewers = fieldAutoAddDefaultReviewers
 )

@@ -33,6 +33,37 @@ func TestLoadDefaults(t *testing.T) {
 	if got.Config.Defaults.PageSize != 25 {
 		t.Errorf("PageSize = %d, want 25", got.Config.Defaults.PageSize)
 	}
+	if !got.Config.Defaults.ShouldAutoAddDefaultReviewers() {
+		t.Error("AutoAddDefaultReviewers should default to true")
+	}
+}
+
+func TestLoadAutoAddDefaultReviewers(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("BITBUCKET_CLI_AUTO_ADD_DEFAULT_REVIEWERS", "")
+	writeFile(t, ConfigFilePath(dir), "defaults:\n  auto_add_default_reviewers: false\n")
+	got, err := Load(LoadOptions{ConfigDir: dir, DotenvPath: filepath.Join(dir, "absent.env")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Config.Defaults.ShouldAutoAddDefaultReviewers() {
+		t.Error("file setting should disable automatic default reviewers")
+	}
+	if got.Sources[fieldAutoAddDefaultReviewers] != "file" {
+		t.Errorf("source = %q, want file", got.Sources[fieldAutoAddDefaultReviewers])
+	}
+
+	t.Setenv("BITBUCKET_CLI_AUTO_ADD_DEFAULT_REVIEWERS", "true")
+	got, err = Load(LoadOptions{ConfigDir: dir, DotenvPath: filepath.Join(dir, "absent.env")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.Config.Defaults.ShouldAutoAddDefaultReviewers() {
+		t.Error("environment should re-enable automatic default reviewers")
+	}
+	if got.Sources[fieldAutoAddDefaultReviewers] != "env" {
+		t.Errorf("source = %q, want env", got.Sources[fieldAutoAddDefaultReviewers])
+	}
 }
 
 func TestLoadFileLayer(t *testing.T) {
@@ -143,7 +174,8 @@ func TestWriteFileRoundTrip(t *testing.T) {
 			{Name: "prod", BaseURL: "https://cloud.example.com", Flavor: FlavorCloud,
 				DetectedFlavor: FlavorCloud, Auth: AuthConfig{Scheme: SchemeBasic, Username: "alice"}},
 		},
-		Defaults: Defaults{Format: "table", PageSize: 50, Timeout: 15 * time.Second, MaxRetries: 5},
+		Defaults: Defaults{Format: "table", PageSize: 50, Timeout: 15 * time.Second, MaxRetries: 5,
+			AutoAddDefaultReviewers: boolPtr(false)},
 	}
 	if err := WriteFile(dir, in); err != nil {
 		t.Fatal(err)
@@ -161,6 +193,9 @@ func TestWriteFileRoundTrip(t *testing.T) {
 	}
 	if got.Defaults.Timeout != 15*time.Second || got.Defaults.PageSize != 50 {
 		t.Errorf("defaults = %+v", got.Defaults)
+	}
+	if got.Defaults.ShouldAutoAddDefaultReviewers() {
+		t.Errorf("auto_add_default_reviewers was not preserved: %+v", got.Defaults)
 	}
 }
 

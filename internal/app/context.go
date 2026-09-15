@@ -100,6 +100,9 @@ func (s *appState) newClient(ctx context.Context) (apiclient.Client, error) {
 		Timeout:       cfg.Defaults.Timeout,
 		MaxRetries:    cfg.Defaults.MaxRetries,
 		PageSize:      cfg.Defaults.PageSize,
+		WarningSink: func(w apiclient.Warning) {
+			output.EmitNotice(os.Stderr, map[string]any{"_notice": map[string]any{"warning": w}})
+		},
 	})
 	if err != nil {
 		return nil, err

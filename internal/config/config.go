@@ -83,6 +83,16 @@ type Defaults struct {
 	// effect (e.g. `pr fetch --exec`). Settable from the config file, from
 	// BITBUCKET_CLI_READ_ONLY, or temporarily overridden via --allow-writes.
 	ReadOnly bool `yaml:"read_only,omitempty"`
+	// AutoAddDefaultReviewers controls whether `pr create` resolves the target
+	// repository's effective defaults when --reviewer is omitted. A pointer
+	// preserves the distinction between an omitted setting and explicit false.
+	AutoAddDefaultReviewers *bool `yaml:"auto_add_default_reviewers,omitempty"`
+}
+
+// ShouldAutoAddDefaultReviewers returns the effective reviewer behavior. The
+// setting defaults to true when a Defaults value came from an older config.
+func (d Defaults) ShouldAutoAddDefaultReviewers() bool {
+	return d.AutoAddDefaultReviewers == nil || *d.AutoAddDefaultReviewers
 }
 
 // Secrets holds credentials observed in non-file layers. Empty fields mean the
@@ -123,17 +133,18 @@ func (r *Resolved) ContextSelectedExplicitly() bool {
 
 // Field keys used for layer maps and provenance tracking.
 const (
-	fieldServer         = "server"
-	fieldFlavor         = "flavor"
-	fieldDetectedFlavor = "detected_flavor"
-	fieldAuthScheme     = "auth.scheme"
-	fieldAuthUsername   = "auth.username"
-	fieldFormat         = "defaults.format"
-	fieldPageSize       = "defaults.page_size"
-	fieldTimeout        = "defaults.timeout"
-	fieldMaxRetries     = "defaults.max_retries"
-	fieldWorkspace      = "defaults.workspace"
-	fieldReadOnly       = "defaults.read_only"
+	fieldServer                  = "server"
+	fieldFlavor                  = "flavor"
+	fieldDetectedFlavor          = "detected_flavor"
+	fieldAuthScheme              = "auth.scheme"
+	fieldAuthUsername            = "auth.username"
+	fieldFormat                  = "defaults.format"
+	fieldPageSize                = "defaults.page_size"
+	fieldTimeout                 = "defaults.timeout"
+	fieldMaxRetries              = "defaults.max_retries"
+	fieldWorkspace               = "defaults.workspace"
+	fieldReadOnly                = "defaults.read_only"
+	fieldAutoAddDefaultReviewers = "defaults.auto_add_default_reviewers"
 	// Secret field keys (never persisted to the YAML file).
 	fieldPAT      = "secret.pat"
 	fieldPassword = "secret.password"
@@ -143,12 +154,13 @@ const (
 // defaultLayer returns the built-in defaults as a layer map.
 func defaultLayer() map[string]string {
 	return map[string]string{
-		fieldFlavor:     FlavorAuto,
-		fieldAuthScheme: SchemePAT,
-		fieldFormat:     constants.DefaultFormat,
-		fieldPageSize:   strconv.Itoa(constants.DefaultPageSize),
-		fieldTimeout:    constants.DefaultTimeout.String(),
-		fieldMaxRetries: strconv.Itoa(constants.DefaultMaxRetries),
+		fieldFlavor:                  FlavorAuto,
+		fieldAuthScheme:              SchemePAT,
+		fieldFormat:                  constants.DefaultFormat,
+		fieldPageSize:                strconv.Itoa(constants.DefaultPageSize),
+		fieldTimeout:                 constants.DefaultTimeout.String(),
+		fieldMaxRetries:              strconv.Itoa(constants.DefaultMaxRetries),
+		fieldAutoAddDefaultReviewers: "true",
 	}
 }
 
@@ -163,16 +175,19 @@ func configFromMap(m map[string]string) Config {
 			Username: m[fieldAuthUsername],
 		},
 		Defaults: Defaults{
-			Format:     m[fieldFormat],
-			PageSize:   atoiOr(m[fieldPageSize], constants.DefaultPageSize),
-			Timeout:    durationOr(m[fieldTimeout], constants.DefaultTimeout),
-			MaxRetries: atoiOr(m[fieldMaxRetries], constants.DefaultMaxRetries),
-			Workspace:  m[fieldWorkspace],
-			ReadOnly:   boolOr(m[fieldReadOnly], false),
+			Format:                  m[fieldFormat],
+			PageSize:                atoiOr(m[fieldPageSize], constants.DefaultPageSize),
+			Timeout:                 durationOr(m[fieldTimeout], constants.DefaultTimeout),
+			MaxRetries:              atoiOr(m[fieldMaxRetries], constants.DefaultMaxRetries),
+			Workspace:               m[fieldWorkspace],
+			ReadOnly:                boolOr(m[fieldReadOnly], false),
+			AutoAddDefaultReviewers: boolPtr(boolOr(m[fieldAutoAddDefaultReviewers], true)),
 		},
 	}
 	return c
 }
+
+func boolPtr(v bool) *bool { return &v }
 
 // boolOr parses a flag-style truthy string. "1", "true", "yes", "on" count as
 // true; everything else (including empty) yields the fallback.

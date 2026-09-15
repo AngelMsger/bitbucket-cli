@@ -91,10 +91,11 @@ type Client interface {
 // apiClient is the single Client implementation. Per-flavor behaviour is
 // selected by the flavor field and the helpers in dialect.go / mapping.go.
 type apiClient struct {
-	flavor   Flavor
-	baseURL  string
-	pageSize int
-	http     *transport.Client
+	flavor      Flavor
+	baseURL     string
+	pageSize    int
+	http        *transport.Client
+	warningSink WarningSink
 }
 
 // Config configures a Client.
@@ -103,6 +104,9 @@ type Config struct {
 	BaseURL   string
 	PageSize  int
 	Transport *transport.Client
+	// WarningSink receives recoverable warnings such as optional metadata
+	// lookups failing before a write. Nil keeps library callers quiet.
+	WarningSink WarningSink
 }
 
 // New builds a Client. The transport must already carry the auth decorator.
@@ -115,15 +119,22 @@ func New(cfg Config) Client {
 		ps = constants.MaxPageSize
 	}
 	return &apiClient{
-		flavor:   cfg.Flavor,
-		baseURL:  strings.TrimRight(cfg.BaseURL, "/"),
-		pageSize: ps,
-		http:     cfg.Transport,
+		flavor:      cfg.Flavor,
+		baseURL:     strings.TrimRight(cfg.BaseURL, "/"),
+		pageSize:    ps,
+		http:        cfg.Transport,
+		warningSink: cfg.WarningSink,
 	}
 }
 
 func (c *apiClient) Flavor() Flavor  { return c.flavor }
 func (c *apiClient) BaseURL() string { return c.baseURL }
+
+func (c *apiClient) warn(w Warning) {
+	if c.warningSink != nil {
+		c.warningSink(w)
+	}
+}
 
 // limitOf returns the effective page size for a ListOpts.
 func (c *apiClient) limitOf(opt ListOpts) int {
