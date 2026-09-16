@@ -30,7 +30,19 @@ Use Go’s standard `testing` package. Name test files `*_test.go` and test func
 
 ## Commit & Pull Request Guidelines
 
-Recent commits use concise, imperative messages such as `Add a --version flag on the root command`. Keep commits scoped to one logical change. Pull requests should explain the behavior change, list verification commands run, link related issues when applicable, and include CLI output or screenshots only when user-facing output changes.
+Use concise, imperative commit messages such as `Add a --version flag on the
+root command`. Keep commits scoped to one logical change.
+
+Follow [Writing PR descriptions](skills/bitbucket/references/writing-pr-descriptions.md):
+explain the problem and resulting behavior, and add review guidance only where
+it helps. Link related issues when applicable; include CLI output or screenshots
+only when they clarify a user-facing output change.
+
+Before opening a PR, complete the checks required by the build, style, and
+testing sections above for the changed scope. Agents should report results,
+skipped checks and their reasons, and blockers to the user during preparation.
+Keep that report separate from the PR description; do not append a routine
+validation section or passing-test statement.
 
 ## Changelog & Versioning
 

@@ -30,6 +30,10 @@ up front.
 - Run `make test` and `make e2e` before claiming a change is complete.
 - Keep commits scoped to one logical change; follow the commit and PR
   conventions in `CONTRIBUTING.md`.
+- Keep PR writing guidance in
+  [Writing PR descriptions](skills/bitbucket/references/writing-pr-descriptions.md).
+  Link to that source from creation and update workflows; keep repository checks
+  in the creation workflow rather than adding routine results to descriptions.
 - Never commit `.env`, credentials, tokens, or build artifacts.
 
 ## Cloud / Data Center parity — touch both branches, always

@@ -110,6 +110,25 @@ results for another user as partial coverage.
 
 ## Creating
 
+Before drafting, read [Writing PR descriptions](writing-pr-descriptions.md).
+Use the final changes and the target repository's conventions to write the body.
+
+### Before opening the PR
+
+Check the target repository's agent guide, contribution guide, build scripts,
+and CI configuration for the checks appropriate to the changed scope. Where
+applicable, run its build, formatting, lint, and test checks and address failures
+within the task's scope. Follow the project's requirements; do not assume a
+particular toolchain or impose a universal command list.
+
+Report the results, skipped checks and their reasons, and any blockers to the
+user as part of the creation workflow. Do not claim success for checks that did
+not run, or silently proceed past a required check that failed. Keep this report
+out of the PR description by default; it is not a testing section or a routine
+"all checks passed" sentence to append to every PR.
+
+### Create the request
+
 ```sh
 bitbucket-cli pr create \
   --repo myws/myrepo \
@@ -146,20 +165,32 @@ the PR later merges). This is a Cloud-only property at creation time — on Data
 Center it is rejected with a usage error; pass `--close-source-branch` to
 `pr merge` instead.
 
-**AI attribution (agent writes).** When you create or update a PR description on the
-user's behalf as an AI agent, prepend a single attribution line to the top of the
-description (it's Markdown):
+### AI attribution
+
+When you create or update a PR description on the user's behalf as an AI agent,
+prepend a single attribution line to the top of the description (it's Markdown):
 
 ```markdown
-> [AI] 本 PR 由 AI 通过 [bitbucket-cli](https://angelmsger.github.io/bitbucket-cli/) 协助创建。
+> [AI] This PR was created with the help of AI via [bitbucket-cli](https://angelmsger.github.io/bitbucket-cli/).
 ```
 
-Write the sentence in the **user's language** (en: `[AI] This PR was created with the
-help of AI via [bitbucket-cli](…).`); keep the `[AI]` marker, the URL, and the
-`bitbucket-cli` label constant. The marker is plain-ASCII `[AI]` (it renders as literal
-text), **never an emoji** — some Data Center databases (e.g. MySQL `utf8mb3`) can't store
-4-byte characters and would reject or truncate the description. On `pr update` keep a
-single line — replace an existing one rather than stacking another.
+Write the sentence in the description's language, following
+[Writing PR descriptions](writing-pr-descriptions.md); keep the `[AI]` marker,
+the URL, and the `bitbucket-cli` label constant. The marker is plain-ASCII `[AI]`
+(it renders as literal text), **never an emoji** — some Data Center databases
+(e.g. MySQL `utf8mb3`) can't store 4-byte characters and would reject or truncate
+the description. On `pr update` keep a single line — replace an existing one
+rather than stacking another.
+
+## Updating descriptions
+
+Before using `pr update` to edit a description, read
+[Writing PR descriptions](writing-pr-descriptions.md), including its guidance on
+existing text. Read the current body with `pr get <ref> --scope full` and compare
+it with the final PR changes. Preserve useful context and links, remove stale
+claims within the requested edit, and keep the attribution line above only once.
+Do not rewrite an existing description when the task only changes reviewers or
+other metadata.
 
 ## Editing reviewers
 

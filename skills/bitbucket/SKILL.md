@@ -1,7 +1,7 @@
 ---
 name: bitbucket
-version: 0.13.0
-description: "Use Bitbucket as a code-hosting backend for coding agents. Browse repositories and source files at any ref, drive pull request review and merge workflows, see per-file diffs and diffstats, check mergeability and CI build status, fetch a PR into a local git checkout, post inline review comments, resolve or reopen comment threads, triage and respond to received review comments (with resolution / task status and --unresolved filters), and preview every write with --dry-run or lock the session with read-only mode. Supports Bitbucket Cloud and Data Center / Server. Use when the user mentions Bitbucket, a PR or pull-request URL or ID, repository browsing, file content at a ref, code review, responding to or addressing PR review comments, resolving a comment thread or task, approve/decline/merge a PR, asks to read a diff, or wants a dry-run / read-only / safe-mode session."
+version: 0.14.0
+description: "Use Bitbucket as a code-hosting backend for coding agents. Browse repositories and source files at any ref, create PRs and write concise descriptions, drive review and merge workflows, see per-file diffs and diffstats, check mergeability and CI build status, fetch a PR into a local git checkout, post inline review comments, resolve or reopen comment threads, triage and respond to received review comments, and preview every write with --dry-run or lock the session with read-only mode. Supports Bitbucket Cloud and Data Center / Server. Use when the user mentions Bitbucket, a PR or pull-request URL or ID, creating a PR or editing its description, repository browsing, file content at a ref, code review, responding to or addressing PR review comments, resolving a comment thread or task, approve/decline/merge a PR, asks to read a diff, or wants a dry-run / read-only / safe-mode session."
 metadata:
   requires:
     bins: ["bitbucket-cli"]
@@ -21,8 +21,8 @@ Trigger this skill when the user:
 
 - Pastes a Bitbucket URL (`https://bitbucket.org/<workspace>/<repo>` or a PR
   permalink), or names a `<workspace>/<repo>[#<id>]` reference.
-- Asks to look up, review, comment on, approve, decline, or merge a pull
-  request.
+- Asks to create a pull request, write or update its description, look it up,
+  review, comment on, approve, decline, or merge it.
 - Wants to browse a repository, list branches, query commits, or compare refs.
 
 ## Getting started
@@ -41,6 +41,12 @@ TTY — agents should never pass it.
 
 ## Core workflows
 
+- **Create a PR or update its description** — before drafting, read
+  [Writing PR descriptions](references/writing-pr-descriptions.md). Lead with
+  the problem and resulting behavior; add review guidance only where it helps.
+  Keep routine check results out of the description. For preparation and command
+  details, see [Creating](references/pr-workflows.md#creating) and
+  [Updating descriptions](references/pr-workflows.md#updating-descriptions).
 - **Review a PR (with local codebase)** — before using local files, verify that
   the checkout belongs to the PR repo and record its branch, HEAD, and dirty
   state; never assume the current worktree is the PR source. Start with `pr status`
@@ -218,8 +224,10 @@ bitbucket-cli comment add --pr myws/myrepo/42 \
 ```
 
 When the human writes or rewrites the text themselves, post it verbatim **without**
-the `[AI]` marker — they authored it. Write the rest of the text in the **user's
-language**; keep the `[AI]` label and the URL
+the `[AI]` marker — they authored it. For PR descriptions, follow the language and
+template rules in [Writing PR descriptions](references/writing-pr-descriptions.md).
+For comments, write the rest of the text in the **user's language**; keep the
+`[AI]` label and the URL
 `https://angelmsger.github.io/bitbucket-cli/` constant. For PR descriptions use the
 attribution line in `references/pr-workflows.md`. See also `references/commenting.md`.
 
