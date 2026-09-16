@@ -1,6 +1,6 @@
 ---
 name: bitbucket
-version: 0.14.0
+version: 0.14.1
 description: "Use Bitbucket as a code-hosting backend for coding agents. Browse repositories and source files at any ref, create PRs and write concise descriptions, drive review and merge workflows, see per-file diffs and diffstats, check mergeability and CI build status, fetch a PR into a local git checkout, post inline review comments, resolve or reopen comment threads, triage and respond to received review comments, and preview every write with --dry-run or lock the session with read-only mode. Supports Bitbucket Cloud and Data Center / Server. Use when the user mentions Bitbucket, a PR or pull-request URL or ID, creating a PR or editing its description, repository browsing, file content at a ref, code review, responding to or addressing PR review comments, resolving a comment thread or task, approve/decline/merge a PR, asks to read a diff, or wants a dry-run / read-only / safe-mode session."
 metadata:
   requires:
@@ -160,17 +160,18 @@ Every write above accepts `--dry-run`; see `references/safety-modes.md`.
   either select the containing object for normal jq access or read the flat key
   as `.["repository.workspace"]`. Inspect `.items[0]` before composing a
   longer pipeline.
-- **Skill handshake — set `BITBUCKET_CLI_SKILL=1`.** Once you have loaded this
-  Skill, export `BITBUCKET_CLI_SKILL=1` in the environment you run the CLI from.
-  This is the source of truth for "the agent is driving the CLI through the
-  Skill": when the variable is absent the CLI assumes you may be inferring
-  commands blindly and prints a one-line `{"_notice":{"skill":{…}}}` discovery
-  hint on **stderr** (non-interactive sessions only). Setting it silences the
-  hint; `bitbucket-cli skill status` reports whether it is set. (To suppress the
-  hint without loading the Skill, use `BITBUCKET_CLI_NO_SKILL_HINT=1`.)
+- **Skill handshake — set `BITBUCKET_CLI_SKILL=0.14.1`.** Once you have loaded
+  this Skill, export that exact value in the environment used to run the CLI.
+  The CLI compares it with the embedded Skill version and emits a structured
+  stderr notice when the Skill is missing, old, or uses the legacy unversioned
+  handshake. `bitbucket-cli skill status` reports loaded, installed, and
+  embedded versions. To suppress the notice without loading the Skill, set
+  `BITBUCKET_CLI_NO_SKILL_HINT=1`.
 - **Update notices on stderr.** When a newer release exists, commands print a
   one-line `{"_notice":{"update":{…}}}` to **stderr** (never stdout, so parsing
-  the data is unaffected). `doctor` reports it too. Silence with
+  the data is unaffected). Follow every `next_steps` entry: upgrade the CLI,
+  run `bitbucket-cli skill install`, then reload the agent context. `doctor`
+  reports CLI and Skill status too. Silence update notices with
   `BITBUCKET_CLI_NO_UPDATE_NOTIFIER=1`.
 - **Forgiving flags.** camelCase/snake_case flag names (`--userId`) and a flag
   stuck to its value (`--limit100`) are auto-corrected to the canonical form when

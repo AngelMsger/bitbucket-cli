@@ -81,10 +81,12 @@ installed agents and installs into each one found:
 ```bash
 bitbucket-cli skill install            # auto-detect; install for each agent found
 bitbucket-cli skill install --agent codex
+bitbucket-cli skill status             # compare loaded, installed, embedded versions
 bitbucket-cli skill uninstall          # remove it again
 ```
 
-Re-run it after upgrading the CLI to keep the Skill version-matched. Details,
+After upgrading the CLI, re-run `skill install` and reload the agent context.
+Details,
 including the `npx skills` workflow, are in
 [docs/installation.md](docs/installation.md#3-install-the-companion-skill).
 

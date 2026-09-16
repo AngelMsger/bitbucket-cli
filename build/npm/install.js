@@ -112,10 +112,13 @@ async function install() {
 function welcomeText() {
   return [
     '',
-    'bitbucket-cli is ready. First-time setup:',
+    'bitbucket-cli is ready. After every install or upgrade:',
     '',
+    '  bitbucket-cli skill install          install or refresh the coding-agent Skill',
+    '  reload your agent context            load the refreshed Skill',
+    '',
+    'First-time server setup:',
     '  bitbucket-cli config init --pretty   configure your server + credentials (interactive)',
-    '  bitbucket-cli skill install          install the coding-agent Skill',
     '',
     'Everyday use:',
     '  bitbucket-cli pr list --repo <workspace>/<repo>',

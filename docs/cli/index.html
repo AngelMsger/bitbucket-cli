@@ -157,7 +157,8 @@ JSON with structured errors.
 AGENT NOTE: a companion Skill (&#34;bitbucket&#34;) carries the canonical usage,
 safety modes, and env setup and is the source of truth for driving this CLI.
 If you are an agent, load that Skill before composing commands. Check status
-with `bitbucket-cli skill status`; install it with `bitbucket-cli skill install`.</p>
+with `bitbucket-cli skill status`; install it with `bitbucket-cli skill install`.
+After a CLI upgrade, refresh the Skill and reload the agent context.</p>
     <p class="lead">Generated from the command tree, so it always matches <code>--help</code>.</p>
 
     <section class="cmd">
@@ -1089,7 +1090,7 @@ Use --name to give the fork a different name. Cloud also requires --name when th
 into a coding agent&#39;s skills directory. With no flags it probes for
 installed agents (claude-code, codex, cursor, agents, gemini, github-copilot, opencode, continue, windsurf, grok, pi, kilo, roo) and installs
 into each one found. Re-run it after upgrading the CLI to refresh the
-Skill to the matching version.</p>
+Skill to the matching version, then reload the agent context.</p>
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -1104,7 +1105,7 @@ Skill to the matching version.</p>
 
     <section class="cmd" id="bitbucket-cli-skill-path">
       <h2>bitbucket-cli skill path</h2>
-      <p class="short">Print where the Skill would be installed, and whether it is</p>
+      <p class="short">Print Skill paths, installation state and version alignment</p>
       <pre>bitbucket-cli skill path [flags]</pre>
       
       <h3>Options</h3>
@@ -1130,7 +1131,7 @@ Skill to the matching version.</p>
 
     <section class="cmd" id="bitbucket-cli-skill-status">
       <h2>bitbucket-cli skill status</h2>
-      <p class="short">Report whether the companion Skill is loaded and installed</p>
+      <p class="short">Report loaded, installed and embedded Skill versions</p>
       <pre>bitbucket-cli skill status [flags]</pre>
       
       <h3>Options</h3>

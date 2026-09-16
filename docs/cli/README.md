@@ -112,9 +112,9 @@ is published at <https://angelmsger.github.io/bitbucket-cli/cli/>.
 | --- | --- |
 | [`bitbucket-cli skill`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-skill) | Install the companion Skill for coding agents |
 | [`bitbucket-cli skill install`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-skill-install) | Deploy the embedded Skill into a coding agent's skills directory |
-| [`bitbucket-cli skill path`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-skill-path) | Print where the Skill would be installed, and whether it is |
+| [`bitbucket-cli skill path`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-skill-path) | Print Skill paths, installation state and version alignment |
 | [`bitbucket-cli skill show`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-skill-show) | Print the embedded SKILL.md to stdout |
-| [`bitbucket-cli skill status`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-skill-status) | Report whether the companion Skill is loaded and installed |
+| [`bitbucket-cli skill status`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-skill-status) | Report loaded, installed and embedded Skill versions |
 | [`bitbucket-cli skill uninstall`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-skill-uninstall) | Remove the companion Skill from a coding agent's skills directory |
 
 ## tag

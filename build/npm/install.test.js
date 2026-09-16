@@ -22,4 +22,6 @@ test('rejects unsupported Windows architectures', () => {
 test('welcome text recommends valid Bitbucket commands', () => {
   assert.match(welcomeText(), /bitbucket-cli pr list/);
   assert.match(welcomeText(), /bitbucket-cli pr diff/);
+  assert.match(welcomeText(), /bitbucket-cli skill install/);
+  assert.match(welcomeText(), /reload your agent context/);
 });

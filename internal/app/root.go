@@ -92,7 +92,8 @@ func newRootCmdWithState() (*cobra.Command, *appState) {
 			"AGENT NOTE: a companion Skill (\"bitbucket\") carries the canonical usage,\n" +
 			"safety modes, and env setup and is the source of truth for driving this CLI.\n" +
 			"If you are an agent, load that Skill before composing commands. Check status\n" +
-			"with `bitbucket-cli skill status`; install it with `bitbucket-cli skill install`.",
+			"with `bitbucket-cli skill status`; install it with `bitbucket-cli skill install`.\n" +
+			"After a CLI upgrade, refresh the Skill and reload the agent context.",
 		Version:       versionString(),
 		SilenceErrors: true,
 		SilenceUsage:  true,
