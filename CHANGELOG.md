@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [0.19.1] - 2026-09-16
+
+### Fixed
+
+- Make the companion-Skill doctor test use both Unix `HOME` and Windows
+  `USERPROFILE`, so native Windows CI validates version alignment against the
+  isolated test home instead of the runner account.
+
 ## [0.19.0] - 2026-09-16
 
 ### Added
@@ -728,7 +736,8 @@ PR-centric MVP supporting Bitbucket Cloud (REST 2.0) and Data Center (REST
 subtrees; layered configuration with keychain-backed auth; structured error
 model; and an embedded companion Skill.
 
-[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.19.0...HEAD
+[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.19.1...HEAD
+[0.19.1]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.19.0...v0.19.1
 [0.19.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.16.1...v0.17.0
