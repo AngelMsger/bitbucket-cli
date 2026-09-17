@@ -1,6 +1,6 @@
 ---
 name: bitbucket
-version: 0.14.1
+version: 0.14.2
 description: "Use Bitbucket as a code-hosting backend for coding agents. Browse repositories and source files at any ref, create PRs and write concise descriptions, drive review and merge workflows, see per-file diffs and diffstats, check mergeability and CI build status, fetch a PR into a local git checkout, post inline review comments, resolve or reopen comment threads, triage and respond to received review comments, and preview every write with --dry-run or lock the session with read-only mode. Supports Bitbucket Cloud and Data Center / Server. Use when the user mentions Bitbucket, a PR or pull-request URL or ID, creating a PR or editing its description, repository browsing, file content at a ref, code review, responding to or addressing PR review comments, resolving a comment thread or task, approve/decline/merge a PR, asks to read a diff, or wants a dry-run / read-only / safe-mode session."
 metadata:
   requires:
@@ -160,7 +160,7 @@ Every write above accepts `--dry-run`; see `references/safety-modes.md`.
   either select the containing object for normal jq access or read the flat key
   as `.["repository.workspace"]`. Inspect `.items[0]` before composing a
   longer pipeline.
-- **Skill handshake — set `BITBUCKET_CLI_SKILL=0.14.1`.** Once you have loaded
+- **Skill handshake — set `BITBUCKET_CLI_SKILL=0.14.2`.** Once you have loaded
   this Skill, export that exact value in the environment used to run the CLI.
   The CLI compares it with the embedded Skill version and emits a structured
   stderr notice when the Skill is missing, old, or uses the legacy unversioned
@@ -246,3 +246,25 @@ interactive `config init` / `auth login` yourself (no TTY → they fail fast, an
 historically could hang); if credentials are truly missing, ask the user to run
 `config init` in their own terminal or to export `BITBUCKET_*` env vars. See
 `references/getting-started.md` › "For agents and sandboxes".
+
+## Team service presets and authentication
+
+- Inspect existing configuration and reuse it. `config set-context <name>` is the
+  offline installer entrypoint; it accepts `--base-url`, `--auth-scheme`,
+  `--credential-url`, `--activate`, `--overwrite`, and `--dry-run`, plus `--flavor`.
+- `BITBUCKET_AUTH_SCHEME` and `BITBUCKET_CREDENTIAL_URL` complement the existing
+  service variables. Presets never copy a personal username or secret from the
+  environment. Conflicts preserve existing values unless explicitly overwritten.
+- Run `auth guide` to obtain the current instance's credential page, its source,
+  navigation steps, and limitations. Links are hints, not evidence of server
+  capabilities. Follow the returned product-specific instructions; do not invent
+  a token URL or assume ingestion credentials authorize queries.
+- Once a service is preset, direct the member to `auth login` in their terminal
+  to save their verified personal identity and secret. Do not ask for secrets in
+  chat. In non-interactive environments use transient credential variables.
+- Preserve host-keychain recovery for inaccessible credentials. A server/context
+  mismatch requires selecting or creating a matching context; a partial login
+  write error identifies what was stored and provides recovery steps.
+
+See [team setup](references/team-setup.md) for the output fields, conflict
+semantics, credential URL overrides, and failure recovery.

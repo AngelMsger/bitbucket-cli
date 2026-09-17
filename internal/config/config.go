@@ -65,8 +65,9 @@ type Config struct {
 
 // AuthConfig holds non-secret auth settings.
 type AuthConfig struct {
-	Scheme   string `yaml:"scheme"`
-	Username string `yaml:"username,omitempty"`
+	CredentialURL string `yaml:"credential_url,omitempty"`
+	Scheme        string `yaml:"scheme"`
+	Username      string `yaml:"username,omitempty"`
 }
 
 // Defaults holds tunable runtime defaults.
@@ -123,6 +124,7 @@ func (r *Resolved) ContextSelectedExplicitly() bool {
 
 // Field keys used for layer maps and provenance tracking.
 const (
+	fieldCredentialURL  = "auth.credential_url"
 	fieldServer         = "server"
 	fieldFlavor         = "flavor"
 	fieldDetectedFlavor = "detected_flavor"
@@ -159,8 +161,9 @@ func configFromMap(m map[string]string) Config {
 		Flavor:         m[fieldFlavor],
 		DetectedFlavor: m[fieldDetectedFlavor],
 		Auth: AuthConfig{
-			Scheme:   m[fieldAuthScheme],
-			Username: m[fieldAuthUsername],
+			CredentialURL: m[fieldCredentialURL],
+			Scheme:        m[fieldAuthScheme],
+			Username:      m[fieldAuthUsername],
 		},
 		Defaults: Defaults{
 			Format:     m[fieldFormat],
@@ -219,3 +222,6 @@ func durationOr(s string, fallback time.Duration) time.Duration {
 	}
 	return fallback
 }
+
+// FieldCredentialURL is the provenance key for the acquisition page.
+const FieldCredentialURL = fieldCredentialURL

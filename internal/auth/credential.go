@@ -11,7 +11,7 @@ import (
 
 // Scheme identifies an authentication scheme.
 const (
-	SchemePAT   = "pat"   // Bearer Personal Access Token (Data Center 7.9+)
+	SchemePAT   = "pat"   // Bearer HTTP access token
 	SchemeBasic = "basic" // HTTP Basic (DC: user+password; Cloud: email+API token)
 )
 

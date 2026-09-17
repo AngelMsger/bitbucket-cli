@@ -87,7 +87,7 @@ commit (`git tag -f` / delete and re-push) to trigger a fresh run.
 `.github/workflows/ci.yml` runs on every push to `main` and every pull request:
 `gofmt` check, `go vet`, a `docs/cli/` drift check (`go run ./cmd/gen-docs`,
 then fail if the committed reference differs), `go test ./...`, and the
-mock-server end-to-end suite (`scripts/e2e.sh`). The live e2e checks are not
+mock-server end-to-end suite (`scripts/e2e.sh` and the offline `scripts/e2e-setup.sh`). The live e2e checks are not
 run in CI — they require a real server and credentials.
 
 The CLI reference under `docs/cli/` is generated from the cobra command tree

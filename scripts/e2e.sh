@@ -78,10 +78,13 @@ LDFLAGS="-X github.com/angelmsger/bitbucket-cli/pkg/constants.Version=0.0.1"
 go build -ldflags "$LDFLAGS" -o "$BIN" ./cmd/bitbucket-cli || { echo "build failed"; exit 1; }
 
 echo "==> starting mock Bitbucket server"
-MOCK_LOG="$(mktemp)"
-go run ./test/mockserver >"$MOCK_LOG" 2>/dev/null &
+MOCK_DIR="$(mktemp -d)"
+MOCK_LOG="$MOCK_DIR/server.log"
+trap '[[ -z "${MOCK_PID:-}" ]] || kill "$MOCK_PID" 2>/dev/null || true; rm -rf "$MOCK_DIR"' EXIT
+# Build explicitly so cleanup owns the server PID rather than a go-run wrapper.
+go build -o "$MOCK_DIR/mockserver" ./test/mockserver || exit 1
+"$MOCK_DIR/mockserver" >"$MOCK_LOG" 2>/dev/null &
 MOCK_PID=$!
-trap 'kill "$MOCK_PID" 2>/dev/null' EXIT
 
 MOCK_URL=""
 for _ in $(seq 1 50); do
@@ -238,7 +241,7 @@ SKILL_HOME="$(mktemp -d)"
 assert_contains  "skill install for Codex"    '"alignment": "current"' \
                                              env HOME="$SKILL_HOME" "${CLI[@]}" skill install --agent codex
 assert_contains  "skill status version aligned" '"loaded_status": "current"' \
-                                             env HOME="$SKILL_HOME" BITBUCKET_CLI_SKILL=0.14.1 "${CLI[@]}" skill status
+                                             env HOME="$SKILL_HOME" BITBUCKET_CLI_SKILL=0.14.2 "${CLI[@]}" skill status
 assert_err_contains "legacy Skill handshake is detected" '"status":"unknown"' \
                                              env HOME="$SKILL_HOME" BITBUCKET_CLI_SKILL=1 BITBUCKET_CLI_NO_UPDATE_NOTIFIER=1 "${CLI[@]}" pr get PROJ/demo/1
 assert_exit      "missing PR -> 6"           6                "${CLI[@]}" pr get PROJ/demo/404
@@ -249,7 +252,7 @@ assert_exit      "pr merge needs --yes -> 2" 2                "${CLI[@]}" pr mer
 assert_err_contains "update notice survives a failed command" '"update"' \
                                              "${CLI[@]}" pr merge PROJ/demo/1 </dev/null
 assert_err_contains "update notice includes Skill refresh" '"next_steps"' \
-                                             env BITBUCKET_CLI_SKILL=0.14.1 "${CLI[@]}" pr merge PROJ/demo/1 </dev/null
+                                             env BITBUCKET_CLI_SKILL=0.14.2 "${CLI[@]}" pr merge PROJ/demo/1 </dev/null
 
 # --dry-run additions for v0.3 (every mutating command must accept --dry-run).
 assert_contains  "pr update --dry-run"       '"method": "PUT"' \
@@ -334,4 +337,5 @@ fi
 
 echo
 echo "==> e2e summary: $PASS passed, $FAIL failed"
-[[ "$FAIL" -eq 0 ]]
+if [[ "$FAIL" -ne 0 ]]; then exit 1; fi
+"$ROOT/scripts/e2e-setup.sh"

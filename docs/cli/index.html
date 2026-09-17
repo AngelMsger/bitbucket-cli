@@ -27,6 +27,7 @@
     <div class="side-group">
       <div class="side-title">auth</div>
       <a href="#bitbucket-cli-auth">bitbucket-cli auth</a>
+      <a href="#bitbucket-cli-auth-guide">bitbucket-cli auth guide</a>
       <a href="#bitbucket-cli-auth-login">bitbucket-cli auth login</a>
       <a href="#bitbucket-cli-auth-logout">bitbucket-cli auth logout</a>
       <a href="#bitbucket-cli-auth-status">bitbucket-cli auth status</a>
@@ -62,6 +63,7 @@
       <a href="#bitbucket-cli-config-get-contexts">bitbucket-cli config get-contexts</a>
       <a href="#bitbucket-cli-config-init">bitbucket-cli config init</a>
       <a href="#bitbucket-cli-config-path">bitbucket-cli config path</a>
+      <a href="#bitbucket-cli-config-set-context">bitbucket-cli config set-context</a>
       <a href="#bitbucket-cli-config-show">bitbucket-cli config show</a>
       <a href="#bitbucket-cli-config-use-context">bitbucket-cli config use-context</a>
       </div>
@@ -144,7 +146,7 @@
       <a href="#bitbucket-cli-workspace-get">bitbucket-cli workspace get</a>
       <a href="#bitbucket-cli-workspace-list">bitbucket-cli workspace list</a>
       </div>
-    
+
   </aside>
   <main class="cli-main">
     <span class="eyebrow">Reference</span>
@@ -168,8 +170,10 @@ After a CLI upgrade, refresh the Skill and reload the agent context.</p>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
         <tr><td><code>--allow-writes</code></td><td><code>false</code></td><td>override read-only mode (defaults.read_only / BITBUCKET_CLI_READ_ONLY) for this invocation</td></tr>
+        <tr><td><code>--auth-scheme</code></td><td></td><td>authentication scheme (overrides environment and config)</td></tr>
         <tr><td><code>--base-url</code></td><td></td><td>Bitbucket site URL (overrides config)</td></tr>
         <tr><td><code>--config</code></td><td></td><td>config directory (default ~/.angelmsger/bitbucket, falling back to ~/.bitbucket when only that exists)</td></tr>
+        <tr><td><code>--credential-url</code></td><td></td><td>credential acquisition page URL (display only)</td></tr>
         <tr><td><code>--fields</code></td><td></td><td>comma-separated fields relative to each record; list paths omit the items envelope prefix; nested paths emit dotted keys</td></tr>
         <tr><td><code>--flavor</code></td><td></td><td>backend flavor: cloud, datacenter or auto</td></tr>
         <tr><td><code>--format, -f</code></td><td></td><td>output format: json, table or ndjson</td></tr>
@@ -181,58 +185,66 @@ After a CLI upgrade, refresh the Skill and reload the agent context.</p>
       </table>
     </section>
 
-    
+
     <section class="cmd" id="bitbucket-cli-auth">
       <h2>bitbucket-cli auth</h2>
       <p class="short">Inspect and manage stored credentials</p>
       <pre>bitbucket-cli auth</pre>
-      
-      
-      
+
+
+
+    </section>
+
+    <section class="cmd" id="bitbucket-cli-auth-guide">
+      <h2>bitbucket-cli auth guide</h2>
+      <p class="short">Show offline credential acquisition guidance for this service</p>
+      <pre>bitbucket-cli auth guide</pre>
+
+
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-auth-login">
       <h2>bitbucket-cli auth login</h2>
-      <p class="short">Store a credential for the configured server</p>
+      <p class="short">Verify and store personal credentials for the configured service</p>
       <pre>bitbucket-cli auth login</pre>
-      <p class="long">Prompt for a secret and store it securely. Run `config init` first if the server URL is not set.</p>
-      
-      <h3>Examples</h3><pre>  bitbucket-cli auth login
-  bitbucket-cli --use-context staging auth login</pre>
+      <p class="long">Reuse the configured service, show its credential acquisition page, and store a verified credential together with its username. Requires a terminal; use credential environment variables for non-interactive execution.</p>
+
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-auth-logout">
       <h2>bitbucket-cli auth logout</h2>
       <p class="short">Remove the stored credential for the configured server</p>
       <pre>bitbucket-cli auth logout</pre>
-      
-      
-      
+
+
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-auth-status">
       <h2>bitbucket-cli auth status</h2>
       <p class="short">Show whether a usable credential is configured</p>
       <pre>bitbucket-cli auth status</pre>
-      
-      
-      
+
+
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-branch">
       <h2>bitbucket-cli branch</h2>
       <p class="short">List and manage repository branches</p>
       <pre>bitbucket-cli branch</pre>
-      
-      
-      
+
+
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-branch-create">
       <h2>bitbucket-cli branch create</h2>
       <p class="short">Create a branch from a starting ref</p>
       <pre>bitbucket-cli branch create &lt;name&gt; [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -242,14 +254,14 @@ After a CLI upgrade, refresh the Skill and reload the agent context.</p>
         <tr><td><code>--repo</code></td><td></td><td>&lt;workspace&gt;/&lt;repo&gt;</td></tr>
         </tbody>
       </table>
-      
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-branch-delete">
       <h2>bitbucket-cli branch delete</h2>
       <p class="short">Delete a branch</p>
       <pre>bitbucket-cli branch delete &lt;name&gt; [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -259,14 +271,14 @@ After a CLI upgrade, refresh the Skill and reload the agent context.</p>
         <tr><td><code>--yes</code></td><td><code>false</code></td><td>confirm the deletion</td></tr>
         </tbody>
       </table>
-      
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-branch-get">
       <h2>bitbucket-cli branch get</h2>
       <p class="short">Show a single branch</p>
       <pre>bitbucket-cli branch get &lt;name&gt; [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -274,14 +286,14 @@ After a CLI upgrade, refresh the Skill and reload the agent context.</p>
         <tr><td><code>--repo</code></td><td></td><td>&lt;workspace&gt;/&lt;repo&gt;</td></tr>
         </tbody>
       </table>
-      
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-branch-list">
       <h2>bitbucket-cli branch list</h2>
       <p class="short">List branches in a repository</p>
       <pre>bitbucket-cli branch list [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -294,23 +306,23 @@ After a CLI upgrade, refresh the Skill and reload the agent context.</p>
         <tr><td><code>--sort</code></td><td></td><td>sort key</td></tr>
         </tbody>
       </table>
-      
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-comment">
       <h2>bitbucket-cli comment</h2>
       <p class="short">Read and write pull-request comments</p>
       <pre>bitbucket-cli comment</pre>
-      
-      
-      
+
+
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-comment-add">
       <h2>bitbucket-cli comment add</h2>
       <p class="short">Add a comment on a PR (general or inline)</p>
       <pre>bitbucket-cli comment add [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -324,7 +336,7 @@ After a CLI upgrade, refresh the Skill and reload the agent context.</p>
         <tr><td><code>--side</code></td><td><code>new</code></td><td>diff side the --inline line refers to: new (post-change) or old (pre-change/removed)</td></tr>
         </tbody>
       </table>
-      
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-comment-delete">
@@ -343,14 +355,14 @@ or a single &#39;-&#39; to read newline-separated IDs from stdin. --yes (or
         <tr><td><code>--yes</code></td><td><code>false</code></td><td>confirm the deletion</td></tr>
         </tbody>
       </table>
-      
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-comment-list">
       <h2>bitbucket-cli comment list</h2>
       <p class="short">List comments on a PR</p>
       <pre>bitbucket-cli comment list [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -363,7 +375,7 @@ or a single &#39;-&#39; to read newline-separated IDs from stdin. --yes (or
         <tr><td><code>--unresolved</code></td><td><code>false</code></td><td>only comments whose thread is not resolved</td></tr>
         </tbody>
       </table>
-      
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-comment-resolve">
@@ -392,7 +404,7 @@ by `comment list` and `pr threads`.</p>
       <h2>bitbucket-cli comment update</h2>
       <p class="short">Edit a comment</p>
       <pre>bitbucket-cli comment update &lt;comment-id&gt; [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -402,23 +414,23 @@ by `comment list` and `pr threads`.</p>
         <tr><td><code>--pr</code></td><td></td><td>&lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt; or PR URL</td></tr>
         </tbody>
       </table>
-      
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-commit">
       <h2>bitbucket-cli commit</h2>
       <p class="short">Query commits in a repository</p>
       <pre>bitbucket-cli commit</pre>
-      
-      
-      
+
+
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-commit-compare">
       <h2>bitbucket-cli commit compare</h2>
       <p class="short">List the commits between two refs</p>
       <pre>bitbucket-cli commit compare [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -431,14 +443,14 @@ by `comment list` and `pr threads`.</p>
         <tr><td><code>--to</code></td><td></td><td>include commits reachable from this ref</td></tr>
         </tbody>
       </table>
-      
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-commit-get">
       <h2>bitbucket-cli commit get</h2>
       <p class="short">Show a single commit</p>
       <pre>bitbucket-cli commit get &lt;hash&gt; [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -446,14 +458,14 @@ by `comment list` and `pr threads`.</p>
         <tr><td><code>--repo</code></td><td></td><td>&lt;workspace&gt;/&lt;repo&gt;</td></tr>
         </tbody>
       </table>
-      
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-commit-list">
       <h2>bitbucket-cli commit list</h2>
       <p class="short">List commits in a repository</p>
       <pre>bitbucket-cli commit list [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -468,24 +480,24 @@ by `comment list` and `pr threads`.</p>
         <tr><td><code>--until</code></td><td></td><td>latest commit date</td></tr>
         </tbody>
       </table>
-      
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-config">
       <h2>bitbucket-cli config</h2>
       <p class="short">Manage bitbucket-cli configuration</p>
       <pre>bitbucket-cli config</pre>
-      
-      
-      
+
+
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-config-delete-context">
       <h2>bitbucket-cli config delete-context</h2>
       <p class="short">Delete a context and its stored credential</p>
       <pre>bitbucket-cli config delete-context &lt;name&gt;</pre>
-      
-      
+
+
       <h3>Examples</h3><pre>  bitbucket-cli config delete-context staging</pre>
     </section>
 
@@ -495,7 +507,7 @@ by `comment list` and `pr threads`.</p>
       <pre>bitbucket-cli config get-contexts</pre>
       <p class="long">List every context in the config file. The current context — the one
 used when --use-context is not given — is marked.</p>
-      
+
       <h3>Examples</h3><pre>  bitbucket-cli config get-contexts
   bitbucket-cli config get-contexts --format table</pre>
     </section>
@@ -507,7 +519,7 @@ used when --use-context is not given — is marked.</p>
       <p class="long">Run the interactive setup wizard. It collects a server URL, detects
 the flavor, validates a credential and stores it. The wizard can also
 configure additional named contexts for working with several servers.</p>
-      
+
       <h3>Examples</h3><pre>  bitbucket-cli config init --pretty   # interactive TUI (recommended)
   bitbucket-cli config init             # plain line-by-line wizard (scripts, non-TTY)</pre>
     </section>
@@ -516,16 +528,34 @@ configure additional named contexts for working with several servers.</p>
       <h2>bitbucket-cli config path</h2>
       <p class="short">Print the config file path</p>
       <pre>bitbucket-cli config path</pre>
-      
-      
-      
+
+
+
+    </section>
+
+    <section class="cmd" id="bitbucket-cli-config-set-context">
+      <h2>bitbucket-cli config set-context</h2>
+      <p class="short">Configure service presets without credentials or network access</p>
+      <pre>bitbucket-cli config set-context &lt;name&gt; [flags]</pre>
+      <p class="long">Write service fields from flags, environment or .env over the named target context. Personal environment fields and secrets are ignored. Existing conflicting fields require --overwrite; unrelated contexts and user identities are preserved.</p>
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--activate</code></td><td><code>false</code></td><td>make this the current context</td></tr>
+        <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>preview configuration changes without writing files or credentials</td></tr>
+        <tr><td><code>--overwrite</code></td><td><code>false</code></td><td>update conflicting service fields; preserve personal identity and credentials</td></tr>
+        </tbody>
+      </table>
+      <h3>Examples</h3><pre>  bitbucket-cli config set-context team --base-url https://service.example.com --dry-run
+  bitbucket-cli config set-context team --base-url https://service.example.com --activate</pre>
     </section>
 
     <section class="cmd" id="bitbucket-cli-config-show">
       <h2>bitbucket-cli config show</h2>
       <p class="short">Show the resolved configuration</p>
       <pre>bitbucket-cli config show [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -533,7 +563,7 @@ configure additional named contexts for working with several servers.</p>
         <tr><td><code>--explain</code></td><td><code>false</code></td><td>annotate each value with its source</td></tr>
         </tbody>
       </table>
-      
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-config-use-context">
@@ -542,7 +572,7 @@ configure additional named contexts for working with several servers.</p>
       <pre>bitbucket-cli config use-context &lt;name&gt;</pre>
       <p class="long">Set the current context — the server used by default. Override it for
 a single command with the global --use-context flag instead.</p>
-      
+
       <h3>Examples</h3><pre>  bitbucket-cli config use-context staging</pre>
     </section>
 
@@ -550,7 +580,7 @@ a single command with the global --use-context flag instead.</p>
       <h2>bitbucket-cli doctor</h2>
       <p class="short">Diagnose configuration, credentials and connectivity</p>
       <pre>bitbucket-cli doctor [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -566,16 +596,16 @@ a single command with the global --use-context flag instead.</p>
       <h2>bitbucket-cli file</h2>
       <p class="short">Browse and read repository source files at any ref</p>
       <pre>bitbucket-cli file</pre>
-      
-      
-      
+
+
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-file-get">
       <h2>bitbucket-cli file get</h2>
       <p class="short">Read a file&#39;s raw contents at a ref</p>
       <pre>bitbucket-cli file get &lt;workspace&gt;/&lt;repo&gt; [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -586,14 +616,14 @@ a single command with the global --use-context flag instead.</p>
         <tr><td><code>--ref</code></td><td></td><td>branch / tag / commit (default: repository default branch)</td></tr>
         </tbody>
       </table>
-      
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-file-list">
       <h2>bitbucket-cli file list</h2>
       <p class="short">List entries under a repository path at a ref</p>
       <pre>bitbucket-cli file list &lt;workspace&gt;/&lt;repo&gt; [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -605,14 +635,14 @@ a single command with the global --use-context flag instead.</p>
         <tr><td><code>--ref</code></td><td></td><td>branch / tag / commit (default: repository default branch)</td></tr>
         </tbody>
       </table>
-      
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-file-tree">
       <h2>bitbucket-cli file tree</h2>
       <p class="short">Recursively list files under a path at a ref</p>
       <pre>bitbucket-cli file tree &lt;workspace&gt;/&lt;repo&gt; [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -622,16 +652,16 @@ a single command with the global --use-context flag instead.</p>
         <tr><td><code>--ref</code></td><td></td><td>branch / tag / commit (default: repository default branch)</td></tr>
         </tbody>
       </table>
-      
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-pr">
       <h2>bitbucket-cli pr</h2>
       <p class="short">Drive Bitbucket pull requests (list, review, merge)</p>
       <pre>bitbucket-cli pr</pre>
-      
-      
-      
+
+
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-pr-activity">
@@ -685,7 +715,7 @@ and the exit code is non-zero if any approval failed.</p>
       <h2>bitbucket-cli pr checkout</h2>
       <p class="short">Print (or run, with --exec) git fetch (source &#43; base) &#43; checkout for a PR</p>
       <pre>bitbucket-cli pr checkout &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt; [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -696,14 +726,14 @@ and the exit code is non-zero if any approval failed.</p>
         <tr><td><code>--remote</code></td><td></td><td>git remote to fetch from (default: upstream if present, else origin)</td></tr>
         </tbody>
       </table>
-      
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-pr-commits">
       <h2>bitbucket-cli pr commits</h2>
       <p class="short">List commits included in a PR</p>
       <pre>bitbucket-cli pr commits &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt; [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -713,14 +743,14 @@ and the exit code is non-zero if any approval failed.</p>
         <tr><td><code>--limit</code></td><td><code>0</code></td><td>page size (default from config)</td></tr>
         </tbody>
       </table>
-      
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-pr-create">
       <h2>bitbucket-cli pr create</h2>
       <p class="short">Open a new pull request</p>
       <pre>bitbucket-cli pr create [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -737,7 +767,7 @@ and the exit code is non-zero if any approval failed.</p>
         <tr><td><code>--title</code></td><td></td><td>PR title</td></tr>
         </tbody>
       </table>
-      
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-pr-decline">
@@ -756,14 +786,14 @@ single &#39;-&#39; to read newline-separated references from stdin. --yes (or
         <tr><td><code>--yes</code></td><td><code>false</code></td><td>confirm declining</td></tr>
         </tbody>
       </table>
-      
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-pr-diff">
       <h2>bitbucket-cli pr diff</h2>
       <p class="short">Print the unified diff of a PR (use --path to scope to one file)</p>
       <pre>bitbucket-cli pr diff &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt; [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -773,14 +803,14 @@ single &#39;-&#39; to read newline-separated references from stdin. --yes (or
         <tr><td><code>--path</code></td><td></td><td>restrict the diff to a single file path</td></tr>
         </tbody>
       </table>
-      
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-pr-fetch">
       <h2>bitbucket-cli pr fetch</h2>
       <p class="short">Print (or run, with --exec) git fetch for a PR&#39;s source ref and base branch</p>
       <pre>bitbucket-cli pr fetch &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt; [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -790,23 +820,23 @@ single &#39;-&#39; to read newline-separated references from stdin. --yes (or
         <tr><td><code>--remote</code></td><td></td><td>git remote to fetch from (default: upstream if present, else origin)</td></tr>
         </tbody>
       </table>
-      
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-pr-files">
       <h2>bitbucket-cli pr files</h2>
       <p class="short">List changed files in a PR (diffstat: path / status / added / removed)</p>
       <pre>bitbucket-cli pr files &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt;</pre>
-      
-      
-      
+
+
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-pr-get">
       <h2>bitbucket-cli pr get</h2>
       <p class="short">Show a pull request</p>
       <pre>bitbucket-cli pr get &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt; | &lt;url&gt; [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -814,7 +844,7 @@ single &#39;-&#39; to read newline-separated references from stdin. --yes (or
         <tr><td><code>--scope</code></td><td><code>summary</code></td><td>summary | full | diff | commits | activity</td></tr>
         </tbody>
       </table>
-      
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-pr-inbox">
@@ -841,7 +871,7 @@ or any require --workspace; --role author works globally via the user&#39;s
         <tr><td><code>--workspace</code></td><td></td><td>Cloud workspace to scope reviewer / participant queries to (ignored on Data Center)</td></tr>
         </tbody>
       </table>
-      
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-pr-list">
@@ -867,14 +897,14 @@ server-side after resolving the user to a stable UUID. Data Center requires
         <tr><td><code>--target</code></td><td></td><td>filter by destination branch</td></tr>
         </tbody>
       </table>
-      
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-pr-merge">
       <h2>bitbucket-cli pr merge</h2>
       <p class="short">Merge a PR</p>
       <pre>bitbucket-cli pr merge &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt; [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -886,14 +916,14 @@ server-side after resolving the user to a stable UUID. Data Center requires
         <tr><td><code>--yes</code></td><td><code>false</code></td><td>confirm the merge</td></tr>
         </tbody>
       </table>
-      
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-pr-request-changes">
       <h2>bitbucket-cli pr request-changes</h2>
       <p class="short">Cast (or withdraw) a request-changes / needs-work vote (Cloud only)</p>
       <pre>bitbucket-cli pr request-changes &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt; [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -902,23 +932,23 @@ server-side after resolving the user to a stable UUID. Data Center requires
         <tr><td><code>--withdraw</code></td><td><code>false</code></td><td>withdraw a previous request-changes vote</td></tr>
         </tbody>
       </table>
-      
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-pr-status">
       <h2>bitbucket-cli pr status</h2>
       <p class="short">Show merge readiness: mergeable, conflicts, reviewers, CI builds</p>
       <pre>bitbucket-cli pr status &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt;</pre>
-      
-      
-      
+
+
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-pr-threads">
       <h2>bitbucket-cli pr threads</h2>
       <p class="short">List PR review threads grouped by file and anchor</p>
       <pre>bitbucket-cli pr threads &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt; [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -927,14 +957,14 @@ server-side after resolving the user to a stable UUID. Data Center requires
         <tr><td><code>--unresolved</code></td><td><code>false</code></td><td>only threads that are not resolved</td></tr>
         </tbody>
       </table>
-      
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-pr-unapprove">
       <h2>bitbucket-cli pr unapprove</h2>
       <p class="short">Withdraw an approval</p>
       <pre>bitbucket-cli pr unapprove &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt; [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -942,14 +972,14 @@ server-side after resolving the user to a stable UUID. Data Center requires
         <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>preview the HTTP request without sending it</td></tr>
         </tbody>
       </table>
-      
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-pr-update">
       <h2>bitbucket-cli pr update</h2>
       <p class="short">Edit a PR&#39;s title, description, or reviewers</p>
       <pre>bitbucket-cli pr update &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt; [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -960,23 +990,23 @@ server-side after resolving the user to a stable UUID. Data Center requires
         <tr><td><code>--title</code></td><td></td><td>new title</td></tr>
         </tbody>
       </table>
-      
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-repo">
       <h2>bitbucket-cli repo</h2>
       <p class="short">Browse and manage Bitbucket repositories</p>
       <pre>bitbucket-cli repo</pre>
-      
-      
-      
+
+
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-repo-clone-url">
       <h2>bitbucket-cli repo clone-url</h2>
       <p class="short">Print the HTTPS or SSH clone URL of a repository</p>
       <pre>bitbucket-cli repo clone-url &lt;workspace&gt;/&lt;repo&gt; | &lt;url&gt; [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -984,14 +1014,14 @@ server-side after resolving the user to a stable UUID. Data Center requires
         <tr><td><code>--protocol</code></td><td><code>https</code></td><td>https or ssh</td></tr>
         </tbody>
       </table>
-      
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-repo-create">
       <h2>bitbucket-cli repo create</h2>
       <p class="short">Create a repository</p>
       <pre>bitbucket-cli repo create &lt;slug&gt; [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -1003,14 +1033,14 @@ server-side after resolving the user to a stable UUID. Data Center requires
         <tr><td><code>--workspace</code></td><td></td><td>workspace slug / project key</td></tr>
         </tbody>
       </table>
-      
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-repo-delete">
       <h2>bitbucket-cli repo delete</h2>
       <p class="short">Delete a repository (irreversible)</p>
       <pre>bitbucket-cli repo delete &lt;workspace&gt;/&lt;repo&gt; | &lt;url&gt; [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -1019,7 +1049,7 @@ server-side after resolving the user to a stable UUID. Data Center requires
         <tr><td><code>--yes</code></td><td><code>false</code></td><td>confirm the deletion</td></tr>
         </tbody>
       </table>
-      
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-repo-fork">
@@ -1047,16 +1077,16 @@ Use --name to give the fork a different name. Cloud also requires --name when th
       <h2>bitbucket-cli repo get</h2>
       <p class="short">Show a repository&#39;s details</p>
       <pre>bitbucket-cli repo get &lt;workspace&gt;/&lt;repo&gt; | &lt;url&gt;</pre>
-      
-      
-      
+
+
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-repo-list">
       <h2>bitbucket-cli repo list</h2>
       <p class="short">List repositories in a workspace (Cloud) or project (Data Center)</p>
       <pre>bitbucket-cli repo list [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -1070,16 +1100,16 @@ Use --name to give the fork a different name. Cloud also requires --name when th
         <tr><td><code>--workspace</code></td><td></td><td>workspace slug (Cloud) or project key (Data Center)</td></tr>
         </tbody>
       </table>
-      
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-skill">
       <h2>bitbucket-cli skill</h2>
       <p class="short">Install the companion Skill for coding agents</p>
       <pre>bitbucket-cli skill</pre>
-      
-      
-      
+
+
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-skill-install">
@@ -1100,14 +1130,14 @@ Skill to the matching version, then reload the agent context.</p>
         <tr><td><code>--project</code></td><td><code>false</code></td><td>install into each agent&#39;s project skills directory instead of $HOME</td></tr>
         </tbody>
       </table>
-      
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-skill-path">
       <h2>bitbucket-cli skill path</h2>
       <p class="short">Print Skill paths, installation state and version alignment</p>
       <pre>bitbucket-cli skill path [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -1117,23 +1147,23 @@ Skill to the matching version, then reload the agent context.</p>
         <tr><td><code>--project</code></td><td><code>false</code></td><td>use the project skills directories instead of $HOME</td></tr>
         </tbody>
       </table>
-      
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-skill-show">
       <h2>bitbucket-cli skill show</h2>
       <p class="short">Print the embedded SKILL.md to stdout</p>
       <pre>bitbucket-cli skill show</pre>
-      
-      
-      
+
+
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-skill-status">
       <h2>bitbucket-cli skill status</h2>
       <p class="short">Report loaded, installed and embedded Skill versions</p>
       <pre>bitbucket-cli skill status [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -1141,7 +1171,7 @@ Skill to the matching version, then reload the agent context.</p>
         <tr><td><code>--project</code></td><td><code>false</code></td><td>check each agent&#39;s project skills directory instead of $HOME</td></tr>
         </tbody>
       </table>
-      
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-skill-uninstall">
@@ -1160,23 +1190,23 @@ and removes the Skill from each one found.</p>
         <tr><td><code>--project</code></td><td><code>false</code></td><td>remove from each agent&#39;s project skills directory instead of $HOME</td></tr>
         </tbody>
       </table>
-      
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-tag">
       <h2>bitbucket-cli tag</h2>
       <p class="short">List and inspect repository tags</p>
       <pre>bitbucket-cli tag</pre>
-      
-      
-      
+
+
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-tag-get">
       <h2>bitbucket-cli tag get</h2>
       <p class="short">Show a single tag (commit hash &#43; date / message on Cloud)</p>
       <pre>bitbucket-cli tag get &lt;name&gt; [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -1184,14 +1214,14 @@ and removes the Skill from each one found.</p>
         <tr><td><code>--repo</code></td><td></td><td>&lt;workspace&gt;/&lt;repo&gt;</td></tr>
         </tbody>
       </table>
-      
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-tag-list">
       <h2>bitbucket-cli tag list</h2>
       <p class="short">List tags in a repository</p>
       <pre>bitbucket-cli tag list [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -1204,25 +1234,25 @@ and removes the Skill from each one found.</p>
         <tr><td><code>--sort</code></td><td></td><td>sort key</td></tr>
         </tbody>
       </table>
-      
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-user">
       <h2>bitbucket-cli user</h2>
       <p class="short">Discover Bitbucket users (workspace members on Cloud / global users on DC)</p>
       <pre>bitbucket-cli user</pre>
-      
-      
-      
+
+
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-user-get">
       <h2>bitbucket-cli user get</h2>
       <p class="short">Show details of a single user (UUID/account_id on Cloud; slug/username on DC)</p>
       <pre>bitbucket-cli user get &lt;selector&gt;</pre>
-      
-      
-      
+
+
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-user-list">
@@ -1247,33 +1277,33 @@ Use --query to filter by display-name substring.</p>
         <tr><td><code>--workspace</code></td><td></td><td>workspace slug (Cloud only; ignored on DC)</td></tr>
         </tbody>
       </table>
-      
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-user-me">
       <h2>bitbucket-cli user me</h2>
       <p class="short">Print the user the configured credentials authenticate as (alias for whoami)</p>
       <pre>bitbucket-cli user me</pre>
-      
-      
-      
+
+
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-version">
       <h2>bitbucket-cli version</h2>
       <p class="short">Print version information</p>
       <pre>bitbucket-cli version</pre>
-      
-      
-      
+
+
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-whoami">
       <h2>bitbucket-cli whoami</h2>
       <p class="short">Print the user the configured credentials authenticate as</p>
       <pre>bitbucket-cli whoami</pre>
-      
-      
+
+
       <h3>Examples</h3><pre>  bitbucket-cli whoami</pre>
     </section>
 
@@ -1281,18 +1311,18 @@ Use --query to filter by display-name substring.</p>
       <h2>bitbucket-cli workspace</h2>
       <p class="short">List and inspect Bitbucket workspaces (Cloud) / projects (DC)</p>
       <pre>bitbucket-cli workspace</pre>
-      
-      
-      
+
+
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-workspace-get">
       <h2>bitbucket-cli workspace get</h2>
       <p class="short">Show details of a single workspace / project</p>
       <pre>bitbucket-cli workspace get &lt;slug&gt;</pre>
-      
-      
-      
+
+
+
     </section>
 
     <section class="cmd" id="bitbucket-cli-workspace-list">
@@ -1313,7 +1343,7 @@ other command&#39;s --workspace flag expects.</p>
         <tr><td><code>--role</code></td><td></td><td>filter by role (Cloud only): owner | collaborator | member</td></tr>
         </tbody>
       </table>
-      
+
     </section>
 
   </main>

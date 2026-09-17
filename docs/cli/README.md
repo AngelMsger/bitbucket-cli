@@ -9,7 +9,8 @@ is published at <https://angelmsger.github.io/bitbucket-cli/cli/>.
 | Command | Description |
 | --- | --- |
 | [`bitbucket-cli auth`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-auth) | Inspect and manage stored credentials |
-| [`bitbucket-cli auth login`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-auth-login) | Store a credential for the configured server |
+| [`bitbucket-cli auth guide`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-auth-guide) | Show offline credential acquisition guidance for this service |
+| [`bitbucket-cli auth login`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-auth-login) | Verify and store personal credentials for the configured service |
 | [`bitbucket-cli auth logout`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-auth-logout) | Remove the stored credential for the configured server |
 | [`bitbucket-cli auth status`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-auth-status) | Show whether a usable credential is configured |
 
@@ -52,6 +53,7 @@ is published at <https://angelmsger.github.io/bitbucket-cli/cli/>.
 | [`bitbucket-cli config get-contexts`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-config-get-contexts) | List the configured contexts |
 | [`bitbucket-cli config init`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-config-init) | Interactively set up server URL and credentials |
 | [`bitbucket-cli config path`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-config-path) | Print the config file path |
+| [`bitbucket-cli config set-context`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-config-set-context) | Configure service presets without credentials or network access |
 | [`bitbucket-cli config show`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-config-show) | Show the resolved configuration |
 | [`bitbucket-cli config use-context`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-config-use-context) | Switch the current context |
 

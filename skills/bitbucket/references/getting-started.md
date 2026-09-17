@@ -84,3 +84,5 @@ to `~/.bitbucket/config.yaml`) supports named contexts, one per Bitbucket
 instance.
 Switch with `--use-context <name>` for one invocation, or rerun
 `config init --use-context <name>` to set up another.
+
+For preset team services, use `config set-context` and `auth guide` before personal login; see [team setup](team-setup.md).

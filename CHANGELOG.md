@@ -2,6 +2,25 @@
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-09-17
+
+### Added
+
+- Add offline `config set-context` with target-specific presets, explicit conflict
+  handling, activation, and dry-run; add `--auth-scheme`, `--credential-url`, and
+  matching environment variables.
+- Add `auth guide` with display-only credential pages, navigation fallbacks, and
+  product-aware guidance shared by login, setup wizards, and missing credentials.
+
+### Fixed
+
+- Persist the personal username and authentication scheme after login; verify
+  authentication and reject a mismatched service before storing credentials.
+- Preserve credential-page metadata and replace configuration files atomically.
+- Hide secret input in terminal prompts while retaining the plain setup pipe flow.
+- Preserve the default workspace through configuration read/modify/write.
+
+
 ## [0.19.1] - 2026-09-16
 
 ### Fixed
@@ -736,7 +755,8 @@ PR-centric MVP supporting Bitbucket Cloud (REST 2.0) and Data Center (REST
 subtrees; layered configuration with keychain-backed auth; structured error
 model; and an embedded companion Skill.
 
-[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.19.1...HEAD
+[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.20.0...HEAD
+[0.20.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.19.1...v0.20.0
 [0.19.1]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.19.0...v0.19.1
 [0.19.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.17.0...v0.18.0

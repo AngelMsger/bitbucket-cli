@@ -260,3 +260,82 @@ npx skills remove bitbucket            # if installed via the skills CLI
 
 `skill uninstall` takes the same `--agent` / `--project` / `--dir` flags as
 `skill install`; removing a Skill that is not installed is a no-op.
+
+## Team distribution and personal login
+
+Distribute service settings separately from each member's credentials. An installer
+can write a named context without a network connection or access to the keychain:
+
+```bash
+bitbucket-cli config set-context team \
+  --base-url https://service.example.com/deploy --flavor datacenter \
+  --auth-scheme pat --activate
+
+# The member completes personal authentication in a terminal.
+bitbucket-cli --use-context team auth guide
+bitbucket-cli --use-context team auth login
+```
+
+`config set-context <name>` resolves **flags > environment > `.env` > the named
+target context > defaults**. It ignores personal environment fields and secrets,
+including secret-based scheme inference. It never verifies connectivity, reads or
+writes the keychain, or changes another context's values or shared defaults.
+Existing usernames remain unchanged. The first context becomes current;
+subsequent calls change the current context only with `--activate`.
+
+Identical presets do not rewrite the file. Conflicting non-empty service fields
+return `CONFIG_CONTEXT_CONFLICT` with a `details` object containing each field's
+`before` and `after` values. Inspect those differences, then use `--overwrite`
+to update the supplied service fields, or use another context name. Unspecified
+fields are retained. `--dry-run` uses the same merge and conflict checks and
+returns the proposed changes without writing anything; use `--overwrite
+--dry-run` to preview a deliberate conflicting update.
+
+A launcher or CI environment can instead inject service settings on every run:
+
+```bash
+export BITBUCKET_SERVER=https://service.example.com/deploy
+export BITBUCKET_FLAVOR=datacenter
+export BITBUCKET_AUTH_SCHEME=pat
+# Optional: a verified page for the team's version or an internal setup guide.
+export BITBUCKET_CREDENTIAL_URL=https://help.example.com/bitbucket/credentials
+bitbucket-cli auth guide
+bitbucket-cli auth login
+```
+
+Exports must be sourced into the member's shell or injected by a launcher/CI;
+an executed child script cannot export values back into its parent shell.
+`--auth-scheme` and `--credential-url` override these variables. The optional
+page is persisted as `auth.credential_url` by `config set-context` and is
+**display-only**: the CLI never sends an API request or credential to it.
+Service paths such as `/deploy` are retained when deriving page links.
+
+`auth guide` works offline and emits `server`, `flavor` where applicable,
+`scheme`, `credential_url`, `source`, `instructions`, `documentation_url`, and
+`next_steps`. Sources are `flag`, `env`, `dotenv`, `file`, `builtin`, or `fallback`.
+There is no server-version probe; navigation instructions accompany version-
+dependent links.
+
+Data Center guidance uses the common `/plugins/servlet/access-tokens/manage` page, with
+avatar → Manage account → HTTP access tokens as the version-independent navigation
+fallback. Cloud personal login uses basic auth with an Atlassian account email and an
+API token with Bitbucket scopes; resource access tokens use `pat`. The guide does not
+verify token scopes or server capabilities.
+
+`auth login` reuses the resolved service, shows the same guide on stderr, asks
+only for the missing username and the secret, and verifies authentication before
+saving. It saves the username/scheme in the config and the secret in the existing
+secure store; an environment-only service becomes a default context if none
+exists. A later process can resolve that identity without another username
+prompt. A different full service URL (including deployment path) in the selected
+context fails with `CONTEXT_BASE_URL_MISMATCH` before storing a credential.
+
+`CREDENTIAL_SAVE_FAILED` means validation succeeded but storage failed.
+`LOGIN_CONFIG_WRITE_FAILED` means the credential was stored but its config
+identity could not be recorded; its details preserve the server/context/scheme
+and `credential_stored: true`. Fix file access and run `auth login` again.
+Configuration files are replaced atomically. Normal credential environment
+variables remain transient and are never copied by `config set-context`.
+Non-interactive users supply credentials through the documented environment
+variables rather than piping secrets into `auth login`. `config init` retains its
+edit/add/replace flow and now uses target-specific presets and the same guide.
