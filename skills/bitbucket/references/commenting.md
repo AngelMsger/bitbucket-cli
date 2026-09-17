@@ -3,17 +3,22 @@
 The `comment` subtree writes pull-request comments. All commands target a PR
 identified by `--pr <workspace>/<repo>/<id>` or a PR URL.
 
-## General comments
+## Choose the comment type
+
+For PR review, apply the [publication rules](reviewing-locally.md#decide-what-to-publish)
+first. Use an inline comment for a new finding, a reply for new evidence on an
+existing issue, and a PR-level comment only for a finding without a reasonable
+code anchor or an overall summary the user explicitly asked to publish.
+
+For an authorized PR-level comment, read the prepared body from a file:
 
 ```sh
-bitbucket-cli comment add --pr myws/myrepo/42 --content "LGTM 🎉"
-```
-
-Or read the body from a file:
-
-```sh
+bitbucket-cli comment add --pr myws/myrepo/42 --content-file review.md --dry-run
 bitbucket-cli comment add --pr myws/myrepo/42 --content-file review.md
 ```
+
+The examples below illustrate syntax; they are not instructions to publish at
+the end of every review. Include AI attribution on agent-written bodies.
 
 ## Multi-line bodies (newlines)
 
@@ -55,17 +60,16 @@ was the bug.
 ```sh
 bitbucket-cli comment add --pr myws/myrepo/42 \
   --inline src/server.go:142 \
-  --content "[[AI]](https://angelmsger.github.io/bitbucket-cli/) 这里的分配可以提到循环外。"
+  --content "[[AI]](https://angelmsger.github.io/bitbucket-cli/) An empty request reaches items[0] and panics; handle empty input before indexing."
 ```
 
 That renders as a clickable **[AI]** (brackets visible) followed by the note. (If any
 Bitbucket instance mangles the doubled form, the escaped equivalent `[\[AI\]](url)`
 renders the same `[AI]`.)
 
-So a review note that would have read `XXX 有 YYY 问题` becomes
-`[[AI]](https://angelmsger.github.io/bitbucket-cli/) XXX 有 YYY 问题`. Write the note
-itself in the **user's language**; keep the `[AI]` label and the URL constant. This is
-skill-level guidance for agents, not a fixed CLI behaviour.
+Write the note in the **user's language**; keep the `[AI]` label and URL
+constant. Human-written text is posted verbatim without the marker. Attribution
+is Skill guidance for agents, not a fixed CLI behavior.
 
 ## Inline (line-anchored) comments
 
@@ -78,7 +82,7 @@ bare number anchored to the wrong counter lands the comment on the wrong line.
 ```sh
 bitbucket-cli comment add --pr myws/myrepo/42 \
   --inline src/server.go:142 \
-  --content "Can we hoist this allocation out of the loop?"
+  --content "[[AI]](https://angelmsger.github.io/bitbucket-cli/) An empty request reaches items[0] and panics; handle empty input before indexing."
 ```
 
 **Get the number right — read it, don't count it.** Use the line-numbered diff and
@@ -89,9 +93,9 @@ side), followed by the original diff line:
 ```sh
 bitbucket-cli pr diff myws/myrepo/42 --path src/server.go --line-numbers
 #    old    new   (the diff line follows, with its +/-/space prefix intact)
-   141    141  	ctx := r.Context()
-          142 +	buf := make([]byte, 0, 1024)     ← new-file line 142 (an added line)
-   141    142  	return handler(ctx)
+   141    141  	items := req.Items
+          142 +	first := items[0]     ← new-file line 142 (an added line)
+   142    143  	return handler(first)
 ```
 
 Or skip the gutter entirely and ask for the commentable lines directly — this lists,
@@ -119,14 +123,15 @@ The CLI then **resolves the anchor against that file's diff** and validates it:
 different responses:
 
 - `INLINE_LINE_NOT_IN_DIFF` with a non-empty `commentable … lines:` range — you used
-  the wrong number. Pick one from the listed range and retry.
+  the wrong number. Re-read the diff and choose a relevant line in the range;
+  do not select an unrelated line merely because it is accepted.
 - `DIFF_PARSE_FAILED`, or `INLINE_LINE_NOT_IN_DIFF` whose hint says *no … lines are
   part of the diff* for a file you can plainly see changed — this is a CLI/server
   format incompatibility, **not** a bad number, and retrying other anchors will not
-  help. Fall back to a general comment that names the location in its body, e.g.
-  `comment add --pr … --content "src/server.go:900 — this allocation can be hoisted"`.
-  Don't switch styles mid-review: if one file forces the fallback, it's fine to keep
-  inline anchors on the files that accept them.
+  help. Report the posting limitation to the user and retain the finding with
+  its intended `path:line`. A tooling failure does not make a code-specific
+  finding PR-wide; do not automatically turn it into a general comment. Apply
+  the publication rules above before choosing another destination.
 
 Before posting several inline comments, you can validate every anchor first by adding
 `--dry-run` to each `comment add` — it resolves the anchor against the diff without
@@ -138,7 +143,7 @@ it on the old (left) side with `--side old` and the **old**-gutter number:
 ```sh
 bitbucket-cli comment add --pr myws/myrepo/42 \
   --inline src/legacy.go:88 --side old \
-  --content "This deletion drops the retry — intended?"
+  --content "[[AI]](https://angelmsger.github.io/bitbucket-cli/) Removing this retry makes transient connection resets abort the upload; retain retry handling."
 ```
 
 `--side` defaults to `new`; you only set `old` for a line that exists solely on the
@@ -151,10 +156,11 @@ payload.)
 ```sh
 bitbucket-cli comment add --pr myws/myrepo/42 \
   --reply-to 9876 \
-  --content "Yep, opening a follow-up PR."
+  --content "[[AI]](https://angelmsger.github.io/bitbucket-cli/) New evidence: the empty-input test reproduces the same panic through the batch endpoint."
 ```
 
-**Check who you are replying to first.** If comment `9876` was written by a person,
+**Check who you are replying to first.** If comment `9876` or the message you
+are answering in that thread was written by a person,
 the reply belongs to the human whose name it will carry: draft it, show them the
 reviewer's point and your reasoning, and post only that reply once they approve it.
 Threads opened by a bot or another agent (recognizable by the `[[AI]](…)` marker or

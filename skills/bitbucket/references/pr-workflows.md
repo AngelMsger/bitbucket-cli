@@ -33,8 +33,8 @@ The PR record itself comes from `pr get <ref> --scope summary|full` (`full`
 adds the description and reviewer detail); `--scope diff|commits|activity`
 mirror the standalone `pr diff`/`pr commits`/`pr activity` subcommands.
 
-See `reviewing-locally.md` for the end-to-end review decision tree (combines
-diffstat-first navigation with a local clone).
+For code review, follow [Reviewing a pull request](reviewing-locally.md),
+including its publication rules and checkout preflight.
 
 ## Collecting review activity for a worklog
 

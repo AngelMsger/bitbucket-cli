@@ -1,7 +1,7 @@
 ---
 name: bitbucket
-version: 0.14.2
-description: "Use Bitbucket as a code-hosting backend for coding agents. Browse repositories and source files at any ref, create PRs and write concise descriptions, drive review and merge workflows, see per-file diffs and diffstats, check mergeability and CI build status, fetch a PR into a local git checkout, post inline review comments, resolve or reopen comment threads, triage and respond to received review comments, and preview every write with --dry-run or lock the session with read-only mode. Supports Bitbucket Cloud and Data Center / Server. Use when the user mentions Bitbucket, a PR or pull-request URL or ID, creating a PR or editing its description, repository browsing, file content at a ref, code review, responding to or addressing PR review comments, resolving a comment thread or task, approve/decline/merge a PR, asks to read a diff, or wants a dry-run / read-only / safe-mode session."
+version: 0.14.3
+description: "Work with Bitbucket Cloud and Data Center / Server: browse repositories and source, create or update pull requests, review diffs, address review feedback, and manage comments or PR state. Use for Bitbucket repository or PR URLs, code review, inline findings, review threads, approvals, merges, and CLI dry-run or read-only workflows."
 metadata:
   requires:
     bins: ["bitbucket-cli"]
@@ -10,10 +10,9 @@ metadata:
 
 # Bitbucket
 
-`bitbucket-cli` drives Bitbucket from the terminal. It reads repositories,
-walks the full pull-request lifecycle (list → get → diff → comment → approve →
-merge), and posts inline review comments. It supports Bitbucket Cloud and
-Data Center / Server behind one flavor-agnostic command tree.
+`bitbucket-cli` reads repositories and manages pull requests on Bitbucket Cloud
+and Data Center / Server through one command tree. Select the workflow that
+matches the user's request; reviewing a PR does not imply commenting or merging.
 
 ## When to use
 
@@ -47,19 +46,15 @@ TTY — agents should never pass it.
   Keep routine check results out of the description. For preparation and command
   details, see [Creating](references/pr-workflows.md#creating) and
   [Updating descriptions](references/pr-workflows.md#updating-descriptions).
-- **Review a PR (with local codebase)** — before using local files, verify that
-  the checkout belongs to the PR repo and record its branch, HEAD, and dirty
-  state; never assume the current worktree is the PR source. Start with `pr status`
-  (mergeable + CI), then `pr files` (diffstat) to budget context, then use
-  `pr diff --path <p>` per file (or `pr fetch --exec` to fetch the PR source and
-  base locally). Treat the fetched `source_ref` and `review_diff` as
-  authoritative; read worktree files only after verifying that HEAD matches the
-  source ref and the tree is clean. Finish with `pr threads` to see discussions,
-  `comment add --inline` to reply, and `pr approve` / `pr merge`. If missing
-  intent or background genuinely blocks the review, post a clarifying comment
-  to the author and defer just the blocked items until they reply. See
-  `references/reviewing-locally.md` for the full decision tree and the
-  "ask the author" protocol.
+- **Review a PR** — read [Reviewing a pull request](references/reviewing-locally.md).
+  Reuse the known PR, inspect intent, changed files and existing threads, and
+  verify local repository and source/base alignment before using worktree files.
+  Default to new, actionable, high-confidence findings; reply to an existing
+  issue only with new evidence. Keep completion records, passing summaries,
+  test procedures and environment limits in the user report. Use PR-level
+  comments only when a finding cannot reasonably be anchored to code or the
+  user explicitly requests an overall summary. A completed review may leave
+  no comments; PR state changes require their own authorization.
 - **Respond to received review comments** — when the user is the PR *author*
   addressing feedback. Usually they hand you a specific PR (ref or URL) — list its
   open threads with `pr threads <ref> --unresolved`, or target a single thread the
@@ -84,7 +79,9 @@ TTY — agents should never pass it.
   `--all` on Data Center). See `references/pr-workflows.md`.
 - **Browse source at any ref** — `bitbucket-cli file list/get/tree` reads
   directories and files at a branch, tag or commit. See `references/files.md`.
-- **Comment** — `bitbucket-cli comment add --pr <ws>/<repo>/<id> --content "<text>"`,
+- **Comment** — for review feedback, apply the
+  [publication rules](references/reviewing-locally.md#decide-what-to-publish) first.
+  `bitbucket-cli comment add --pr <ws>/<repo>/<id> --content "<text>"`,
   add `--inline <path>:<line>` for inline review comments. Resolve or reopen a
   thread with `comment resolve <id> --pr <ref>` (`--unresolve` to reopen); on
   Data Center this also completes/reopens a task.
@@ -160,7 +157,7 @@ Every write above accepts `--dry-run`; see `references/safety-modes.md`.
   either select the containing object for normal jq access or read the flat key
   as `.["repository.workspace"]`. Inspect `.items[0]` before composing a
   longer pipeline.
-- **Skill handshake — set `BITBUCKET_CLI_SKILL=0.14.2`.** Once you have loaded
+- **Skill handshake — set `BITBUCKET_CLI_SKILL=0.14.3`.** Once you have loaded
   this Skill, export that exact value in the environment used to run the CLI.
   The CLI compares it with the embedded Skill version and emits a structured
   stderr notice when the Skill is missing, old, or uses the legacy unversioned
@@ -187,25 +184,15 @@ Every write above accepts `--dry-run`; see `references/safety-modes.md`.
 
 See the topic references in `references/` for details and decision trees.
 
-## Replying to people, not to bots
+## Replying to people
 
-Review is where a team exchanges reasoning. When you answer a human reviewer's
-comment on the author's behalf, both sides lose that exchange — so **help the
-author answer, do not answer for them.**
-
-- **Classify the thread's root author first** — the `[[AI]](…)` marker in the body,
-  or an app/bot `author.type`, means a machine wrote it. Anything else is a person.
-- **For a human-authored thread:** state the reason once per session, then go one
-  thread at a time — quote the reviewer's point, show the code, give your reasoning,
-  and hand over a labeled *draft* for the author to approve or rewrite. One approval
-  covers one thread. If the author knowingly asks for bulk replies anyway, comply and
-  keep the `[AI]` marker on every one.
-- **Never on your own:** `comment resolve` a person's thread, fan `comment add
-  --reply-to` across threads in one pass, or push code fixes.
-- **Bot or agent counterparts** (linters, CI reporters, another agent's review) do
-  not need the per-thread gate — confirm the first write and keep attribution.
-
-Full protocol: `references/replying-to-people.md`.
+Before replying, read [Replying to people](references/replying-to-people.md).
+Classify both the root author and the message being answered; treat uncertain
+authorship as human. For a human reply, show the point, reasoning and concrete
+draft for per-item approval, explain why once per session, and reuse approval
+already given for that reply. Bot or agent replies use existing authorization.
+Keep AI attribution on agent-written replies and do not resolve human threads
+or push fixes without authorization.
 
 ## AI attribution (agent writes)
 
@@ -221,7 +208,7 @@ renders a plain `AI`):
 
 ```sh
 bitbucket-cli comment add --pr myws/myrepo/42 \
-  --content "[[AI]](https://angelmsger.github.io/bitbucket-cli/) XXX 有 YYY 问题。"
+  --content "[[AI]](https://angelmsger.github.io/bitbucket-cli/) An empty request reaches items[0] and panics; handle empty input before indexing."
 ```
 
 When the human writes or rewrites the text themselves, post it verbatim **without**

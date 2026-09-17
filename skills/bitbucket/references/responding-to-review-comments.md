@@ -21,22 +21,18 @@ point at one comment ("reply to this comment"). That is the primary path:
 - **No PR in hand** → discover via the inbox: `pr inbox --role author` lists the
   user's open PRs; pick one and continue with its ref.
 
-## Default posture: recommend & draft, then confirm
+## Scope and authorization
 
-By default this workflow is **read-only analysis**. The agent reads the PR and
-produces a triage report plus draft replies, but does **not** post anything,
-push code, or change PR state until the human confirms. Preview every write with
-`--dry-run` first, and respect `BITBUCKET_CLI_READ_ONLY` when the user asks for a
-locked session. See `safety-modes.md`.
+For a request to assess feedback, produce a triage report and useful draft
+replies. Apply fixes or publish replies when the user's request authorizes them;
+reuse that authorization rather than asking again after a dry run. Permission
+to reply does not itself authorize a push or a PR state change.
 
-**Who wrote the comment decides how strict that confirmation is.** A thread whose
-root comment a person wrote is half of a conversation, and the author is the one
-who has to hold up their end: they read the reviewer's point, they form a view,
-they own the words posted under their name. So for human-authored threads, confirm
-**per thread** — one approval does not carry to the next — and say why once at the
-start of the session, not on every thread. Threads opened by a bot or another agent
-take the lighter path. Classify first, then apply the gate:
-`replying-to-people.md` is the full protocol and this workflow assumes it.
+Before replying, apply [Replying to people](replying-to-people.md): classify the
+root and the message being answered, show human feedback with your reasoning
+and concrete draft, and obtain per-item approval. Explain the reason once per
+session. Bot or agent replies use existing authorization. Preview writes and
+respect [read-only mode](safety-modes.md).
 
 ## The decision tree
 
@@ -44,13 +40,13 @@ take the lighter path. Classify first, then apply the gate:
 PR ref / PR URL  (have one already)        pr inbox --role author  (don't)
     └──────────────────┬───────────────────────────┘
                        ▼
-pr get --scope summary   ─ title + description (the PR's intent)
+pr get --scope full      ─ title + description (the PR's intent)
 pr commits / pr status   ─ what shipped, is it mergeable / CI green?
     │
     ▼
 pr threads --unresolved              ─ all open threads on the PR
 pr threads --comment <id>            ─ OR just the one thread the user named
-    │                                  (skips resolved threads; see commenting.md)
+    │                                  (a targeted read can include a resolved thread)
     │
     ▼
 Local codebase present?  ─ preflight: right repo, branch/HEAD known, clean?
@@ -62,12 +58,12 @@ Local codebase present?  ─ preflight: right repo, branch/HEAD known, clean?
               (offer to clone if the user wants local verification)
     │
     ▼
-For each open thread: apply the checklist (below) → draft a reply
+For each open thread: assess → act or draft a reply when useful
     │
     ▼
 Emit a triage report (table)
     │
-    ▼  (only after the human confirms)
+    ▼  (within authorization and the human-reply gate)
 comment add --reply-to <id> --dry-run   ─ preview, then post
 <apply code fixes on the local checkout for the human to review/push>
 ```
@@ -98,8 +94,8 @@ clone is opportunistic but strongly encouraged.
 For each open thread, read the anchored code (local Read/Grep when available,
 else `pr diff --path <file>` mapping the inline `line` to its hunk), then:
 
-0. **Identify who wrote it** — check the root comment for the `[[AI]](…)` marker
-   and look at `author.type` / `author.display_name`. Marker or bot account →
+0. **Identify who wrote it** — check the root and the message being answered
+   for the `[[AI]](…)` marker and author metadata. Marker or bot account →
    AI-authored; anything you cannot classify → treat it as a person. This decides
    which confirmation gate applies (`replying-to-people.md`).
 1. **Understand / reproduce** the concern before judging — *run it locally if a
@@ -114,7 +110,11 @@ else `pr diff --path <file>` mapping the inline `line` to its hunk), then:
 5. **Define a verification step**: prefer an executable check (a test, a build, a
    repro) on the local checkout; fall back to a described manual check when
    remote-only.
-6. **Draft a concise reply** that cites the diff line and states the outcome
+6. **Draft a concise reply when there is something new to communicate**, such as
+   a fix, new evidence, or an answer the user requested. Leave already-covered
+   issues without new evidence alone; follow the
+   [publication rules](reviewing-locally.md#decide-what-to-publish). Cite the diff
+   line and state the outcome
    (e.g. "Fixed in <commit> — added a test covering the empty-input case.").
 
 ## Emit a triage report
@@ -129,7 +129,7 @@ Summarize before writing anything back. A compact table the human can scan:
 The **Author** column tells the human which threads they need to answer themselves
 and which ones you can close out with a lighter touch.
 
-## Writing back (only after confirmation)
+## Writing back
 
 For a human-authored thread, "confirmation" means the author saw the reviewer's
 point in the reviewer's own words, saw your reasoning, and approved *that* reply —

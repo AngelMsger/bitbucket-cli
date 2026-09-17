@@ -1,95 +1,57 @@
-# Replying to people, not to bots
+# Replying to people
 
-A review comment written by a person is one half of a conversation. When an agent
-answers it on the author's behalf, both halves stop being a conversation: the
-author never engages with feedback they did not read, and the reviewer gets an
-answer nobody stands behind. Review is where a team exchanges reasoning — that is
-most of its value, and it is the part an agent can destroy without anyone
-noticing.
+A reply appears under the user's name. Help them understand the other person's
+point and decide what to say. Apply this protocol when responding to received
+feedback or continuing a discussion while reviewing someone else's PR.
 
-So the rule is not "never reply". It is: **help the author answer, do not answer
-for them.** Do the analysis, do the verification, draft the words — then hand the
-draft back and let the person decide what goes out under their name.
+## Classify the counterpart
 
-This gate applies to human-authored threads only. Replying to a bot linter or to
-another agent's review is a different situation; see "AI-authored counterparts"
-below.
+Use the author and body returned by `pr threads <ref>` or `comment list --pr
+<ref>`. Check both the root comment and the message being answered: a thread
+started by an agent may contain a human response.
 
-## Classify the counterpart before you draft
+- The `[[AI]](https://angelmsger.github.io/bitbucket-cli/)` attribution marker
+  identifies agent-written text.
+- An app/bot author type or a known automation account identifies automation.
+- Treat uncertain authorship as human. Do not infer automation from an account
+  name alone unless its role is known.
 
-`pr threads <ref>` and `comment list --pr <ref>` already return everything you
-need — you do not need an extra call. For each thread, look at its **root**
-comment:
+## Human replies
 
-- Body starts with the `[[AI]](https://angelmsger.github.io/bitbucket-cli/)`
-  attribution marker → **AI-authored**. Every agent driving this CLI is required
-  to add it (see `commenting.md` › "AI attribution").
-- `author.type` names an app / bot account, or `author.display_name` is a
-  recognizable automation (a linter, a CI reporter, a security scanner) →
-  **automation**.
-- Anything else → **treat it as human.**
+Explain once per session that the reply is posted under the user's name and
+that their colleague expects their own judgment. For each proposed reply, show:
 
-Never resolve the ambiguity in the permissive direction. An unmarked comment from
-an account you cannot classify is a person until proven otherwise. Carry the
-classification into the triage report so the author can see it too.
+- the person's point in their own words and the relevant code;
+- your assessment and decisive evidence;
+- any proposed change and verification relevant to that point;
+- the concrete reply, clearly labeled as a draft.
 
-## The gate for human-authored threads
+Obtain approval for that specific reply and reuse it once given. Do not treat
+approval of one reply as permission for other threads. If the user explicitly
+chooses bulk replies after the explanation, honor that scope. Post user-written
+or rewritten text verbatim without the AI marker; an approved agent draft still
+needs attribution.
 
-**Say why, once.** Before the first reply of a session, tell the author plainly
-what is about to happen and why they should read the feedback themselves: the
-reply will be posted under their name, the reviewer is a colleague expecting a
-colleague's answer, and the understanding they get from working through the
-comment is the point of the review. Say it **once per session** — a reminder that
-repeats on every thread stops being read and becomes a thing to click past.
+Do not resolve a human's thread without authorization: resolution asserts that
+the concern is handled and also completes the associated task on Data Center.
+Code fixes and pushes follow the user's requested scope; permission to reply
+does not itself authorize pushing code.
 
-**Then work one thread at a time.** For each human-authored thread, present:
+## Bot and agent replies
 
-- the reviewer's point **in their own words** (quote it, don't summarize it away);
-- the anchored code, so the author can see what is actually being discussed;
-- your assessment — agree or disagree, **and the reasoning**, not just a verdict;
-- the change you propose and how you verified it;
-- the draft reply, clearly labeled a draft.
+Replies to automation do not need per-item human approval. Continue within
+existing authorization, keep AI attribution, and report material decisions to
+the user. Do not send acknowledgments or repeat an issue merely because a bot
+thread permits a reply.
 
-Then ask for a go-ahead on **that thread**, and invite the author to correct or
-rewrite the draft. If they rewrite it, post their text verbatim and **drop the
-`[AI]` marker** — they authored it, and the marker is only for agent-driven
-writes.
+## Publication and write safety
 
-**One approval covers one thread.** Do not carry a blanket "yes, go ahead" across
-several human-authored threads. If the author explicitly asks for exactly that
-after the reminder, do it — they have made an informed call, and it is theirs to
-make — but keep the `[AI]` marker on every reply you post, so the reviewer can
-see what they are talking to.
+Apply the [review publication rules](reviewing-locally.md#decide-what-to-publish):
+an existing issue gets a reply only when there is new evidence or the user
+explicitly requests a response. New evidence belongs in the original thread,
+including when it was resolved; reopening it is a separate action.
 
-## What you do not do on your own
-
-- **Do not resolve a human's thread.** `comment resolve <id> --pr <ref>` asserts
-  "I agree, and this is handled" under the author's name, and on Data Center it
-  also completes the associated task. That claim is the author's to make. Propose
-  it, let them confirm — and if they disagree with the reviewer, the thread stays
-  open for the reviewer to answer.
-- **Do not batch replies.** Never fan `comment add --reply-to` across several
-  threads in one pass, and never build a reply list from a single instruction like
-  "answer all the comments". Batch mode exists for approvals and deletes, not for
-  conversations.
-- **Do not push code fixes.** Apply them on the local checkout and let the author
-  review and push, as in `responding-to-review-comments.md`.
-
-## AI-authored counterparts
-
-When the root comment is AI-authored or automation — a bot linter, a CI reporter,
-another agent's review — the per-thread ritual is unnecessary; nobody is being
-answered in a person's place. Still:
-
-- confirm before the first write of the session, as with any mutation;
-- keep the `[AI]` attribution on what you post;
-- surface anything the author should know rather than quietly closing it out — a
-  finding you judged wrong, a rule you are suppressing, a fix you applied. A bot
-  can be wrong too, and the author still owns the outcome.
-
-## This composes with the existing gates
-
-The confirmation gate is about *who is being answered*. It sits on top of, not
-instead of, `--dry-run` and read-only mode — preview the write, respect
-`BITBUCKET_CLI_READ_ONLY`, and see `safety-modes.md`. In a read-only session you
-cannot post at all: give the author the draft and let them post it themselves.
+Preview writes and respect [read-only mode](safety-modes.md). A dry run checks
+the target and payload; it does not require a second approval for an already
+approved reply. Reconcile an uncertain write by reading the thread before
+retrying so the same reply is not posted twice.

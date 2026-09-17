@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+## [0.20.1] - 2026-09-17
+
+### Skill
+
+- Streamline PR review guidance around verified changes and existing discussion.
+  Publish only new, actionable, high-confidence findings by default; add new
+  evidence to the original thread and keep routine review reports with the user.
+  Reserve PR-level comments for findings without a reasonable code anchor or
+  explicitly requested summaries; completing a review need not leave a comment.
+  Bump the companion Skill to `0.14.3`.
+
 ## [0.20.0] - 2026-09-17
 
 ### Added
@@ -755,7 +766,8 @@ PR-centric MVP supporting Bitbucket Cloud (REST 2.0) and Data Center (REST
 subtrees; layered configuration with keychain-backed auth; structured error
 model; and an embedded companion Skill.
 
-[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.20.0...HEAD
+[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.20.1...HEAD
+[0.20.1]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.20.0...v0.20.1
 [0.20.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.19.1...v0.20.0
 [0.19.1]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.19.0...v0.19.1
 [0.19.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.18.0...v0.19.0

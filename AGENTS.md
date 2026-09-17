@@ -34,6 +34,10 @@ up front.
   [Writing PR descriptions](skills/bitbucket/references/writing-pr-descriptions.md).
   Link to that source from creation and update workflows; keep repository checks
   in the creation workflow rather than adding routine results to descriptions.
+- Keep PR review publication rules in
+  [Reviewing a pull request](skills/bitbucket/references/reviewing-locally.md#decide-what-to-publish).
+  Route review and commenting workflows there; examples must not imply that
+  completing a review requires a comment, approval, or merge.
 - Never commit `.env`, credentials, tokens, or build artifacts.
 
 ## Cloud / Data Center parity — touch both branches, always
