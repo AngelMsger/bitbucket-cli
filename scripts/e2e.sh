@@ -11,6 +11,13 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 ROOT="$(pwd)"
 BIN="$ROOT/bin/bitbucket-cli"
+# Read the Skill version from the embedded SKILL.md so bumping it does not
+# silently stale the handshake assertions below.
+SKILL_VERSION="$(sed -n 's/^version: *//p' "$ROOT/skills/bitbucket/SKILL.md" | head -1)"
+if [ -z "$SKILL_VERSION" ]; then
+  echo "could not read version: from skills/bitbucket/SKILL.md" >&2
+  exit 1
+fi
 
 PASS=0
 FAIL=0
@@ -241,7 +248,7 @@ SKILL_HOME="$(mktemp -d)"
 assert_contains  "skill install for Codex"    '"alignment": "current"' \
                                              env HOME="$SKILL_HOME" "${CLI[@]}" skill install --agent codex
 assert_contains  "skill status version aligned" '"loaded_status": "current"' \
-                                             env HOME="$SKILL_HOME" BITBUCKET_CLI_SKILL=0.14.3 "${CLI[@]}" skill status
+                                             env HOME="$SKILL_HOME" BITBUCKET_CLI_SKILL="$SKILL_VERSION" "${CLI[@]}" skill status
 assert_err_contains "legacy Skill handshake is detected" '"status":"unknown"' \
                                              env HOME="$SKILL_HOME" BITBUCKET_CLI_SKILL=1 BITBUCKET_CLI_NO_UPDATE_NOTIFIER=1 "${CLI[@]}" pr get PROJ/demo/1
 assert_exit      "missing PR -> 6"           6                "${CLI[@]}" pr get PROJ/demo/404
@@ -252,7 +259,7 @@ assert_exit      "pr merge needs --yes -> 2" 2                "${CLI[@]}" pr mer
 assert_err_contains "update notice survives a failed command" '"update"' \
                                              "${CLI[@]}" pr merge PROJ/demo/1 </dev/null
 assert_err_contains "update notice includes Skill refresh" '"next_steps"' \
-                                             env BITBUCKET_CLI_SKILL=0.14.3 "${CLI[@]}" pr merge PROJ/demo/1 </dev/null
+                                             env BITBUCKET_CLI_SKILL="$SKILL_VERSION" "${CLI[@]}" pr merge PROJ/demo/1 </dev/null
 
 # --dry-run additions for v0.3 (every mutating command must accept --dry-run).
 assert_contains  "pr update --dry-run"       '"method": "PUT"' \
