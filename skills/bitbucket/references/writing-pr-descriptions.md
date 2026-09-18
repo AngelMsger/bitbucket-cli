@@ -17,12 +17,70 @@ After the existing [AI attribution line](pr-workflows.md#ai-attribution), use:
    a non-obvious tradeoff, boundary condition, compatibility change, or migration
    requirement. Say what deserves attention and why; include a code location
    when it helps the reviewer find the decision.
+3. **A change outline, only when the shape is hard to see.** One compact
+   structural sketch when a reviewer would otherwise have to reconstruct the
+   design by opening several files — see [Change outline](#change-outline).
 
 A small change can be just the opening paragraph. Expand complex changes only
 as needed to explain their effects. There is no minimum word count and no set
 of sections to fill. Do not add a validation section, test results, command
 logs, or a routine "all checks passed" sentence by default. Checks belong to the
-[creation workflow](pr-workflows.md#before-opening-the-pr).
+[creation workflow](pr-workflows.md#run-the-repositorys-checks).
+
+## Change outline
+
+Prose explains *why*; a sketch explains *shape*. When a change moves
+responsibilities between files, alters a schema or an API contract, or reroutes
+control flow, a few lines of structure carry more than a paragraph describing
+them — and far less than the file-by-file inventory this guide otherwise
+forbids.
+
+**Use one when, and only when, the shape is the hard part.** A single-file fix,
+a copy change, or a dependency bump never needs one; the opening paragraph
+already says everything. Add an outline for a change whose parts a reviewer must
+hold together at once. Pick the one view that answers the reviewer's real
+question and stop — two views are the practical ceiling, and an outline longer
+than the paragraph above it has stopped helping.
+
+Useful views, in whatever order tells the story:
+
+- A **shallow file tree** with responsibilities, for a move or a split.
+- A **call, control-flow or data-flow tree**, for a reroute.
+- A **schema or endpoint contract**, for a storage or API change.
+- **Pseudocode** of the changed rule, for logic a diff obscures.
+- A **key type or data structure**, when it anchors the rest.
+
+Use a `diff` block when the surrounding shape already exists and the point is
+what changed; show the complete target shape when most of it is new or when
+diff markers would hide ownership and order. Sketches are illustrative — keep
+identifiers exact, but do not paste real diff hunks. The reviewer has the diff.
+
+### Example
+
+````markdown
+Pagination was decoded separately in each endpoint, so a cursor fix had to be
+repeated four times and one endpoint kept skipping records. Move cursor decoding
+into a single helper that every endpoint calls.
+
+**Change outline**
+
+```diff
+ internal/api/
+-├── repos.go        # decodes its own cursor
+-├── prs.go          # decodes its own cursor
+-└── comments.go     # decodes its own cursor
++├── paging/
++│   └── cursor.go   # owns cursor decoding for every endpoint
++├── repos.go
++├── prs.go
++└── comments.go
+```
+
+**Review focus**
+
+- The helper treats an empty intermediate page as "continue" rather than "end".
+  Check that against the endpoint that previously stopped early.
+````
 
 ## Write for the reviewer
 
@@ -33,7 +91,9 @@ logs, or a routine "all checks passed" sentence by default. Checks belong to the
   important tradeoff.
 - **Do not narrate the diff.** Avoid file-by-file inventories, lists of function
   names, and call-chain tours. Include implementation details only when they
-  explain the behavior or guide a review decision.
+  explain the behavior or guide a review decision. A
+  [change outline](#change-outline) is not an exception to this: it shows the
+  resulting structure, not a walk through the changes.
 - **Make review guidance specific.** "Check correctness" applies to every PR.
   Name the actual boundary or choice instead. If there is no special review
   focus, omit the section rather than writing "None".
@@ -120,4 +180,5 @@ Read the body as a colleague unfamiliar with the work. Can they tell why the
 change matters and what changes without reconstructing the diff? Does each
 review bullet identify a real decision or boundary? Remove repetitions and
 routine check reports, retain material compatibility effects, and verify that
-the text describes the final change rather than an earlier iteration.
+the text describes the final change rather than an earlier iteration. If a
+change outline restates what the paragraph already said, delete the outline.

@@ -1,6 +1,6 @@
 ---
 name: bitbucket
-version: 0.14.3
+version: 0.15.0
 description: "Work with Bitbucket Cloud and Data Center / Server: browse repositories and source, create or update pull requests, review diffs, address review feedback, and manage comments or PR state. Use for Bitbucket repository or PR URLs, code review, inline findings, review threads, approvals, merges, and CLI dry-run or read-only workflows."
 metadata:
   requires:
@@ -40,11 +40,15 @@ TTY — agents should never pass it.
 
 ## Core workflows
 
-- **Create a PR or update its description** — before drafting, read
-  [Writing PR descriptions](references/writing-pr-descriptions.md). Lead with
-  the problem and resulting behavior; add review guidance only where it helps.
-  Keep routine check results out of the description. For preparation and command
-  details, see [Creating](references/pr-workflows.md#creating) and
+- **Create a PR or update its description** — settle the target first: repo from
+  the git remote, source from the current branch, `pr list --source <branch>` to
+  catch an existing PR (a hit makes this an update, not a create), branch pushed.
+  Read the diffstat before the diff. Then draft per
+  [Writing PR descriptions](references/writing-pr-descriptions.md) — lead with the
+  problem and resulting behavior, add review guidance only where it helps, and add
+  a compact change outline only when the shape is hard to see from the diff. Keep
+  routine check results out of the description. Full sequence:
+  [Creating](references/pr-workflows.md#creating),
   [Updating descriptions](references/pr-workflows.md#updating-descriptions).
 - **Review a PR** — read [Reviewing a pull request](references/reviewing-locally.md).
   Reuse the known PR, inspect intent, changed files and existing threads, and
@@ -157,7 +161,7 @@ Every write above accepts `--dry-run`; see `references/safety-modes.md`.
   either select the containing object for normal jq access or read the flat key
   as `.["repository.workspace"]`. Inspect `.items[0]` before composing a
   longer pipeline.
-- **Skill handshake — set `BITBUCKET_CLI_SKILL=0.14.3`.** Once you have loaded
+- **Skill handshake — set `BITBUCKET_CLI_SKILL=0.15.0`.** Once you have loaded
   this Skill, export that exact value in the environment used to run the CLI.
   The CLI compares it with the embedded Skill version and emits a structured
   stderr notice when the Skill is missing, old, or uses the legacy unversioned

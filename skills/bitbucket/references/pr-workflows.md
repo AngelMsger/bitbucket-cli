@@ -113,7 +113,49 @@ results for another user as partial coverage.
 Before drafting, read [Writing PR descriptions](writing-pr-descriptions.md).
 Use the final changes and the target repository's conventions to write the body.
 
-### Before opening the PR
+### Resolve the target first
+
+Settle *which* PR before writing anything. Each step is one cheap command;
+stop at the first one that answers the question, and ask the user only when a
+step is genuinely ambiguous.
+
+1. **Repository.** Derive `<workspace>/<repo>` from the git remote — strip a
+   trailing `.git`, and on Data Center take the project key and slug out of the
+   `.../scm/<KEY>/<repo>.git` or `.../projects/<KEY>/repos/<repo>` path. A clone
+   URL is not a browse URL: pass the derived shorthand to `--repo`, not the
+   remote URL itself.
+2. **Source and target branches.** The source is the current branch. The target
+   is the repository's default branch unless the user, the repository's agent or
+   contribution guide, or an existing convention names another.
+3. **Existing PR.** Check before creating a second one:
+
+   ```sh
+   bitbucket-cli pr list --repo myws/myrepo --source feature/x \
+     --state OPEN --fields id,title,state
+   ```
+
+   A hit means this task is [Updating descriptions](#updating-descriptions),
+   not `pr create`.
+4. **Pushed branch.** `git status --short --branch` must show an upstream and no
+   unpushed commits; `pr create` opens against the remote ref, so unpushed work
+   is silently absent from the PR. Push (or ask the user to) before creating.
+
+### Budget the diff before drafting
+
+Read the shape of the change before its contents, the same way
+[Reading a PR](#reading-a-pr) does:
+
+```sh
+git diff --stat origin/main...HEAD      # or the resolved target branch
+```
+
+Read the full diff only for the files that carry the behavior change. A
+generated file, a lockfile, or a mass rename is described from its diffstat
+row; it does not need to be read line by line. For a change small enough that
+the diffstat already names every file, just read the whole diff — the budget
+step costs more than it saves.
+
+### Run the repository's checks
 
 Check the target repository's agent guide, contribution guide, build scripts,
 and CI configuration for the checks appropriate to the changed scope. Where

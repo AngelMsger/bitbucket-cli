@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-09-18
+
+### Skill
+
+- Give PR creation a deterministic preparation sequence: derive the repository
+  from the git remote, take the source from the current branch, check
+  `pr list --source <branch>` for an existing PR before opening a second one,
+  and confirm the branch is pushed. Read the diffstat before the diff so a large
+  change does not pull the whole patch into context.
+- Add an optional "change outline" to PR descriptions — one compact structural
+  sketch (file tree, call or data flow, schema or endpoint contract, pseudocode,
+  key type) for changes whose shape a reviewer would otherwise reconstruct from
+  several files. Small changes stay a single paragraph. Bump the companion
+  Skill to `0.15.0`.
+
 ## [0.20.1] - 2026-09-17
 
 ### Skill
@@ -766,7 +781,8 @@ PR-centric MVP supporting Bitbucket Cloud (REST 2.0) and Data Center (REST
 subtrees; layered configuration with keychain-backed auth; structured error
 model; and an embedded companion Skill.
 
-[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.20.1...HEAD
+[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.21.0...HEAD
+[0.21.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.20.1...v0.21.0
 [0.20.1]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.20.0...v0.20.1
 [0.20.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.19.1...v0.20.0
 [0.19.1]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.19.0...v0.19.1
