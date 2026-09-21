@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.21.1] - 2026-09-21
+
 ### Skill
 
 - Explain Data Center PAT scope versus account rights and distinguish server
@@ -799,7 +801,8 @@ PR-centric MVP supporting Bitbucket Cloud (REST 2.0) and Data Center (REST
 subtrees; layered configuration with keychain-backed auth; structured error
 model; and an embedded companion Skill.
 
-[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.21.0...HEAD
+[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.21.1...HEAD
+[0.21.1]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.21.0...v0.21.1
 [0.21.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.20.1...v0.21.0
 [0.20.1]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.20.0...v0.20.1
 [0.20.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.19.1...v0.20.0
