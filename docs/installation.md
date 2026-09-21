@@ -322,6 +322,13 @@ fallback. Cloud personal login uses basic auth with an Atlassian account email a
 API token with Bitbucket scopes; resource access tokens use `pat`. The guide does not
 verify token scopes or server capabilities.
 
+For Data Center PR writes, distinguish the account's repository rights from the
+PAT's permission scope. A successful authentication check or PR read does not
+prove that the token can approve or decline. Follow the companion Skill's
+[PR permission recovery](../skills/bitbucket/references/pr-permissions.md) for
+the permission model and use of an existing browser session for an authorized
+action.
+
 `auth login` reuses the resolved service, shows the same guide on stderr, asks
 only for the missing username and the secret, and verifies authentication before
 saving. It saves the username/scheme in the config and the secret in the existing

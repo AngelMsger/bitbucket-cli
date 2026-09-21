@@ -3,6 +3,8 @@ package apiclient
 import (
 	"context"
 	"encoding/json"
+	"net/http"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -51,6 +53,89 @@ func TestRequestChangesMatchesRegistry(t *testing.T) {
 		}
 		if !sup.Supported() && err == nil {
 			t.Errorf("flavor %q marks request-changes unsupported but the guard allowed it", f)
+		}
+	}
+}
+
+// Pin each backend's decline contract and prove the preview matches the live
+// request without sending a write, including under local read-only posture.
+func TestDeclinePRPayloadParity(t *testing.T) {
+	for _, flavor := range []Flavor{FlavorCloud, FlavorDataCenter} {
+		for _, message := range []string{"", "Superseded by the replacement PR"} {
+			t.Run(string(flavor)+"/"+message, func(t *testing.T) {
+				prPath := "/2.0/repositories/PROJ/repo/pullrequests/7"
+				wantBody := map[string]any{"message": message}
+				wantReads := 0
+				if flavor == FlavorDataCenter {
+					prPath = "/rest/api/1.0/projects/PROJ/repos/repo/pull-requests/7"
+					wantBody = map[string]any{"version": float64(9)}
+					if message != "" {
+						wantBody["comment"] = message
+					}
+					wantReads = 1
+				}
+				wantURI := prPath + "/decline"
+				if flavor == FlavorDataCenter {
+					wantURI += "?version=9"
+				}
+				reads, writes := 0, 0
+				var sentBody map[string]any
+				c := newWriteTestClient(t, flavor, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.Header().Set("Content-Type", "application/json")
+					switch r.Method {
+					case http.MethodGet:
+						reads++
+						if flavor != FlavorDataCenter || r.URL.RequestURI() != prPath {
+							t.Errorf("unexpected version read: %s", r.URL.RequestURI())
+						}
+						_ = json.NewEncoder(w).Encode(map[string]any{"id": 7, "version": 9})
+					case http.MethodPost:
+						writes++
+						if r.URL.RequestURI() != wantURI {
+							t.Errorf("POST URI = %q, want %q", r.URL.RequestURI(), wantURI)
+						}
+						if err := json.NewDecoder(r.Body).Decode(&sentBody); err != nil {
+							t.Errorf("decode decline body: %v", err)
+						}
+						_ = json.NewEncoder(w).Encode(map[string]any{"id": 7, "state": "DECLINED"})
+					default:
+						t.Errorf("unexpected method: %s", r.Method)
+						w.WriteHeader(http.StatusMethodNotAllowed)
+					}
+				}))
+				req := DeclinePRReq{Repo: RepoRef{Workspace: "PROJ", Slug: "repo"}, ID: 7, Message: message}
+				plan, err := NewReadOnly(c).DescribeWrite(context.Background(), req)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if reads != wantReads || writes != 0 {
+					t.Fatalf("preview requests = %d reads, %d writes; want %d reads, no writes", reads, writes, wantReads)
+				}
+				if plan.Method != http.MethodPost || plan.URL != c.BaseURL()+wantURI {
+					t.Fatalf("preview target = %s %s", plan.Method, plan.URL)
+				}
+				raw, err := json.Marshal(plan.Payload)
+				if err != nil {
+					t.Fatal(err)
+				}
+				var plannedBody map[string]any
+				if err := json.Unmarshal(raw, &plannedBody); err != nil {
+					t.Fatal(err)
+				}
+				if !reflect.DeepEqual(plannedBody, wantBody) {
+					t.Fatalf("preview body = %v, want %v", plannedBody, wantBody)
+				}
+				pr, err := c.DeclinePR(context.Background(), req)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if pr.ID != 7 || pr.State != "DECLINED" || reads != 2*wantReads || writes != 1 {
+					t.Fatalf("decline result = %+v; requests = %d reads, %d writes", pr, reads, writes)
+				}
+				if !reflect.DeepEqual(sentBody, plannedBody) {
+					t.Errorf("live body = %v, preview = %v", sentBody, plannedBody)
+				}
+			})
 		}
 	}
 }

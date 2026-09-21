@@ -75,6 +75,12 @@ BITBUCKET_CLI_READ_ONLY=1 bitbucket-cli --allow-writes pr approve myws/myrepo/42
 This is the only way to flip the posture for one invocation without
 changing config or env.
 
+Use the override only within the user's authorization. It changes the local
+CLI posture, not the server's token or account permissions. A read-only PAT
+and a read-only task are different: browser recovery may help an authorized
+action blocked by a PAT, but must preserve an explicit read-only task. See
+[PR permissions and recovery](pr-permissions.md).
+
 ### What read-only does NOT block
 
 CLI self-configuration is intentionally out of scope, otherwise an agent

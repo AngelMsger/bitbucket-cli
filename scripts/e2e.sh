@@ -213,9 +213,9 @@ out="$("${CLI[@]}" pr inbox --role reviewer --format json 2>/dev/null \
   | jq -r '.items[].ref' \
   | "${CLI[@]}" pr approve - 2>/dev/null)"
 if [[ "$out" == *'"approved": true'* ]]; then
-  pass "Skill inbox-to-approve pipeline"
+  pass "inbox refs accepted by approval stdin"
 else
-  fail "Skill inbox-to-approve pipeline (output did not contain an approval result)"
+  fail "inbox refs accepted by approval stdin (output did not contain an approval result)"
 fi
 out="$("${CLI[@]}" pr inbox --role any --state ALL --closed-since 48h --fields ref 2>/dev/null \
   | jq -r '.items[].ref' \
@@ -270,6 +270,12 @@ assert_contains  "pr unapprove --dry-run"    '"method": "DELETE"' \
                                              "${CLI[@]}" pr unapprove PROJ/demo/1 --dry-run
 assert_contains  "pr decline --dry-run"      '"method": "POST"' \
                                              "${CLI[@]}" pr decline PROJ/demo/1 --dry-run
+assert_contains  "pr decline preview resolves DC version" '?version=0' \
+                                             "${CLI[@]}" pr decline PROJ/demo/1 --dry-run
+assert_contains  "pr decline message maps to DC comment" '"comment": "Superseded"' \
+                                             "${CLI[@]}" pr decline PROJ/demo/1 --message Superseded --dry-run
+assert_exit      "pr decline needs --yes -> 2" 2 \
+                                             "${CLI[@]}" pr decline PROJ/demo/1 </dev/null
 assert_contains  "pr merge --dry-run"        '"method": "POST"' \
                                              "${CLI[@]}" pr merge PROJ/demo/1 --dry-run
 assert_contains  "comment add --dry-run"     '"method": "POST"' \
@@ -294,6 +300,10 @@ assert_exit         "read-only exit category=permission -> 5" 5 \
                                                      "${RO_ENV[@]}" "${CLI[@]}" pr approve PROJ/demo/1
 assert_contains     "read-only + --dry-run still previews" '"method": "POST"' \
                                                      "${RO_ENV[@]}" "${CLI[@]}" pr approve PROJ/demo/1 --dry-run
+assert_err_contains "read-only blocks pr decline" "READONLY_BLOCKED" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" pr decline PROJ/demo/1 --yes
+assert_contains     "read-only decline preview resolves version" '?version=0' \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" pr decline PROJ/demo/1 --dry-run
 assert_contains     "--allow-writes overrides read-only"   '"approved": true' \
                                                      "${RO_ENV[@]}" "${CLI[@]}" --allow-writes pr approve PROJ/demo/1
 assert_err_contains "read-only blocks repo fork"            "READONLY_BLOCKED" \

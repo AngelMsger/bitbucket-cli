@@ -2,6 +2,24 @@
 
 ## [Unreleased]
 
+### Skill
+
+- Explain Data Center PAT scope versus account rights and distinguish server
+  rejections, local read-only mode, and host credential failures. Guide authorized
+  PR actions through an existing browser session when available, with identity
+  checks and state reconciliation before retrying.
+- Make clean approvals explicitly comment-free and group repeated manifestations
+  of one defect into one finding. Keep batch approvals limited to reviewed,
+  authorized targets. Bump the companion Skill to `0.15.1`.
+
+### Fixed
+
+- Stop recommending decline as a fallback for Data Center request-changes;
+  declining closes the PR rather than casting a needs-work vote.
+- Share the decline request builder between preview and execution. Data Center
+  dry runs now include the current PR version, and `--message` reaches its
+  optional decline comment instead of being silently discarded.
+
 ## [0.21.0] - 2026-09-18
 
 ### Skill

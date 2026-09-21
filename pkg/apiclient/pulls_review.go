@@ -31,7 +31,7 @@ func (c *apiClient) RequestPRChanges(ctx context.Context, req RequestChangesReq)
 	if sup := c.supportFor(CapPRRequestChanges); !sup.Supported() {
 		return cerrors.New(cerrors.CategoryUsage, "PR_REQ_CHANGES_DC",
 			"pr request-changes is not available on this backend: "+sup.Reason).
-			WithHint("On Data Center, decline the PR or post a comment to request changes.")
+			WithHint("Use the Bitbucket UI for an authorized needs-work vote. Decline closes the PR and is not a substitute for requesting changes.")
 	}
 	method := "POST"
 	if !req.Request {

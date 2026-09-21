@@ -60,6 +60,7 @@ the site root):
 | List PRs | `GET /2.0/repositories/{ws}/{repo}/pullrequests?state=&q=`; author/reviewer selectors resolve to UUID predicates | `GET /rest/api/1.0/projects/{key}/repos/{repo}/pull-requests?state=`; author/reviewer filtering requires explicit `--all` and is applied after the repository scan |
 | Get PR | `GET .../pullrequests/{id}` | `GET .../pull-requests/{id}` |
 | Update PR metadata | `PUT .../pullrequests/{id}` accepts partial metadata; omit `reviewers` to preserve them | `PUT .../pull-requests/{id}` requires the current `version` and treats `reviewers` as a complete replacement set; the client fetches and round-trips both |
+| Decline PR | `POST .../pullrequests/{id}/decline` with `message` | `POST .../pull-requests/{id}/decline?version=N` with `version` and optional `comment`; preview and execution share the version-reading builder |
 | PR diff (whole) | `GET .../pullrequests/{id}/diff` (text) | `GET .../pull-requests/{id}/diff` (JSON hunks; `Accept: text/plain` for raw text) |
 | PR diff (per file) | `GET .../pullrequests/{id}/diff?path=` | `GET .../pull-requests/{id}/diff/{path}` |
 | PR diffstat | `GET .../pullrequests/{id}/diffstat` | `GET .../pull-requests/{id}/changes` |
@@ -236,28 +237,16 @@ Design goal: let a coding agent flip between the remote PR view and a
 local checkout with the smallest number of remote round-trips and the
 least context-token waste.
 
-### 6.1 Decision tree (enforced by `skills/bitbucket/references/reviewing-locally.md`)
+### 6.1 Review workflow
 
-```
-PR URL / <ws>/<repo>/<id>
-    ↓
-pr inbox / pr list      ← no specific PR yet, start here
-    ↓
-pr status               ← mergeable? conflicts? CI green? reviewers?
-    ↓ if reviewable
-pr files                ← per-file diffstat, sorted by churn
-    ↓
-├─ small PR:  pr diff --path <path>       (one file, one request)
-└─ large PR:  pr fetch --exec + pr checkout --exec
-              ↓
-              local Read / Grep over the PR scope
-    ↓
-pr threads              ← existing inline discussion grouped by file
-    ↓
-comment add --inline | --reply-to
-    ↓
-pr approve | pr request-changes | pr decline | pr merge
-```
+The companion Skill's [review guide](../skills/bitbucket/references/reviewing-locally.md)
+owns the decision rules: reuse the known PR, read intent, inspect changes and
+existing discussion, and verify local source/base alignment when using a
+checkout. CI and conflicts inform the review without preventing independent
+analysis. Findings go through its publication rules; a clean, authorized
+approval has no companion comment. State changes remain within the requested
+scope. Use [PR permission recovery](../skills/bitbucket/references/pr-permissions.md)
+when the CLI cannot complete an authorized action.
 
 ### 6.2 `pr status` — parallel aggregation
 

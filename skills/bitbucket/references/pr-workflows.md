@@ -96,13 +96,22 @@ results for another user as partial coverage.
 
 ## Reviewing
 
+Apply the [review publication rules](reviewing-locally.md#decide-what-to-publish)
+before changing PR state. A clean, authorized approval needs no comment. For
+permission failures, use [PR permissions and recovery](pr-permissions.md).
+
 - Approve: `bitbucket-cli pr approve <ref>`
 - Withdraw: `bitbucket-cli pr unapprove <ref>`
 - Request changes (Cloud only): `bitbucket-cli pr request-changes <ref>`
   (aliases: `need-work`, `needs-work`; add `--withdraw` to remove a previous
-  request). On Data Center this is not implemented — decline or post a comment
-  instead.
+  request). On Data Center the CLI has not implemented the participant-status
+  flow. Use the same user's browser session for an authorized needs-work vote
+  when available, or report the limitation. Publish only verified findings under
+  the review rules; do not substitute decline, which closes the PR.
 - Decline: `bitbucket-cli pr decline <ref> --yes` (destructive — requires `--yes`).
+  An explicitly requested reason can be supplied with `--message`; Data Center
+  maps it to the optional decline comment. Its `--dry-run` reads the current PR
+  version and previews the same versioned request shape used by execution.
 - Merge: `bitbucket-cli pr merge <ref> --strategy <merge_commit|squash|fast_forward> --yes`.
   Run with `--dry-run` first to preview the request body. Add
   `--close-source-branch` to delete the source branch on merge — native on

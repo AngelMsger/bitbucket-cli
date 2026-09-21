@@ -217,28 +217,47 @@ func (c *apiClient) buildUpdatePR(ctx context.Context, req UpdatePRReq) (method,
 
 // DeclinePR closes an open PR without merging.
 func (c *apiClient) DeclinePR(ctx context.Context, req DeclinePRReq) (*PullRequest, error) {
-	if err := checkRepoRef(req.Repo); err != nil {
+	method, path, payload, err := c.buildDeclinePR(ctx, req)
+	if err != nil {
 		return nil, err
 	}
-	path := c.prPath(req.Repo, req.ID) + "/decline"
 	if c.flavor == FlavorCloud {
 		var raw cloudPR
-		if err := c.doJSON(ctx, "POST", path, nil, map[string]string{"message": req.Message}, &raw); err != nil {
+		if err := c.doJSON(ctx, method, path, nil, payload, &raw); err != nil {
 			return nil, err
 		}
 		return mapCloudPR(req.Repo, raw), nil
 	}
-	// DC requires the PR version; do a GET-then-POST.
-	cur, err := c.dcGetPRRaw(ctx, req.Repo, req.ID)
-	if err != nil {
-		return nil, err
-	}
-	body := map[string]any{"version": cur.Version}
 	var raw dcPR
-	if err := c.doJSON(ctx, "POST", path+"?version="+strconv.Itoa(cur.Version), nil, body, &raw); err != nil {
+	if err := c.doJSON(ctx, method, path, nil, payload, &raw); err != nil {
 		return nil, err
 	}
 	return mapDCPR(req.Repo, raw), nil
+}
+
+func (c *apiClient) buildDeclinePR(ctx context.Context, req DeclinePRReq) (method, path string, payload any, err error) {
+	if err = checkRepoRef(req.Repo); err != nil {
+		return
+	}
+	method = "POST"
+	path = c.prPath(req.Repo, req.ID) + "/decline"
+	if c.flavor == FlavorCloud {
+		payload = map[string]string{"message": req.Message}
+		return
+	}
+	// Both preview and execution resolve DC's optimistic-lock version.
+	cur, gerr := c.dcGetPRRaw(ctx, req.Repo, req.ID)
+	if gerr != nil {
+		err = gerr
+		return
+	}
+	body := map[string]any{"version": cur.Version}
+	if req.Message != "" {
+		body["comment"] = req.Message
+	}
+	payload = body
+	path += "?version=" + strconv.Itoa(cur.Version)
+	return
 }
 
 func (c *apiClient) dcGetPRRaw(ctx context.Context, repo RepoRef, id int) (*dcPR, error) {
@@ -385,11 +404,11 @@ func (c *apiClient) DescribeWrite(ctx context.Context, op any) (WriteRequestPlan
 		}
 		return WriteRequestPlan{Method: m, URL: c.baseURL + p, Payload: body}, nil
 	case DeclinePRReq:
-		return WriteRequestPlan{
-			Method:  "POST",
-			URL:     c.baseURL + c.prPath(v.Repo, v.ID) + "/decline",
-			Payload: map[string]string{"message": v.Message},
-		}, nil
+		m, p, body, err := c.buildDeclinePR(ctx, v)
+		if err != nil {
+			return WriteRequestPlan{}, err
+		}
+		return WriteRequestPlan{Method: m, URL: c.baseURL + p, Payload: body}, nil
 	case ApprovePRReq:
 		m := "POST"
 		if !v.Approve {
@@ -438,7 +457,7 @@ func (c *apiClient) DescribeWrite(ctx context.Context, op any) (WriteRequestPlan
 		if sup := c.supportFor(CapPRRequestChanges); !sup.Supported() {
 			return WriteRequestPlan{}, cerrors.New(cerrors.CategoryUsage, "PR_REQ_CHANGES_DC",
 				"pr request-changes is not available on this backend: "+sup.Reason).
-				WithHint("On Data Center, decline the PR or post a comment to request changes.")
+				WithHint("Use the Bitbucket UI for an authorized needs-work vote. Decline closes the PR and is not a substitute for requesting changes.")
 		}
 		m := "POST"
 		if !v.Request {

@@ -1,6 +1,6 @@
 ---
 name: bitbucket
-version: 0.15.0
+version: 0.15.1
 description: "Work with Bitbucket Cloud and Data Center / Server: browse repositories and source, create or update pull requests, review diffs, address review feedback, and manage comments or PR state. Use for Bitbucket repository or PR URLs, code review, inline findings, review threads, approvals, merges, and CLI dry-run or read-only workflows."
 metadata:
   requires:
@@ -58,7 +58,14 @@ TTY — agents should never pass it.
   test procedures and environment limits in the user report. Use PR-level
   comments only when a finding cannot reasonably be anchored to code or the
   user explicitly requests an overall summary. A completed review may leave
-  no comments; PR state changes require their own authorization.
+  no comments. When approval is authorized and there are no findings, approve
+  without a companion comment; PR state changes must stay within that authorization.
+- **Recover a blocked PR action** — read
+  [PR permissions and recovery](references/pr-permissions.md). Distinguish a
+  server permission rejection from local read-only mode and inaccessible
+  credentials. A Data Center read-only PAT can read a PR while being unable to
+  approve or decline it. For an authorized action, try the same user's existing
+  browser session when available, then verify the result.
 - **Respond to received review comments** — when the user is the PR *author*
   addressing feedback. Usually they hand you a specific PR (ref or URL) — list its
   open threads with `pr threads <ref> --unresolved`, or target a single thread the
@@ -93,8 +100,10 @@ TTY — agents should never pass it.
   repositories with `repo ...`; see `references/reading-repos.md` for the
   Cloud/DC `repo fork --into/--name` rules.
 - **Batch writes** — `pr approve`, `pr decline` and `comment delete` take several
-  references/IDs in one call, or a single `-` to read them from stdin (e.g.
-  `pr inbox --format json | jq -r '.items[].ref' | bitbucket-cli pr approve -`).
+  references/IDs in one call, or a single `-` to read them from stdin. Batch only
+  individually reviewed, authorized targets; inbox membership is not approval
+  evidence. For example, `bitbucket-cli pr approve myws/myrepo/7 myws/myrepo/8`
+  is appropriate after both reviews support approval.
   With more than one, output is an `{items, has_more}` aggregate with a per-item
   `ok`/`error`; the run continues past failures and exits non-zero if any failed.
 
@@ -161,7 +170,7 @@ Every write above accepts `--dry-run`; see `references/safety-modes.md`.
   either select the containing object for normal jq access or read the flat key
   as `.["repository.workspace"]`. Inspect `.items[0]` before composing a
   longer pipeline.
-- **Skill handshake — set `BITBUCKET_CLI_SKILL=0.15.0`.** Once you have loaded
+- **Skill handshake — set `BITBUCKET_CLI_SKILL=0.15.1`.** Once you have loaded
   this Skill, export that exact value in the environment used to run the CLI.
   The CLI compares it with the embedded Skill version and emits a structured
   stderr notice when the Skill is missing, old, or uses the legacy unversioned

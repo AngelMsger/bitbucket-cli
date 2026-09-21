@@ -708,7 +708,7 @@ and the exit code is non-zero if any approval failed.</p>
       </table>
       <h3>Examples</h3><pre>  bitbucket-cli pr approve myws/myrepo/7
   bitbucket-cli pr approve myws/myrepo/7 myws/myrepo/8
-  bitbucket-cli pr inbox --format json | jq -r &#39;.items[].ref&#39; | bitbucket-cli pr approve -</pre>
+  bitbucket-cli pr approve - &lt; reviewed-prs.txt</pre>
     </section>
 
     <section class="cmd" id="bitbucket-cli-pr-checkout">
@@ -776,7 +776,10 @@ and the exit code is non-zero if any approval failed.</p>
       <pre>bitbucket-cli pr decline &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt;... [flags]</pre>
       <p class="long">Decline a PR. Pass several PR references to decline them in one run, or a
 single &#39;-&#39; to read newline-separated references from stdin. --yes (or
---dry-run) is required and applies to the whole batch.</p>
+--dry-run) is required and applies to the whole batch.
+
+On Data Center, the preview reads the current PR version and --message
+sets the optional decline comment.</p>
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>

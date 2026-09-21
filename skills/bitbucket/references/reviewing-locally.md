@@ -47,6 +47,10 @@ turn an unverified suspicion into a question on the PR.
 By default, publish only **new, actionable, high-confidence findings**, within
 existing authorization. Compare each candidate with the full discussion,
 including resolved threads, by underlying issue rather than wording.
+Prioritize findings by impact and confidence. Combine manifestations of one
+root cause into one comment at the most useful anchor, mentioning other affected
+locations there; do not produce one notification per occurrence or pad the review
+with minor preferences. Distinct verified defects can still warrant separate comments.
 
 | Situation | Action |
 | --- | --- |
@@ -56,6 +60,7 @@ including resolved threads, by underlying issue rather than wording.
 | New verified issue that cannot reasonably be anchored to code | Post a concise PR-level comment explaining the issue and affected locations. |
 | User explicitly requests an overall summary on the PR | Publish the requested summary; distinguish confirmed findings from incomplete coverage. |
 | No publishable findings | Report the result to the user; leave no comment. |
+| No findings and approval is authorized | Approve without a companion comment; verify the approval and report it to the user. |
 
 Completion records, passing-review summaries, test procedures, and environment
 limitations belong in the **user report by default**, not on the PR. A focused
@@ -77,6 +82,12 @@ each write with `--dry-run`, retain AI attribution on agent-written text, and
 respect [read-only mode](safety-modes.md). See [Commenting](commenting.md) for
 command syntax. Approval, request-changes, decline, resolution, and merge are
 separate actions; perform them only when covered by the user's request.
+Existing authorization for the specific action remains valid; do not ask again
+just because the review or dry run is complete. Approval needs no "LGTM", passing
+test summary, or completion comment, including in a browser's optional comment
+box. Bitbucket's automatic activity entry is sufficient. If a PR action fails,
+follow [PR permissions and recovery](pr-permissions.md); keep tooling blockers
+in the user report rather than posting them on the PR.
 
 ## Missing intent or context
 

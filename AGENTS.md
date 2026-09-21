@@ -38,6 +38,12 @@ up front.
   [Reviewing a pull request](skills/bitbucket/references/reviewing-locally.md#decide-what-to-publish).
   Route review and commenting workflows there; examples must not imply that
   completing a review requires a comment, approval, or merge.
+- Keep PR permission recovery in
+  [PR permissions and recovery](skills/bitbucket/references/pr-permissions.md).
+  Distinguish token scope, account rights, host credential access and local
+  read-only posture. Browser recovery preserves identity, action scope and
+  uncertain-write reconciliation. Never suggest decline as an equivalent of
+  requesting changes; decline closes the PR.
 - Never commit `.env`, credentials, tokens, or build artifacts.
 
 ## Cloud / Data Center parity — touch both branches, always
@@ -159,9 +165,10 @@ When you add a new mutating method on `Client`:
 - Add a row to the wrapper's table test in
   `pkg/apiclient/readonly_test.go`.
 
-`--dry-run` must *not* be blocked by read-only mode — `DescribeWrite` sends
-no HTTP and is the right tool to inspect what a write would look like under
-a read-only session. The wrapper intentionally does not override it.
+`--dry-run` must *not* be blocked by read-only mode — `DescribeWrite` performs
+no mutation, but may read the current version or diff to resolve the request.
+It is the right tool to inspect a write under a read-only session. The wrapper
+intentionally does not override it.
 
 CLI self-configuration (`config init`, `auth login|logout`, `skill install`,
 `file get --output`) is **out of scope** for read-only mode. Read-only

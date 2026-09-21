@@ -532,7 +532,7 @@ func newPRApproveCmd(s *appState) *cobra.Command {
 			"and the exit code is non-zero if any approval failed.",
 		Example: "  bitbucket-cli pr approve myws/myrepo/7\n" +
 			"  bitbucket-cli pr approve myws/myrepo/7 myws/myrepo/8\n" +
-			"  bitbucket-cli pr inbox --format json | jq -r '.items[].ref' | bitbucket-cli pr approve -",
+			"  bitbucket-cli pr approve - < reviewed-prs.txt",
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			items, err := collectBatchArgs(args, cmd.InOrStdin())
@@ -637,7 +637,9 @@ func newPRDeclineCmd(s *appState) *cobra.Command {
 		Short: "Decline (close without merging) one or more PRs",
 		Long: "Decline a PR. Pass several PR references to decline them in one run, or a\n" +
 			"single '-' to read newline-separated references from stdin. --yes (or\n" +
-			"--dry-run) is required and applies to the whole batch.",
+			"--dry-run) is required and applies to the whole batch.\n\n" +
+			"On Data Center, the preview reads the current PR version and --message\n" +
+			"sets the optional decline comment.",
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			items, err := collectBatchArgs(args, cmd.InOrStdin())
