@@ -155,4 +155,3 @@ is published at <https://angelmsger.github.io/bitbucket-cli/cli/>.
 | [`bitbucket-cli workspace`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-workspace) | List and inspect Bitbucket workspaces (Cloud) / projects (DC) |
 | [`bitbucket-cli workspace get`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-workspace-get) | Show details of a single workspace / project |
 | [`bitbucket-cli workspace list`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-workspace-list) | List every workspace / project the current credentials can see |
-
