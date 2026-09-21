@@ -178,6 +178,16 @@ not run, or silently proceed past a required check that failed. Keep this report
 out of the PR description by default; it is not a testing section or a routine
 "all checks passed" sentence to append to every PR.
 
+### Incidental quality reminder
+
+If the context already read to prepare this PR clearly reveals a significant
+maintainability concern, give the user one concise reminder with its location
+and a concrete improvement. Keep it out of the PR description. Continue the
+authorized creation workflow; this reminder adds no approval or submission gate.
+Do not start a quality review, read more source or history for it, or modify code
+as part of this reminder. When there is no clear concern, omit the reminder.
+Repository-required checks above still apply.
+
 ### Create the request
 
 ```sh

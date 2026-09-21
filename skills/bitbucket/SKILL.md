@@ -1,6 +1,6 @@
 ---
 name: bitbucket
-version: 0.15.1
+version: 0.16.0
 description: "Work with Bitbucket Cloud and Data Center / Server: browse repositories and source, create or update pull requests, review diffs, address review feedback, and manage comments or PR state. Use for Bitbucket repository or PR URLs, code review, inline findings, review threads, approvals, merges, and CLI dry-run or read-only workflows."
 metadata:
   requires:
@@ -53,7 +53,9 @@ TTY — agents should never pass it.
 - **Review a PR** — read [Reviewing a pull request](references/reviewing-locally.md).
   Reuse the known PR, inspect intent, changed files and existing threads, and
   verify local repository and source/base alignment before using worktree files.
-  Default to new, actionable, high-confidence findings; reply to an existing
+  Include functional correctness and significant maintainability problems using
+  the guide's evidence and information-placement rules. Default to new,
+  actionable, high-confidence findings; reply to an existing
   issue only with new evidence. Keep completion records, passing summaries,
   test procedures and environment limits in the user report. Use PR-level
   comments only when a finding cannot reasonably be anchored to code or the
@@ -170,7 +172,7 @@ Every write above accepts `--dry-run`; see `references/safety-modes.md`.
   either select the containing object for normal jq access or read the flat key
   as `.["repository.workspace"]`. Inspect `.items[0]` before composing a
   longer pipeline.
-- **Skill handshake — set `BITBUCKET_CLI_SKILL=0.15.1`.** Once you have loaded
+- **Skill handshake — set `BITBUCKET_CLI_SKILL=0.16.0`.** Once you have loaded
   this Skill, export that exact value in the environment used to run the CLI.
   The CLI compares it with the embedded Skill version and emits a structured
   stderr notice when the Skill is missing, old, or uses the legacy unversioned

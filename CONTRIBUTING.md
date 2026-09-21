@@ -28,6 +28,10 @@ Use standard Go formatting; CI requires `gofmt` cleanliness and `go vet ./...`. 
 
 Use Go’s standard `testing` package. Name test files `*_test.go` and test functions `TestXxx`. Place unit tests beside the package under test, and use `test/mockserver` for CLI-level integration coverage. Before opening a PR, run `make test` and `make e2e`; run `make e2e-live` only when real Bitbucket credentials are available and read-only live validation is needed.
 
+For changes to the companion Skill's review decisions, also compare baseline and
+candidate behavior with the [offline PR workflow cases](test/skill-review/expectations.md).
+These exercise judgment and scope; CLI tests verify packaging and command behavior.
+
 ## Commit & Pull Request Guidelines
 
 Use concise, imperative commit messages such as `Add a --version flag on the
@@ -37,6 +41,11 @@ Follow [Writing PR descriptions](skills/bitbucket/references/writing-pr-descript
 explain the problem and resulting behavior, and add review guidance only where
 it helps. Link related issues when applicable; include CLI output or screenshots
 only when they clarify a user-facing output change.
+
+Review functional correctness and significant maintainability concerns using the
+Skill's [evidence and information-placement rules](skills/bitbucket/references/reviewing-locally.md#verify-findings).
+PR creation follows its [incidental quality reminder](skills/bitbucket/references/pr-workflows.md#incidental-quality-reminder)
+without adding a full review or a new submission gate.
 
 Before opening a PR, complete the checks required by the build, style, and
 testing sections above for the changed scope. Agents should report results,

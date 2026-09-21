@@ -34,10 +34,15 @@ up front.
   [Writing PR descriptions](skills/bitbucket/references/writing-pr-descriptions.md).
   Link to that source from creation and update workflows; keep repository checks
   in the creation workflow rather than adding routine results to descriptions.
-- Keep PR review publication rules in
-  [Reviewing a pull request](skills/bitbucket/references/reviewing-locally.md#decide-what-to-publish).
+- Keep PR review evidence, maintainability, information-placement, and
+  publication rules in
+  [Reviewing a pull request](skills/bitbucket/references/reviewing-locally.md).
   Route review and commenting workflows there; examples must not imply that
   completing a review requires a comment, approval, or merge.
+- Validate changes to review decisions with the
+  [offline workflow cases](test/skill-review/expectations.md), including reasonable
+  comments and abstractions that should be preserved. Keep creation's incidental
+  quality reminder in the creation workflow; do not turn it into a review gate.
 - Keep PR permission recovery in
   [PR permissions and recovery](skills/bitbucket/references/pr-permissions.md).
   Distinguish token scope, account rights, host credential access and local

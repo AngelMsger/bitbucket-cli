@@ -1,8 +1,10 @@
 # Reviewing a pull request
 
-Review the PR's actual changes, verify candidate findings, and report the result
-to the user. Publishing comments and changing PR state depend on the requested
-scope. **Completing a review does not require leaving a comment.**
+Review the PR's final changes for functional correctness and significant
+maintainability problems within the requested coverage. Verify candidate
+findings and report the result to the user. Publishing comments and changing PR
+state depend on the requested scope. **Completing a review does not require
+leaving a comment.**
 
 For feedback received on the user's own PR, use
 [Responding to review comments](responding-to-review-comments.md).
@@ -26,21 +28,89 @@ reviewer) or `pr inbox --role author`. Cloud reviewer discovery requires
   or prevent duplicate investigation. Use `--comment <id>` for a known thread;
   an unresolved-only view is insufficient for deduplicating a new review.
 
-Budget reads around the requested coverage and plausible failure paths. Inspect
-callers and tests when needed to establish impact; do not equate green CI with
-correctness or claim coverage for files you skipped.
+Start from the final diff relative to the merge-base. For a candidate concern,
+read the surrounding function or file, relevant callers, contracts, tests, and
+applicable existing implementations as needed to establish its impact. Check
+project guidance before treating a local pattern as unnecessary. Use history
+only to resolve a specific uncertainty. Bound these reads to the requested
+coverage; do not equate green CI with correctness or claim coverage for files
+you skipped.
 
 ## Verify findings
 
-A publishable finding identifies a concrete defect introduced or exposed by the
-PR, a reachable trigger, and a meaningful consequence. Support it with the
-current code, a focused reproduction, or a relevant failing test. Explain why it
-matters and what needs to change in a short, self-contained comment.
+A publishable finding identifies a problem introduced or materially worsened by
+the PR, supports it with current code or a verified contract or project rule,
+and proposes a concrete, minimal correction that preserves required behavior.
+
+- **Functional defects:** identify a reachable trigger and a meaningful behavior
+  consequence. Use code evidence, a focused reproduction, or a relevant failing
+  test to establish the defect.
+- **Maintainability problems:** identify a significant, avoidable burden, such as
+  misleading future edits, maintaining the same policy in several places, or
+  obscuring the main control flow. Explain the burden and what the simplification
+  must preserve. A runtime failure or failing test is not required; do not invent
+  one to justify a code-health finding. Prioritize by actual impact rather than
+  automatically treating all maintainability feedback as optional.
+
+Assess the final artifact regardless of who or what wrote it. Describe the
+specific problem; do not guess AI authorship or label a contribution "AI slop."
 
 Keep speculative concerns, style preferences without a project requirement,
 and unrelated pre-existing defects out of default PR feedback. When evidence is
 incomplete, investigate further or report the uncertainty to the user; do not
 turn an unverified suspicion into a question on the PR.
+
+## Review maintainability
+
+Use these as investigation cues, not automatic findings:
+
+- **Exploration residue:** abandoned approaches, temporary debugging paths,
+  obsolete TODOs, and comments recording intermediate attempts. Check whether
+  the information still explains a current constraint or a shipped version.
+- **Comment noise or drift:** narration of obvious operations, repeated
+  explanations that hide important constraints, or claims about code that no
+  longer exists. Apply [information placement](#place-information-for-its-reader)
+  before suggesting removal or relocation.
+- **Repeated policy or unnecessary divergence:** compare new implementations
+  with suitable existing helpers and project conventions. Establish that the
+  contracts and dependency boundaries permit reuse; identify the maintenance
+  points that would otherwise have to change together.
+- **Unneeded abstraction:** trace the actual consumers and requirements of
+  extra layers, registries, configuration, or generic interfaces. A single
+  production implementation may still support an important test or extension
+  boundary. Propose a simpler path only after checking those uses.
+- **Unsupported defensive paths:** verify input guarantees and error contracts
+  before challenging repeated checks or fallbacks. Preserve validation at trust
+  boundaries and distinguish a fallback that hides failure from useful recovery.
+- **Ineffective tests or incidental expansion:** determine which production
+  behavior the test exercises and which regression its assertions would catch.
+  Check whether added documentation, wrappers, and configuration serve the
+  requested behavior. Test doubles and repeated test cases can be justified.
+
+Length, repetition, or an absent caller in the diff alone is insufficient
+evidence. Explain the concrete burden and minimal remedy; omit isolated wording
+preferences and broad cleanup requests unrelated to this change.
+
+## Place information for its reader
+
+Ask what still-valid information a maintainer would lose by removing a comment,
+and whether the code already communicates it clearly. Keep information near the
+reader who needs it:
+
+| Information | Destination |
+| --- | --- |
+| Local invariants, protocol limits, compatibility reasons, or a subtle boundary needed for safe edits | A concise code comment; link detailed background when useful. |
+| API purpose, inputs, outputs, errors, and usage contracts | API documentation or documentation comments. |
+| The problem this PR solves, final behavior, important tradeoffs, and migration effects | The PR description, following [Writing PR descriptions](writing-pr-descriptions.md). |
+| Lasting architectural decisions and significant alternatives across modules | A design document or ADR, linked from relevant code and the PR. |
+| Intermediate attempts with no remaining maintenance value | Remove them; do not relocate the development diary into another document. |
+
+For example, if A and B were abandoned inside this PR before selecting C, remove
+that chronology. Retain the current server constraint that requires C, such as
+following a next-page cursor even for an empty page. Compatibility history for
+supported releases, incident lessons, and necessary algorithm explanations can
+remain valuable. Preserve license notices, tool directives, and required API
+documentation. Simplification must retain this information and required behavior.
 
 ## Decide what to publish
 

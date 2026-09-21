@@ -41,7 +41,8 @@ use it. Write commands support `--dry-run`, and destructive ones require `--yes`
   config file, or an interactive wizard; secrets stored in the OS keychain, with
   per-user DPAPI fallback on Windows and a `0600` fallback on macOS/Linux.
 - **Companion Skill** — a `bitbucket` Skill, embedded in the binary, that guides coding
-  agents through the CLI.
+  agents through the CLI, including evidence-based review of functional correctness
+  and significant maintainability concerns. See the [review guide](skills/bitbucket/references/reviewing-locally.md).
 
 ## Installation
 

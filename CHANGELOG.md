@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-09-21
+
+### Skill
+
+- Include significant maintainability problems in default PR review alongside
+  functional defects, with concrete evidence, maintenance impact, and a minimal
+  correction. Check exploration residue, misleading comments, repeated policy,
+  unnecessary layers, unsupported fallbacks, and ineffective tests in context.
+- Define where current constraints, API contracts, PR rationale, and lasting
+  design decisions belong. Remove development diaries without relocating them
+  into PR descriptions, while preserving useful compatibility and algorithm notes.
+- Keep PR creation lightweight: give one incidental quality reminder only when
+  existing context warrants it, without extra review, edits, or submission gates.
+  Add offline behavior cases and bump the companion Skill to `0.16.0`.
+
 ## [0.21.1] - 2026-09-21
 
 ### Skill
@@ -801,7 +816,8 @@ PR-centric MVP supporting Bitbucket Cloud (REST 2.0) and Data Center (REST
 subtrees; layered configuration with keychain-backed auth; structured error
 model; and an embedded companion Skill.
 
-[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.21.1...HEAD
+[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.22.0...HEAD
+[0.22.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.21.1...v0.22.0
 [0.21.1]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.21.0...v0.21.1
 [0.21.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.20.1...v0.21.0
 [0.20.1]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.20.0...v0.20.1

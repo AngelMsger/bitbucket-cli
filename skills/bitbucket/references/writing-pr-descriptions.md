@@ -88,7 +88,10 @@ into a single helper that every endpoint calls.
   Replace claims such as "improves robustness" with the behavior that improves.
 - **Explain the change, not the work session.** Omit the conversation history,
   implementation diary, and abandoned approaches unless they explain an
-  important tradeoff.
+  important final tradeoff. Use the review guide's
+  [information-placement rules](reviewing-locally.md#place-information-for-its-reader)
+  when deciding what belongs in comments, the PR, or a design document. Removing
+  a diary from code does not make it useful PR context.
 - **Do not narrate the diff.** Avoid file-by-file inventories, lists of function
   names, and call-chain tours. Include implementation details only when they
   explain the behavior or guide a review decision. A

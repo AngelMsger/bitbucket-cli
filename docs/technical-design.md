@@ -248,6 +248,14 @@ approval has no companion comment. State changes remain within the requested
 scope. Use [PR permission recovery](../skills/bitbucket/references/pr-permissions.md)
 when the CLI cannot complete an authorized action.
 
+The agent applies the guide's evidence standards to functional correctness and
+significant maintainability concerns, using the final diff and bounded context
+reads. The CLI supplies existing PR, source, and discussion data; it does not
+run a model, assign a quality score, or add a review command. PR creation uses
+only the [incidental quality reminder](../skills/bitbucket/references/pr-workflows.md#incidental-quality-reminder)
+from context already read. The [offline cases](../test/skill-review/expectations.md)
+exercise these decisions separately from CLI packaging and transport tests.
+
 ### 6.2 `pr status` — parallel aggregation
 
 `pkg/apiclient/merge_check.go::GetPRStatus` uses `sync.WaitGroup`

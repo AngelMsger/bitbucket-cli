@@ -98,9 +98,10 @@ else `pr diff --path <file>` mapping the inline `line` to its hunk), then:
    for the `[[AI]](…)` marker and author metadata. Marker or bot account →
    AI-authored; anything you cannot classify → treat it as a person. This decides
    which confirmation gate applies (`replying-to-people.md`).
-1. **Understand / reproduce** the concern before judging — *run it locally if a
-   checkout exists* (failing test, build error, the actual behaviour).
-2. **Classify** the comment: bug · style/nit · question · out-of-scope ·
+1. **Understand / verify** the concern before judging. Reproduce behavioral
+   defects when a checkout is available; assess maintainability against the
+   [review evidence rules](reviewing-locally.md#verify-findings).
+2. **Classify** the comment: bug · maintainability · style/nit · question · out-of-scope ·
    already-handled.
 3. **Judge validity** against the *actual code* **and** the PR's intent (from
    `pr get` description), not just the comment text. Reviewers can be wrong or
@@ -109,7 +110,8 @@ else `pr diff --path <file>` mapping the inline `line` to its hunk), then:
    (file a follow-up).
 5. **Define a verification step**: prefer an executable check (a test, a build, a
    repro) on the local checkout; fall back to a described manual check when
-   remote-only.
+   remote-only. For comment or structural cleanup, inspect the final change
+   against the constraint or behavior it must preserve.
 6. **Draft a concise reply when there is something new to communicate**, such as
    a fix, new evidence, or an answer the user requested. Leave already-covered
    issues without new evidence alone; follow the
