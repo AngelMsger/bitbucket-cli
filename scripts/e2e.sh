@@ -114,6 +114,11 @@ TMPCFG="$(mktemp -d)"
 CLI=("$BIN" --config "$TMPCFG")
 
 echo "==> mock e2e checks"
+if python3 "$ROOT/scripts/e2e-pagination.py" "${CLI[@]}"; then
+  pass "NDJSON projected rows, cursor continuation, completion, and --all"
+else
+  fail "NDJSON pagination contract"
+fi
 assert_contains  "version"                   "bitbucket-cli"  "${CLI[@]}" version
 assert_contains  "doctor healthy"            '"healthy": true' "${CLI[@]}" doctor
 assert_contains  "doctor reports update"     '"available": true' "${CLI[@]}" doctor
@@ -158,6 +163,14 @@ assert_contains  "comment list"              "Looks good"     "${CLI[@]}" commen
 assert_contains  "comment add"               "added"          "${CLI[@]}" comment add --pr PROJ/demo/1 --content "added"
 assert_contains  "pr approve"                '"approved": true' "${CLI[@]}" pr approve PROJ/demo/1
 assert_contains  "pr unapprove"              '"approved": false' "${CLI[@]}" pr unapprove PROJ/demo/1
+assert_contains  "pr request-changes (DC)"    '"requested_changes": true' "${CLI[@]}" pr request-changes PROJ/demo/1
+assert_contains  "pr needs-work --withdraw"   '"requested_changes": false' "${CLI[@]}" pr needs-work PROJ/demo/3 --withdraw
+assert_err_contains "withdraw preserves approval" "PR_NO_CHANGE_REQUEST" \
+                                             "${CLI[@]}" pr request-changes PROJ/demo/4 --withdraw
+assert_err_contains "withdraw preview preserves approval" "PR_NO_CHANGE_REQUEST" \
+                                             "${CLI[@]}" pr request-changes PROJ/demo/4 --withdraw --dry-run
+assert_contains  "Skill Cloud refresh includes votes" '"state": "changes_requested"' \
+                                             "${CLI[@]}" --flavor cloud pr get PROJ/demo/1 --scope full --fields source.commit,destination.commit,reviewers,participants
 assert_contains  "branch list"               "main"           "${CLI[@]}" branch list --repo PROJ/demo
 assert_contains  "commit list"               "aaaa111"        "${CLI[@]}" commit list --repo PROJ/demo
 assert_contains  "commit get"                "aaaa111"        "${CLI[@]}" commit get --repo PROJ/demo aaaa111
@@ -236,6 +249,11 @@ assert_contains  "tag get"                   "aaaa111"        "${CLI[@]}" tag ge
 assert_err_contains "repo list hint"         "workspace list" \
                                              env -u BITBUCKET_DEFAULT_WORKSPACE "${CLI[@]}" repo list
 assert_contains  "fields projection"         '"id"'           "${CLI[@]}" pr get PROJ/demo/1 --fields id,title
+if "$ROOT/scripts/skill-budget.sh" >/dev/null; then
+  pass "Skill context budget"
+else
+  fail "Skill context budget (scripts/skill-budget.sh reported an oversized file)"
+fi
 SKILL_DIR="$(mktemp -d)"
 assert_contains  "skill install"             '"installed"' \
                                              "${CLI[@]}" skill install --dir "$SKILL_DIR"
@@ -268,6 +286,12 @@ assert_contains  "pr approve --dry-run"      '"method": "POST"' \
                                              "${CLI[@]}" pr approve PROJ/demo/1 --dry-run
 assert_contains  "pr unapprove --dry-run"    '"method": "DELETE"' \
                                              "${CLI[@]}" pr unapprove PROJ/demo/1 --dry-run
+assert_contains  "pr request-changes --dry-run resolves DC participant" 'participants/alice' \
+                                             "${CLI[@]}" pr request-changes PROJ/demo/1 --dry-run
+assert_contains  "pr request-changes --dry-run DC status" '"status": "NEEDS_WORK"' \
+                                             "${CLI[@]}" pr request-changes PROJ/demo/1 --dry-run
+assert_contains  "pr request-changes --withdraw --dry-run DC status" '"status": "UNAPPROVED"' \
+                                             "${CLI[@]}" pr request-changes PROJ/demo/3 --withdraw --dry-run
 assert_contains  "pr decline --dry-run"      '"method": "POST"' \
                                              "${CLI[@]}" pr decline PROJ/demo/1 --dry-run
 assert_contains  "pr decline preview resolves DC version" '?version=0' \
@@ -300,6 +324,10 @@ assert_exit         "read-only exit category=permission -> 5" 5 \
                                                      "${RO_ENV[@]}" "${CLI[@]}" pr approve PROJ/demo/1
 assert_contains     "read-only + --dry-run still previews" '"method": "POST"' \
                                                      "${RO_ENV[@]}" "${CLI[@]}" pr approve PROJ/demo/1 --dry-run
+assert_err_contains "read-only blocks pr request-changes" "READONLY_BLOCKED" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" pr request-changes PROJ/demo/1
+assert_contains     "read-only request-changes preview resolves participant" 'participants/alice' \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" pr request-changes PROJ/demo/1 --dry-run
 assert_err_contains "read-only blocks pr decline" "READONLY_BLOCKED" \
                                                      "${RO_ENV[@]}" "${CLI[@]}" pr decline PROJ/demo/1 --yes
 assert_contains     "read-only decline preview resolves version" '?version=0' \

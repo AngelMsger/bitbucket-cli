@@ -24,8 +24,7 @@ When the user pastes a PR URL or names `<workspace>/<repo>/<id>`:
    `--exec`, verify the checkout's repo, branch, HEAD, and dirty state; the CLI
    does not verify that the selected remote belongs to the PR repo. Fetching the
    authoritative refs is the cheapest way to review many large files locally
-   against the correct base. See `reviewing-locally.md` › "Local checkout
-   preflight".
+   against the correct base. See `reviewing-locally.md` › "Local checkout".
 5. **Commits / activity** — `pr commits` / `pr activity` enumerate the
    contained commits and the timeline (approvals, comments, state changes).
 
@@ -96,18 +95,21 @@ results for another user as partial coverage.
 
 ## Reviewing
 
-Apply the [review publication rules](reviewing-locally.md#decide-what-to-publish)
-before changing PR state. A clean, authorized approval needs no comment. For
+Apply the [review verdict rules](reviewing-locally.md#choose-a-review-verdict)
+and [publication rules](reviewing-locally.md#decide-what-to-publish) before changing
+PR state. An authorized approval needs no companion comment. For
 permission failures, use [PR permissions and recovery](pr-permissions.md).
 
 - Approve: `bitbucket-cli pr approve <ref>`
 - Withdraw: `bitbucket-cli pr unapprove <ref>`
-- Request changes (Cloud only): `bitbucket-cli pr request-changes <ref>`
-  (aliases: `need-work`, `needs-work`; add `--withdraw` to remove a previous
-  request). On Data Center the CLI has not implemented the participant-status
-  flow. Use the same user's browser session for an authorized needs-work vote
-  when available, or report the limitation. Publish only verified findings under
-  the review rules; do not substitute decline, which closes the PR.
+- Request changes: `bitbucket-cli pr request-changes <ref>` (aliases:
+  `need-work`, `needs-work`; `--withdraw` removes the vote). Cloud calls the
+  request-changes endpoint; Data Center updates the caller's own participant
+  status to `NEEDS_WORK` (`UNAPPROVED` on withdraw) after resolving the current
+  user. Withdrawal requires a confirmed Needs Work vote; otherwise
+  `PR_NO_CHANGE_REQUEST` preserves the current state, including in `--dry-run`.
+  The PR author cannot vote on their own PR. Publish only verified findings;
+  decline closes the PR and is never a substitute.
 - Decline: `bitbucket-cli pr decline <ref> --yes` (destructive — requires `--yes`).
   An explicitly requested reason can be supplied with `--message`; Data Center
   maps it to the optional decline comment. Its `--dry-run` reads the current PR

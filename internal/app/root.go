@@ -89,6 +89,8 @@ func newRootCmdWithState() (*cobra.Command, *appState) {
 			"lifecycle, posts inline review comments, and queries branches and commits.\n" +
 			"It supports Bitbucket Cloud and Data Center / Server, and emits agent-friendly\n" +
 			"JSON with structured errors.\n\n" +
+			"NDJSON lists keep rows on stdout and emit pagination notices on stderr; pass\n" +
+			"the notice's next value as --cursor to continue.\n\n" +
 			"AGENT NOTE: a companion Skill (\"bitbucket\") carries the canonical usage,\n" +
 			"safety modes, and env setup and is the source of truth for driving this CLI.\n" +
 			"If you are an agent, load that Skill before composing commands. Check status\n" +

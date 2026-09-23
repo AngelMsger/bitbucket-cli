@@ -332,7 +332,8 @@ type ApprovePRReq struct {
 	Approve bool // false = withdraw approval
 }
 
-// RequestChangesReq toggles a "request changes" vote (Cloud-only).
+// RequestChangesReq toggles a "request changes" (Cloud) / "needs work" (Data
+// Center) vote for the authenticated user.
 type RequestChangesReq struct {
 	Repo    RepoRef
 	ID      int

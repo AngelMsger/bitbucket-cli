@@ -34,15 +34,26 @@ up front.
   [Writing PR descriptions](skills/bitbucket/references/writing-pr-descriptions.md).
   Link to that source from creation and update workflows; keep repository checks
   in the creation workflow rather than adding routine results to descriptions.
-- Keep PR review evidence, maintainability, information-placement, and
-  publication rules in
-  [Reviewing a pull request](skills/bitbucket/references/reviewing-locally.md).
+- Keep PR review scope, revision/worktree safety, evidence, verdict,
+  information-placement, and publication rules in
+  [Reviewing a pull request](skills/bitbucket/references/reviewing-locally.md),
+  and multi-PR grouping and delegation in
+  [Reviewing batches](skills/bitbucket/references/reviewing-batches.md). Bind
+  each step to tested output fields, including Cloud participant votes. Guard
+  Data Center withdrawal against other states in both preview and execution.
   Route review and commenting workflows there; examples must not imply that
-  completing a review requires a comment, approval, or merge.
+  completing a review requires a
+  comment, approval, or merge. Design rationale belongs in
+  `docs/technical-design.md`, not in the Skill.
+- Keep the Skill within `scripts/skill-budget.sh` (run by `make e2e`). Raise a
+  budget only with a reason recorded in `test/skill-review/validation.md`.
 - Validate changes to review decisions with the
   [offline workflow cases](test/skill-review/expectations.md), including reasonable
-  comments and abstractions that should be preserved. Keep creation's incidental
-  quality reminder in the creation workflow; do not turn it into a review gate.
+  comments and abstractions that should be preserved, revision drift, delegated
+  coverage, and evidence versus collaboration holds. Keep one verdict table;
+  link to it from vote commands and permission recovery rather than introducing
+  separate approval heuristics. Keep creation's incidental quality reminder in
+  the creation workflow; do not turn it into a review gate.
 - Keep PR permission recovery in
   [PR permissions and recovery](skills/bitbucket/references/pr-permissions.md).
   Distinguish token scope, account rights, host credential access and local
@@ -240,3 +251,14 @@ Use the common acquisition guide in all prompt styles and missing-credential
 recovery; never request a guide URL with credentials. Cover a fresh config reload,
 conflict/idempotent setup, and partial persistence failures when changing this
 flow. The canonical behavior is in the installation guide's team setup section.
+
+## List output and continuation
+
+Keep the shared renderer's NDJSON stdout item-only. After successfully writing
+all rows, an incomplete page emits one compact `_notice.pagination` record on
+stderr with `next`, `has_more`, and a continuation hint. Preserve the notice for
+empty filtered pages and field projections; omit it on completed pages and
+stdout failures. Keep JSON envelopes unchanged. `Options.NoticeWriter` controls
+the notice destination (nil means stderr), and `Options.NextFlag` controls the
+NDJSON hint and table footer (empty means `--cursor`). Cover renderer edge cases
+and a real CLI cursor round trip in the mock end-to-end suite.

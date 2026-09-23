@@ -3,6 +3,7 @@ package apiclient
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"reflect"
 	"strings"
@@ -37,24 +38,86 @@ func TestCapabilityMatrixComplete(t *testing.T) {
 	}
 }
 
-// TestRequestChangesMatchesRegistry pins the runtime guard to the registry: the
-// command must be rejected on a flavor the table marks unsupported, and allowed
-// where it is supported. This is the consistency check that would have caught
-// the old hard-coded "Cloud-only" guard drifting from reality.
+// Both flavors must preview the same request they execute.
 func TestRequestChangesMatchesRegistry(t *testing.T) {
-	for _, f := range []Flavor{FlavorCloud, FlavorDataCenter} {
-		sup := capabilitySupportFor(CapPRRequestChanges, f)
-		// DescribeWrite exercises the same guard without sending HTTP.
-		_, err := offlineClient(f).DescribeWrite(context.Background(), RequestChangesReq{
-			Repo: RepoRef{Workspace: "ws", Slug: "repo"}, ID: 1, Request: true,
-		})
-		if sup.Supported() && err != nil {
-			t.Errorf("flavor %q marks request-changes supported but the guard errored: %v", f, err)
-		}
-		if !sup.Supported() && err == nil {
-			t.Errorf("flavor %q marks request-changes unsupported but the guard allowed it", f)
+	for _, flavor := range []Flavor{FlavorCloud, FlavorDataCenter} {
+		for _, request := range []bool{true, false} {
+			t.Run(fmt.Sprintf("%s/request=%t", flavor, request), func(t *testing.T) {
+				if !capabilitySupportFor(CapPRRequestChanges, flavor).Supported() {
+					t.Fatalf("flavor %q marks request-changes unsupported", flavor)
+				}
+				wantMethod, wantURI := http.MethodPost, "/2.0/repositories/PROJ/repo/pullrequests/7/request-changes"
+				var wantBody map[string]any
+				if !request {
+					wantMethod = http.MethodDelete
+				}
+				if flavor == FlavorDataCenter {
+					wantMethod = http.MethodPut
+					wantURI = "/rest/api/1.0/projects/PROJ/repos/repo/pull-requests/7/participants/alice"
+					wantBody = map[string]any{"status": "NEEDS_WORK"}
+					if !request {
+						wantBody = map[string]any{"status": "UNAPPROVED"}
+					}
+				}
+				writes := 0
+				var sentBody map[string]any
+				c := newWriteTestClient(t, flavor, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.Header().Set("Content-Type", "application/json")
+					switch {
+					case r.Method == http.MethodGet && r.URL.Path == "/rest/api/1.0/application-properties":
+						w.Header().Set("X-AUSERNAME", "alice")
+						_, _ = w.Write([]byte(`{"version":"8.19.0"}`))
+					case r.Method == http.MethodGet && r.URL.Path == "/rest/api/1.0/users/alice":
+						_, _ = w.Write([]byte(`{"name":"alice","slug":"alice","displayName":"Alice"}`))
+					case r.Method == http.MethodGet && r.URL.Path == "/rest/api/1.0/projects/PROJ/repos/repo/pull-requests/7":
+						_, _ = w.Write([]byte(`{"id":7,"reviewers":[{"user":{"slug":"alice"},"status":"NEEDS_WORK"}]}`))
+					case r.Method == wantMethod && r.URL.RequestURI() == wantURI:
+						writes++
+						if r.Body != nil && wantBody != nil {
+							if err := json.NewDecoder(r.Body).Decode(&sentBody); err != nil {
+								t.Errorf("decode body: %v", err)
+							}
+						}
+						_, _ = w.Write([]byte(`{}`))
+					default:
+						t.Errorf("unexpected request: %s %s", r.Method, r.URL.RequestURI())
+						w.WriteHeader(http.StatusNotFound)
+					}
+				}))
+				req := RequestChangesReq{Repo: RepoRef{Workspace: "PROJ", Slug: "repo"}, ID: 7, Request: request}
+				plan, err := NewReadOnly(c).DescribeWrite(context.Background(), req)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if writes != 0 {
+					t.Fatalf("preview sent %d writes", writes)
+				}
+				if plan.Method != wantMethod || plan.URL != c.BaseURL()+wantURI {
+					t.Fatalf("preview target = %s %s, want %s %s", plan.Method, plan.URL, wantMethod, wantURI)
+				}
+				if !reflect.DeepEqual(plan.Payload, anyOrNil(wantBody)) {
+					t.Fatalf("preview payload = %#v, want %#v", plan.Payload, wantBody)
+				}
+				if err := c.RequestPRChanges(context.Background(), req); err != nil {
+					t.Fatal(err)
+				}
+				if writes != 1 {
+					t.Fatalf("live call sent %d writes, want 1", writes)
+				}
+				if wantBody != nil && !reflect.DeepEqual(sentBody, wantBody) {
+					t.Fatalf("live payload = %#v, want %#v", sentBody, wantBody)
+				}
+			})
 		}
 	}
+}
+
+// anyOrNil keeps a nil map comparable with a nil `any` payload.
+func anyOrNil(m map[string]any) any {
+	if m == nil {
+		return nil
+	}
+	return m
 }
 
 // Pin each backend's decline contract and prove the preview matches the live

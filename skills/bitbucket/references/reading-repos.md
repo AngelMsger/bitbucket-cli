@@ -40,3 +40,7 @@ shorthand arguments.
   yields the set of commits reachable from `to` but not from `from`. It accepts
   `--limit N`, `--cursor <next>`, and `--all`; the default returns one page with
   `next` and `has_more`, while `--all` fetches the complete comparison.
+  With `--format ndjson`, rows stay on stdout and an incomplete page exposes
+  `next` and `has_more` in stderr's `_notice.pagination`; pass that cursor
+  verbatim to the next call. Empty filtered pages can still have a next page.
+  `--all` collects all pages before rendering and emits no continuation notice.

@@ -42,7 +42,9 @@ use it. Write commands support `--dry-run`, and destructive ones require `--yes`
   per-user DPAPI fallback on Windows and a `0600` fallback on macOS/Linux.
 - **Companion Skill** — a `bitbucket` Skill, embedded in the binary, that guides coding
   agents through the CLI, including evidence-based review of functional correctness
-  and significant maintainability concerns. See the [review guide](skills/bitbucket/references/reviewing-locally.md).
+  and significant maintainability concerns, isolated local review, related-PR
+  coordination, and review votes grounded in current evidence and reviewer state.
+  See the [review guide](skills/bitbucket/references/reviewing-locally.md).
 
 ## Installation
 
@@ -159,7 +161,7 @@ written to the config file.
 | `pr threads` | PR comments regrouped into inline threads (by file + anchor) |
 | `pr commits` / `pr activity` | commits in the PR; activity timeline, including multi-PR/stdin queries filtered by actor, kind and time; filtered evidence excludes recognized system comments unless `--include-system` is set |
 | `pr create` / `update` / `decline` / `merge` | open / edit / close / merge PRs; `--dry-run`, destructive ones need `--yes` |
-| `pr approve` / `unapprove` / `request-changes` | review verdicts (`request-changes` is Cloud only) |
+| `pr approve` / `unapprove` / `request-changes` | review verdicts; Data Center withdrawal requires Needs Work and preserves approvals |
 | `pr fetch` / `pr checkout` | print the equivalent `git` commands; `--exec` runs them in your current checkout |
 | `file list` / `tree` / `get` | browse and read source at any ref; `--range L1:L2` slices a line range |
 | `repo list` / `get` / `clone-url` / `create` / `fork` / `delete` | manage repositories; `fork` supports `--into`, `--name`, and `--dry-run` |
@@ -174,7 +176,11 @@ written to the config file.
 In the default JSON output, list commands return a `{items, next, has_more}` envelope;
 pass `--cursor` with a prior page's `next` to read the following page, or `--all` to
 fetch every page. `--format ndjson` instead streams the items themselves, one JSON
-object per line. `--fields` paths are relative to each record, so use
+object per line. Incomplete pages emit a compact `_notice.pagination` on stderr
+with `next` and `has_more`; pass that `next` verbatim as `--cursor`. Empty filtered
+pages still carry the notice. Completed pages and `--all` results do not.
+`--all` collects all pages before rendering, including NDJSON.
+`--fields` paths are relative to each record, so use
 `--fields id,title,repository` rather than prefixing paths with `items.`. A nested
 projection such as `--fields repository.workspace` emits the literal key
 `"repository.workspace"`; select `repository` when downstream `jq` should retain

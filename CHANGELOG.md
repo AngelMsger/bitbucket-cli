@@ -2,6 +2,34 @@
 
 ## [Unreleased]
 
+## [0.23.0] - 2026-09-23
+
+### Added
+
+- Support Data Center `pr request-changes` and its `needs-work` aliases through
+  the authenticated user's participant status. Share identity resolution and
+  request construction between dry runs and execution.
+
+### Skill
+
+- Organize review around verified source/base commits, isolated worktrees,
+  dependency-aware delegation, evidence, and one verdict table. Distinguish
+  confirmed defects, current human Needs Work holds, incomplete coverage, and
+  approval; verify automated feedback independently and allow non-blocking nits.
+- Refresh commits and reviewer states before publication, preserve action scope,
+  and reconcile existing or uncertain votes. Read Cloud votes from participants.
+- Keep single-PR review concise, load batch guidance when needed, and enforce
+  Skill context budgets. Expand offline workflow cases and publish Skill `0.18.1`.
+
+### Fixed
+
+- Preserve approvals when withdrawing Data Center change requests. Require a
+  confirmed Needs Work vote in both preview and execution; return
+  `PR_NO_CHANGE_REQUEST` without writing for other, missing, or conflicting states.
+- Preserve NDJSON continuation on stderr as `_notice.pagination`, including
+  projected and empty filtered pages. Keep stdout item-only and JSON envelopes
+  unchanged; omit notices for completed pages and `--all` results.
+
 ## [0.22.0] - 2026-09-21
 
 ### Skill
@@ -816,7 +844,8 @@ PR-centric MVP supporting Bitbucket Cloud (REST 2.0) and Data Center (REST
 subtrees; layered configuration with keychain-backed auth; structured error
 model; and an embedded companion Skill.
 
-[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.22.0...HEAD
+[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.23.0...HEAD
+[0.23.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.22.0...v0.23.0
 [0.22.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.21.1...v0.22.0
 [0.21.1]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.21.0...v0.21.1
 [0.21.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.20.1...v0.21.0

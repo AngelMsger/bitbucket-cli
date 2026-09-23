@@ -451,19 +451,11 @@ func (c *apiClient) DescribeWrite(ctx context.Context, op any) (WriteRequestPlan
 		}
 		return WriteRequestPlan{Method: "DELETE", URL: c.baseURL + c.repoPath(v.Repo)}, nil
 	case RequestChangesReq:
-		if err := checkRepoRef(v.Repo); err != nil {
+		m, p, body, err := c.buildRequestPRChanges(ctx, v)
+		if err != nil {
 			return WriteRequestPlan{}, err
 		}
-		if sup := c.supportFor(CapPRRequestChanges); !sup.Supported() {
-			return WriteRequestPlan{}, cerrors.New(cerrors.CategoryUsage, "PR_REQ_CHANGES_DC",
-				"pr request-changes is not available on this backend: "+sup.Reason).
-				WithHint("Use the Bitbucket UI for an authorized needs-work vote. Decline closes the PR and is not a substitute for requesting changes.")
-		}
-		m := "POST"
-		if !v.Request {
-			m = "DELETE"
-		}
-		return WriteRequestPlan{Method: m, URL: c.baseURL + c.prPath(v.Repo, v.ID) + "/request-changes"}, nil
+		return WriteRequestPlan{Method: m, URL: c.baseURL + p, Payload: body}, nil
 	}
 	return WriteRequestPlan{}, cerrors.New(cerrors.CategoryInternal, "UNSUPPORTED_WRITE",
 		"DescribeWrite called with an unsupported op type")

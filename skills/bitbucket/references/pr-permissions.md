@@ -1,30 +1,24 @@
 # PR permissions and recovery
 
-Use this reference when a PR action fails, especially Data Center approval or
-decline with a Personal Access Token (PAT). Continue independent review reads
+Use this reference when a PR action fails. Continue independent review reads
 while resolving the action; keep the failure report with the user.
 
 ## Account rights and token permissions are separate
 
 Atlassian's [HTTP access token permission table](https://confluence.atlassian.com/bitbucketserver/http-access-tokens-939515499.html)
 places PR actions under **Repository write**, not Repository read. A read-only
-PAT can therefore read a PR yet be rejected when approving or declining it.
-The token also remains limited by its owner's access; adding token permissions
-does not grant the account new repository rights.
+Data Center Personal Access Token (PAT) can therefore read a PR yet be rejected
+when approving, declining, or voting Needs Work on it. The token also remains
+limited by its owner's access; adding token permissions does not grant the
+account new repository rights. A browser login uses its own session and may
+allow an action blocked for the PAT. Deployment policy and PR state can still
+prevent the action.
 
-The Data Center REST references for
-[legacy approval](https://developer.atlassian.com/server/bitbucket/rest/v818/api-group-deprecated/)
-and [decline](https://developer.atlassian.com/server/bitbucket/rest/v902/api-group-pull-requests/)
-document `REPO_READ` as the account permission for those endpoints. That
-does not mean a PAT restricted to Repository read permits those writes. A
-browser login uses its own session and may allow an action blocked for the PAT.
-Deployment policy and PR state can still prevent the action.
-
-The CLI sends `POST .../pull-requests/<id>/approve` for approval and
-`POST .../pull-requests/<id>/decline` with the current PR version for Data Center
-decline. A server rejection is not by itself evidence of a malformed request.
-Keep the error code, HTTP status, sanitized server message, action and PR URL;
-do not label every permission failure a token-scope problem without evidence.
+The CLI sends `POST .../approve`, `POST .../decline` with the current PR
+version, and, on Data Center, `PUT .../participants/<your-slug>` for Needs
+Work. A server rejection is not by itself evidence of a malformed request. Keep
+the error code, HTTP status, sanitized server message, action, and PR URL; do
+not label every permission failure a token-scope problem without evidence.
 
 ## Classify before retrying
 
@@ -38,41 +32,38 @@ do not label every permission failure a token-scope problem without evidence.
 | Timeout, disconnected response, 5xx, or response decoding failure | The write may have succeeded. Read PR/reviewer state and relevant activity before another attempt through any tool. If still uncertain, report it and stop replaying the write. |
 
 A successful `--dry-run` checks the request plan, **not** write permission. A
-successful `whoami`, PR read, or authentication probe does not prove write access.
-For batch output, inspect each item's `ok`/`error` and reconcile only failed or
-uncertain targets; never replay the whole batch after partial success.
+successful `whoami`, PR read, or authentication probe does not prove write
+access. For batch output, inspect each item's `ok`/`error` and reconcile only
+failed or uncertain targets; never replay the whole batch after partial success.
 
 ## Browser recovery for an authorized action
 
-When the CLI is blocked by server permissions and a browser tool is available,
-try the normal Bitbucket UI using the user's existing signed-in session:
+When the server rejected an authorized CLI write for permissions and a browser
+tool is available, make one bounded attempt in the normal Bitbucket UI using
+the user's existing signed-in session:
 
-1. Confirm the complete instance URL, PR repository/ID, and the signed-in
-   account. Match the intended user's verified identity; do not substitute
-   another account. If no matching session is available, report the blocker.
-2. Read the current PR and reviewer state before acting. If the requested
-   approval or decline is already recorded, report it without repeating it.
-   If reviewed commits changed, revalidate the review before approval.
-3. Inspect the enabled UI action and its target. Carry out only the action
-   already authorized, using the browser tool's normal interaction and preview
-   facilities. Existing approval needs no new confirmation merely because the
-   tool changed. Decline closes the PR and requires authorization to close it;
-   it is not a substitute for requesting changes or withholding approval.
-4. For a clean approval, leave any optional comment blank. The same
-   [review publication rules](reviewing-locally.md#decide-what-to-publish), AI
+1. Confirm the instance URL, PR, and signed-in account match the intended
+   user's verified identity; never substitute another account. No matching
+   session: report the blocker.
+2. Re-read PR and reviewer state. If the action is already recorded, report it
+   without repeating it. Apply the [verdict table](reviewing-locally.md#choose-a-review-verdict)
+   to the refreshed revisions and votes before a review vote.
+3. Carry out only the action already authorized. Decline closes the PR and
+   needs authorization to close; it is not a substitute for Needs Work. Leave
+   an approval's optional comment blank. The
+   [publication rules](reviewing-locally.md#decide-what-to-publish), AI
    attribution, and human-reply gate apply to browser comments.
-5. Verify the resulting reviewer/PR state through the UI or a CLI read. Report
-   the action, PR link, and verified result to the user, including that the
-   browser was used after the CLI rejection. Do not treat a click as proof.
+4. Verify the resulting state through the UI or a CLI read, then report the
+   action, the PR link, the verified result, and that the browser was used
+   after the CLI rejection. A click is not proof.
 
-Use one bounded browser attempt. If the action is unavailable, denied, or has
-an uncertain result after a state check, stop and report the concrete remaining
-blocker. Do not switch accounts, extract cookies into the CLI, or change token
-permissions automatically. This recovery never overrides an explicit read-only
-instruction or an automation restriction imposed by the user or administrator.
+If the action is unavailable, denied, or uncertain after a state check, stop
+and report the concrete blocker. Do not switch accounts, extract cookies into
+the CLI, or change token permissions automatically. This recovery never
+overrides an explicit read-only instruction or an automation restriction from
+the user or an administrator.
 
-If no usable browser session exists, finish the review and report the pending
-action. The user can perform it in the UI or arrange suitable token/account
-permissions; `auth guide` supplies the configured credential-management link.
-Do not claim the PR was approved or declined, or post an explanatory PR comment,
-merely because the review is complete.
+Without a usable browser session, finish the review and report the pending
+action; the user can perform it in the UI or arrange token/account permissions
+(`auth guide` supplies the credential-management link). Never claim the action
+happened, or post an explanatory comment, because the review is complete.

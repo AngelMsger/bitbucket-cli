@@ -54,8 +54,8 @@ func (s Support) Supported() bool { return s.Level != SupportUnsupported }
 var capabilitySupport = map[Capability]map[Flavor]Support{
 	CapPRRequestChanges: {
 		FlavorCloud: {Level: SupportNative},
-		FlavorDataCenter: {Level: SupportUnsupported,
-			Reason: "DC models this as a participant-status (NEEDS_WORK) PUT, which the client has not implemented yet"},
+		FlavorDataCenter: {Level: SupportEmulated,
+			Reason: "DC uses a participant-status PUT addressed to the current user; withdrawal requires a confirmed NEEDS_WORK state before setting UNAPPROVED"},
 	},
 	CapPRCloseSourceBranch: {
 		FlavorCloud: {Level: SupportNative},

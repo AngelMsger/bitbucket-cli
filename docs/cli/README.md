@@ -90,7 +90,7 @@ is published at <https://angelmsger.github.io/bitbucket-cli/cli/>.
 | [`bitbucket-cli pr inbox`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-inbox) | List PRs involving me across repositories (--role reviewer by default) |
 | [`bitbucket-cli pr list`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-list) | List pull requests in a repository |
 | [`bitbucket-cli pr merge`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-merge) | Merge a PR |
-| [`bitbucket-cli pr request-changes`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-request-changes) | Cast (or withdraw) a request-changes / needs-work vote (Cloud only) |
+| [`bitbucket-cli pr request-changes`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-request-changes) | Cast (or withdraw) a request-changes / needs-work vote |
 | [`bitbucket-cli pr status`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-status) | Show merge readiness: mergeable, conflicts, reviewers, CI builds |
 | [`bitbucket-cli pr threads`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-threads) | List PR review threads grouped by file and anchor |
 | [`bitbucket-cli pr unapprove`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-pr-unapprove) | Withdraw an approval |

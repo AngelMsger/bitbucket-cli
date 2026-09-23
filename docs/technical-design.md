@@ -60,6 +60,7 @@ the site root):
 | List PRs | `GET /2.0/repositories/{ws}/{repo}/pullrequests?state=&q=`; author/reviewer selectors resolve to UUID predicates | `GET /rest/api/1.0/projects/{key}/repos/{repo}/pull-requests?state=`; author/reviewer filtering requires explicit `--all` and is applied after the repository scan |
 | Get PR | `GET .../pullrequests/{id}` | `GET .../pull-requests/{id}` |
 | Update PR metadata | `PUT .../pullrequests/{id}` accepts partial metadata; omit `reviewers` to preserve them | `PUT .../pull-requests/{id}` requires the current `version` and treats `reviewers` as a complete replacement set; the client fetches and round-trips both |
+| Request changes | `POST` / `DELETE .../pullrequests/{id}/request-changes` | `PUT .../pull-requests/{id}/participants/{userSlug}` with `NEEDS_WORK`; withdrawal reads the caller's current vote and only sets `UNAPPROVED` for a confirmed Needs Work state, otherwise returning `PR_NO_CHANGE_REQUEST`. Preview and execution share the guard and identity lookup |
 | Decline PR | `POST .../pullrequests/{id}/decline` with `message` | `POST .../pull-requests/{id}/decline?version=N` with `version` and optional `comment`; preview and execution share the version-reading builder |
 | PR diff (whole) | `GET .../pullrequests/{id}/diff` (text) | `GET .../pull-requests/{id}/diff` (JSON hunks; `Accept: text/plain` for raw text) |
 | PR diff (per file) | `GET .../pullrequests/{id}/diff?path=` | `GET .../pull-requests/{id}/diff/{path}` |
@@ -240,13 +241,33 @@ least context-token waste.
 ### 6.1 Review workflow
 
 The companion Skill's [review guide](../skills/bitbucket/references/reviewing-locally.md)
-owns the decision rules: reuse the known PR, read intent, inspect changes and
-existing discussion, and verify local source/base alignment when using a
-checkout. CI and conflicts inform the review without preventing independent
-analysis. Findings go through its publication rules; a clean, authorized
-approval has no companion comment. State changes remain within the requested
-scope. Use [PR permission recovery](../skills/bitbucket/references/pr-permissions.md)
+owns the decision rules as a command-bound checklist: establish scope and
+immutable source/destination revisions, isolate local work when needed, verify
+findings independently of comment authorship, then apply one verdict table
+separating technical blockers, human collaboration holds, incomplete evidence,
+and approval. Refresh revisions and reviewer state before authorized
+publication; approval has no companion comment. CI and conflicts inform review
+without preventing independent analysis. Grouping related PRs and delegating
+coverage live in [Reviewing batches](../skills/bitbucket/references/reviewing-batches.md)
+so the single-PR path stays short. Use
+[PR permission recovery](../skills/bitbucket/references/pr-permissions.md)
 when the CLI cannot complete an authorized action.
+
+The guide's design draws on
+[Google's review standard](https://google.github.io/eng-practices/review/reviewer/standard.html)
+(evidence-based judgment; accept improvements without demanding perfection;
+peer approval corroborates rather than replaces judgment),
+[Google's coverage guidance](https://google.github.io/eng-practices/review/reviewer/looking-for.html)
+(context, tests, maintainability), and
+[Atlassian's review workflow](https://support.atlassian.com/bitbucket-cloud/docs/review-code-in-a-pull-request/)
+(discussion, tasks, and reviewer status are distinct). Deliberate departures:
+routine positive summaries stay in the user report rather than on the PR, and
+an active human Needs Work is followed as a collaboration policy instead of
+counting threads or votes. Isolation and revision semantics follow
+[git worktree](https://git-scm.com/docs/git-worktree) and
+[merge-base diffs](https://git-scm.com/docs/git-diff); a worktree does not
+isolate shared refs from concurrent fetches. The Skill's word budget is
+enforced by `scripts/skill-budget.sh` from the e2e suite.
 
 The agent applies the guide's evidence standards to functional correctness and
 significant maintainability concerns, using the final diff and bounded context
@@ -255,6 +276,13 @@ run a model, assign a quality score, or add a review command. PR creation uses
 only the [incidental quality reminder](../skills/bitbucket/references/pr-workflows.md#incidental-quality-reminder)
 from context already read. The [offline cases](../test/skill-review/expectations.md)
 exercise these decisions separately from CLI packaging and transport tests.
+
+The review refresh includes both `reviewers` and `participants`. Cloud's
+reviewers are the assigned roster; current votes live in participants. Data
+Center exposes states on both collections. Vote withdrawal rejects missing,
+unknown, or conflicting state rather than clearing an approval. Execution
+rechecks after preview; the server provides no conditional participant update,
+so this client-side check is not an atomic compare-and-set.
 
 ### 6.2 `pr status` — parallel aggregation
 
@@ -316,6 +344,15 @@ items.id`); nested projections retain the full dotted path as a literal output
 key (`{"b.c": ...}`). Selecting the containing object preserves nested access
 for downstream `jq`. List commands emit `{items, next, has_more}`; `--cursor`
 continues from a prior page's `next`.
+
+NDJSON stdout contains only the projected item rows. If `has_more` is true,
+`EmitList` sends a compact stderr notice after all rows are written:
+`{"_notice":{"pagination":{"next":"<opaque>","has_more":true},"next_steps":["Pass next as --cursor to retrieve the next page."]}}`.
+This also applies to an empty filtered page. Completed pages, including `--all`
+results, emit no pagination notice. A failed stdout write suppresses the notice;
+a failed notice write does not change success. `Options.NoticeWriter` defaults
+to stderr and `Options.NextFlag` defaults to `--cursor`, shared with the table
+footer. Field projection affects rows only; JSON envelopes remain unchanged.
 
 Successful output is unified as JSON on stdout, with these exceptions:
 

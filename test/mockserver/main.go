@@ -148,7 +148,28 @@ func routes() http.Handler {
 			http.Error(w, `{"errors":[{"message":"Pull request not found"}]}`, http.StatusNotFound)
 			return
 		}
-		writeJSON(w, pr(id, "Add login flow", "OPEN"))
+		result := pr(id, "Add login flow", "OPEN")
+		if id == 3 || id == 4 {
+			status := "NEEDS_WORK"
+			if id == 4 {
+				status = "APPROVED"
+			}
+			result["author"] = map[string]any{"user": namedUser("bob"), "role": "AUTHOR"}
+			result["reviewers"] = []any{map[string]any{"user": user(), "role": "REVIEWER", "status": status, "approved": id == 4}}
+		}
+		writeJSON(w, result)
+	})
+	mux.HandleFunc("GET /2.0/repositories/{workspace}/{repo}/pullrequests/{id}", func(w http.ResponseWriter, r *http.Request) {
+		alice := map[string]any{"uuid": "{alice}", "nickname": "alice"}
+		writeJSON(w, map[string]any{
+			"id": atoi(r.PathValue("id")), "state": "OPEN",
+			"source":      map[string]any{"commit": map[string]string{"hash": "bbbb222"}},
+			"destination": map[string]any{"commit": map[string]string{"hash": "aaaa111"}},
+			"reviewers":   []any{alice},
+			"participants": []any{map[string]any{
+				"user": alice, "role": "REVIEWER", "state": "changes_requested", "approved": false,
+			}},
+		})
 	})
 	mux.HandleFunc("GET "+prKey+"/{id}/diff", func(w http.ResponseWriter, r *http.Request) {
 		// PR 2 emulates a Data Center instance that returns a JSON hunk model at
@@ -216,6 +237,17 @@ func routes() http.Handler {
 	})
 	mux.HandleFunc("POST "+prKey+"/{id}/approve", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
 	mux.HandleFunc("DELETE "+prKey+"/{id}/approve", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) })
+	// Data Center stores review votes on participants.
+	mux.HandleFunc("PUT "+prKey+"/{id}/participants/{user}", func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Status string `json:"status"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || (body.Status != "NEEDS_WORK" && body.Status != "UNAPPROVED") {
+			http.Error(w, `{"errors":[{"message":"status must be NEEDS_WORK or UNAPPROVED"}]}`, http.StatusBadRequest)
+			return
+		}
+		writeJSON(w, map[string]any{"user": namedUser(r.PathValue("user")), "role": "REVIEWER", "approved": false, "status": body.Status})
+	})
 
 	branchKey := "/rest/api/1.0/projects/{key}/repos/{slug}/branches"
 	mux.HandleFunc("GET "+branchKey, func(w http.ResponseWriter, _ *http.Request) {

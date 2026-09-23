@@ -30,7 +30,7 @@ The process exit code matches the category:
 | 8    | `network`      | DNS/TLS/socket failure; `retryable=true`.                                        |
 | 9    | `server`       | 5xx from Bitbucket; `retryable=true`.                                            |
 | 10   | `parse`        | The response body did not match the expected shape — likely a client bug.       |
-| 11   | `conflict`     | HTTP 409 — refresh current resource state before deciding whether to retry.       |
+| 11   | `conflict`     | HTTP 409 or incompatible current state; read it before deciding whether to retry. |
 
 ## Common recovery flows
 
@@ -46,6 +46,9 @@ The process exit code matches the category:
   do not launch interactive login or log them out automatically. Host credential
   access failures use the separate recovery above.
 - **`not_found`** → confirm with `bitbucket-cli repo get <ref>` / `pr get <ref>`.
+- **`PR_NO_CHANGE_REQUEST`** → Data Center found no confirmed Needs Work vote
+  to withdraw. Read `pr get <ref> --scope full --fields reviewers,participants`;
+  preserve approvals and do not retry through the browser.
 - **`usage` on `pr decline`/`pr merge`/`comment delete`** → add `--yes` when the
   destructive action is authorized.
 - **`usage` `NOT_A_GIT_WORKTREE` on `pr fetch --exec` / `pr checkout --exec`** →

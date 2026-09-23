@@ -14,7 +14,7 @@ This repository is a Go CLI for Bitbucket. The executable entrypoint is in `cmd/
 
 - `make build` builds `bin/bitbucket-cli` with version metadata.
 - `make test` runs `go test ./...` across all packages.
-- `make e2e` builds the CLI and runs end-to-end checks against the in-repo mock server.
+- `make e2e` builds the CLI and runs end-to-end checks against the in-repo mock server; Python 3 validates NDJSON pagination across real CLI invocations.
 - `make e2e-live` also runs read-only checks against a real server configured through `.env`.
 - `make lint` runs formatting and vetting via `make fmt` and `make vet`.
 - `make cross` creates release binaries in `dist/`.
@@ -31,6 +31,8 @@ Use Go’s standard `testing` package. Name test files `*_test.go` and test func
 For changes to the companion Skill's review decisions, also compare baseline and
 candidate behavior with the [offline PR workflow cases](test/skill-review/expectations.md).
 These exercise judgment and scope; CLI tests verify packaging and command behavior.
+`make e2e` also runs `scripts/skill-budget.sh`, which caps the Skill's word count
+per file and across the review load path.
 
 ## Commit & Pull Request Guidelines
 

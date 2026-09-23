@@ -601,8 +601,15 @@ func newPRRequestChangesCmd(s *appState) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "request-changes <workspace>/<repo>/<id>",
 		Aliases: []string{"need-work", "needs-work"},
-		Short:   "Cast (or withdraw) a request-changes / needs-work vote (Cloud only)",
-		Args:    cobra.ExactArgs(1),
+		Short:   "Cast (or withdraw) a request-changes / needs-work vote",
+		Long: "Cast a request-changes (Cloud) / needs-work (Data Center) vote as the\n" +
+			"authenticated user, or withdraw one with --withdraw.\n\n" +
+			"On Data Center the vote is a participant-status update addressed to the\n" +
+			"caller's own user slug, so the command resolves the current user first;\n" +
+			"--dry-run shows the resolved target. Withdrawal requires a current Needs Work\n" +
+			"vote; other or unknown states return PR_NO_CHANGE_REQUEST without writing.\n" +
+			"The PR author cannot vote on their own PR.",
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ref, id, err := resolvePRRef(args[0], apiclient.RepoRef{})
 			if err != nil {
