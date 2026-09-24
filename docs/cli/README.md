@@ -12,6 +12,7 @@ is published at <https://angelmsger.github.io/bitbucket-cli/cli/>.
 | [`bitbucket-cli auth guide`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-auth-guide) | Show offline credential acquisition guidance for this service |
 | [`bitbucket-cli auth login`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-auth-login) | Verify and store personal credentials for the configured service |
 | [`bitbucket-cli auth logout`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-auth-logout) | Remove the stored credential for the configured server |
+| [`bitbucket-cli auth reuse`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-auth-reuse) | Reuse an existing login in the selected context without signing in again |
 | [`bitbucket-cli auth status`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-auth-status) | Show whether a usable credential is configured |
 
 ## branch

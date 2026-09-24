@@ -262,3 +262,12 @@ stdout failures. Keep JSON envelopes unchanged. `Options.NoticeWriter` controls
 the notice destination (nil means stderr), and `Options.NextFlag` controls the
 NDJSON hint and table footer (empty means `--cursor`). Cover renderer edge cases
 and a real CLI cursor round trip in the mock end-to-end suite.
+
+## Credential reuse
+
+Keep `auth reuse` separate from public service setup. Match complete URLs and
+provider scope before credential access, preserve configured destination identities,
+verify native credentials before associating missing identity, and retain operational
+failures. Never copy secrets, infer identity from environment variables or activate
+a context. Cover dry-run, ambiguity, scope mismatch, concurrent edits and fresh-load
+credential resolution. Native self-configuration follows the existing read-only exception.

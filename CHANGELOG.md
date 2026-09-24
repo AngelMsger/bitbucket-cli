@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [0.24.0] - 2026-09-24
+
+### Added
+
+- Add `auth reuse` to verify and associate an existing matching login with a team
+  context without another login or copying secrets; include dry-run and explicit
+  source selection for ambiguous identities.
+
 ## [0.23.0] - 2026-09-23
 
 ### Added
@@ -108,7 +116,6 @@
 - Preserve credential-page metadata and replace configuration files atomically.
 - Hide secret input in terminal prompts while retaining the plain setup pipe flow.
 - Preserve the default workspace through configuration read/modify/write.
-
 
 ## [0.19.1] - 2026-09-16
 
@@ -235,7 +242,6 @@
   each product's home and project markers; `--agent` accepts the full id
   list. Installation guides, generated CLI docs, and help text stay in sync.
 
-
 ## [0.14.1] - 2026-08-11
 
 ### Added
@@ -246,7 +252,6 @@
   `./.pi` alongside Claude Code, Codex, and Grok Build. Installation guides,
   generated CLI docs, and agent help text list the new target.
 
-
 ## [0.14.0] - 2026-08-11
 
 ### Added
@@ -256,7 +261,6 @@
   `./.grok/skills/<name>` with `--project`. Auto-detection probes `~/.grok` /
   `./.grok` alongside Claude Code and Codex. Installation guides, generated CLI
   docs, and agent help text list the new target.
-
 
 ## [0.13.3] - 2026-08-05
 
@@ -844,7 +848,8 @@ PR-centric MVP supporting Bitbucket Cloud (REST 2.0) and Data Center (REST
 subtrees; layered configuration with keychain-backed auth; structured error
 model; and an embedded companion Skill.
 
-[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.23.0...HEAD
+[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.24.0...HEAD
+[0.24.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.23.0...v0.24.0
 [0.23.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.22.0...v0.23.0
 [0.22.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.21.1...v0.22.0
 [0.21.1]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.21.0...v0.21.1
