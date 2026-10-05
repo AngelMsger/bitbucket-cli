@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Point `auth reuse` source-selection errors, the installation guide and the
+  Skill at `config get-contexts`; they named a `config contexts` command this
+  CLI does not have.
+
+### Skill
+
+- Bump the companion Skill to `0.18.4` for the corrected recovery command.
+
 ## [0.24.1] - 2026-10-06
 
 ### Fixed
