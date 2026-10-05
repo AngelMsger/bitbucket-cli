@@ -41,6 +41,25 @@ func TestResolveActivityWindowRejectsAmbiguousFlags(t *testing.T) {
 	}
 }
 
+// The family time-window contract holds at the command level: an ambiguous
+// combination is a usage error raised before credentials or the network.
+func TestActivityRejectsAmbiguousTimeWindowFlags(t *testing.T) {
+	for _, flags := range [][]string{
+		{"--since", "24h", "--from", "2026-09-03"},
+		{"--since", "24h", "--to", "2026-09-04"},
+		{"--since", "24h", "--from", "2026-09-03", "--to", "2026-09-04"},
+		{"--to", "2026-09-04"},
+	} {
+		err := runRoot(t, append([]string{"pr", "activity", "PROJ/repo/1"}, flags...)...)
+		if err == nil {
+			t.Fatalf("%v: expected a usage error", flags)
+		}
+		if ce := cerrors.AsCLIError(err); ce.Code != "BAD_TIME_RANGE" || ce.Category != cerrors.CategoryUsage {
+			t.Fatalf("%v: got category=%q code=%q; want usage/BAD_TIME_RANGE", flags, ce.Category, ce.Code)
+		}
+	}
+}
+
 func TestFilterActivitiesAcrossFlavorTimestamps(t *testing.T) {
 	window, err := resolveActivityWindow("", "2026-09-03T00:00:00Z", "2026-09-04T00:00:00Z", time.Time{})
 	if err != nil {
