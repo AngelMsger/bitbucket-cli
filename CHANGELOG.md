@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.24.1] - 2026-10-06
+
 ### Fixed
 
 - Keep a stored credential that is still in use. `config init` deleted the
@@ -868,7 +870,8 @@ PR-centric MVP supporting Bitbucket Cloud (REST 2.0) and Data Center (REST
 subtrees; layered configuration with keychain-backed auth; structured error
 model; and an embedded companion Skill.
 
-[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.24.0...HEAD
+[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.24.1...HEAD
+[0.24.1]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.24.0...v0.24.1
 [0.24.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.23.0...v0.24.0
 [0.23.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.22.0...v0.23.0
 [0.22.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.21.1...v0.22.0
