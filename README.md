@@ -202,6 +202,10 @@ bitbucket-cli --use-context prod pr list --repo prod-ws/api   # override for one
 `BITBUCKET_CONTEXT` overrides the current context via the environment. Legacy
 single-server config files are read unchanged.
 
+Contexts on the same host and authentication scheme share one stored
+credential. `config delete-context <name>` removes a context together with its
+credential, unless another context still uses it.
+
 ## Errors and exit codes
 
 Failures are JSON on **stderr** (stdout stays a clean data channel) and map to

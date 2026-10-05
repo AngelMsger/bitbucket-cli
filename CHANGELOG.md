@@ -2,6 +2,26 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Keep a stored credential that is still in use. `config init` deleted the
+  secret it had just saved when an edit changed only the spelling or deployment
+  path of a server URL, and `config delete-context` deleted the secret that
+  other contexts on the same host and authentication scheme — such as a team
+  preset beside a personal context — still resolved. A secret is now forgotten
+  only when no remaining context uses it, and `delete-context` forgets it after
+  the config file is written.
+- Forget the right credential for a context stored without an authentication
+  scheme. Cleanup assumed `pat`; on Cloud, where such a context resolves `basic`,
+  `config delete-context` removed another context's access token and left the
+  real secret behind.
+
+### Skill
+
+- State that contexts on one host and authentication scheme share a stored
+  secret, and how `config delete-context` and `auth logout` treat it. Bump the
+  companion Skill to `0.18.3`.
+
 ## [0.24.0] - 2026-09-24
 
 ### Added

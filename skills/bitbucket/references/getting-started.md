@@ -85,6 +85,11 @@ instance.
 Switch with `--use-context <name>` for one invocation, or rerun
 `config init --use-context <name>` to set up another.
 
+Contexts on one host and auth scheme share a stored secret — a team preset and
+the personal context whose login it reuses, for example. `config delete-context
+<name>` removes that secret only when no remaining context uses it; `auth
+logout` removes it for all of them.
+
 For preset team services, use `config set-context` and `auth guide` before personal login; see [team setup](team-setup.md).
 
 ## Reuse existing authentication

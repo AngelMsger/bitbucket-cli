@@ -271,3 +271,15 @@ verify native credentials before associating missing identity, and retain operat
 failures. Never copy secrets, infer identity from environment variables or activate
 a context. Cover dry-run, ambiguity, scope mismatch, concurrent edits and fresh-load
 credential resolution. Native self-configuration follows the existing read-only exception.
+
+## Credential cleanup
+
+The keychain account is `<host>:<scheme>`, so contexts on one host with one
+scheme share a secret: a team preset and the personal context whose login it
+reuses, or two spellings of one URL. Forget a stored secret only through
+`forgetUnusedCredential`, after the config write has succeeded, and only when no
+remaining context resolves the same account. Resolve a missing scheme as a
+request does (basic on Cloud, pat elsewhere) instead of assuming one. `auth
+logout` is the explicit exception. Cover a URL edit that keeps the host, a
+shared and an unshared deletion, and a context without a scheme; see
+`internal/app/config_credentials_test.go`.

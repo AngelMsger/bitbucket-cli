@@ -186,6 +186,15 @@ dir 0700 on macOS/Linux) —
 `~/.bitbucket/credentials` when the CLI is running against the legacy
 location.
 
+The account ignores the context name, the deployment path and the username,
+so every context on one host with one scheme shares a secret: a team preset and
+the personal context whose login it reuses, or two spellings of one URL.
+`config init` and `config delete-context` therefore forget a secret only after
+the config file is written, and only when no remaining context resolves the
+same account (`forgetUnusedCredential`). A context stored without a scheme
+resolves the one a request would use — basic on Cloud, pat elsewhere. `auth
+logout` is explicit and removes the active context's secret unconditionally.
+
 Credential reads distinguish "not found" from "store inaccessible". When a
 sandbox cannot inspect the host keychain/file, resolution returns
 `CREDENTIAL_STORE_INACCESSIBLE`; an ambiguous absence returns
