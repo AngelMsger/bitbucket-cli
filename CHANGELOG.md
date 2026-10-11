@@ -4,6 +4,9 @@
 
 ### Changed
 
+- Credential validation, header encoding, keychain lookup and the credential
+  recovery errors now come from agent-cli-kit's `auth` package. Messages, error
+  codes and stored credentials are unchanged.
 - Output rendering, argv correction, the release check, the credential store,
   and the code behind `pkg/errors` and `pkg/transport` now come from the shared
   [agent-cli-kit](https://github.com/AngelMsger/agent-cli-kit) module. Commands,

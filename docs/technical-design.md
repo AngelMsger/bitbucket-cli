@@ -188,6 +188,11 @@ location. The store is agent-cli-kit's `credstore` under the `bitbucket-cli`
 keychain service. On macOS it first checks for a default keychain, so a
 sandbox without one never raises the "Reset To Defaults" dialog.
 
+`internal/auth` registers the two schemes with agent-cli-kit's `auth` package,
+which owns the credential model, the header encoding and the recovery errors.
+`Resolve` maps config and the supplied secrets onto it: basic sends the
+password when one is set, otherwise the API token.
+
 The account ignores the context name, the deployment path and the username,
 so every context on one host with one scheme shares a secret: a team preset and
 the personal context whose login it reuses, or two spellings of one URL.
@@ -494,8 +499,9 @@ informational check that does not change connectivity health.
   pagination, two-flavor mapping normalization, urlref, and the
   read-only wrapper (every mutating method is asserted to return a
   uniform `READONLY_BLOCKED`). Output formats and `--fields`, the error
-  model, argv correction, the release check, the retrying transport and
-  the credential store's file fallback are tested in agent-cli-kit.
+  model, argv correction, the release check, the retrying transport,
+  the credential store's file fallback and secret masking are tested in
+  agent-cli-kit.
 - **HTTP-layer tests**: `httptest.Server` drives every client method;
   assertions cover path / parameters / auth header.
 - **End-to-end**: `scripts/e2e.sh` builds the binary against an
@@ -556,12 +562,12 @@ informational check that does not change connectivity health.
    PR refs; it does not claim to discover them.
 10. **Shared packages live in agent-cli-kit** — output rendering,
    argv correction (`cliflags`), the release check (`update`), the
-   credential store (`credstore`), and the code behind `pkg/errors` and
-   `pkg/transport` come from
+   credential store (`credstore`), credential resolution (`auth`), and the
+   code behind `pkg/errors` and `pkg/transport` come from
    [agent-cli-kit](https://github.com/AngelMsger/agent-cli-kit), shared by
    every CLI in the family. bitbucket-cli supplies its own hints, User-Agent,
-   keychain service name, release repository, and the Markdown body flags
-   whose literal `\n` escapes are decoded (`bodyFlags` in
+   keychain service name, auth schemes, release repository, and the Markdown
+   body flags whose literal `\n` escapes are decoded (`bodyFlags` in
    `internal/app/root.go`). Fix bugs in the shared code there, not here.
 
 ## Team service setup and login persistence

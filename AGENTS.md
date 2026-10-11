@@ -64,16 +64,18 @@ up front.
 
 ## Shared packages — agent-cli-kit
 
-Output rendering, argv correction, the update check and the credential store
-come from [agent-cli-kit](https://github.com/AngelMsger/agent-cli-kit), shared
-by every CLI in the family. Fix bugs in those there, not here.
+Output rendering, argv correction, the update check, the credential store and
+credential resolution come from
+[agent-cli-kit](https://github.com/AngelMsger/agent-cli-kit), shared by every
+CLI in the family. Fix bugs in those there, not here.
 
 - `pkg/errors` re-exports the shared `CLIError` model and exit-code map (0–11)
   and installs bitbucket-cli's hints (`hints.go`).
 - `pkg/transport` re-exports the shared retrying HTTP client with
   bitbucket-cli's User-Agent.
-- `internal/auth` keeps secrets in the shared credential store under the
-  `bitbucket-cli` keychain service.
+- `internal/auth` declares bitbucket-cli's auth schemes and recovery wording,
+  maps config onto the shared resolver, and keeps secrets in the shared
+  credential store under the `bitbucket-cli` keychain service.
 - The Markdown body flags whose literal `\n` escapes are decoded are listed in
   `bodyFlags` (`internal/app/root.go`).
 
