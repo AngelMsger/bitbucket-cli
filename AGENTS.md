@@ -64,8 +64,8 @@ up front.
 
 ## Shared packages — agent-cli-kit
 
-Output rendering, argv correction, the update check, the credential store and
-credential resolution come from
+Output rendering, argv correction, the update check, the credential store,
+credential resolution and the configuration engine come from
 [agent-cli-kit](https://github.com/AngelMsger/agent-cli-kit), shared by every
 CLI in the family. Fix bugs in those there, not here.
 
@@ -73,6 +73,10 @@ CLI in the family. Fix bugs in those there, not here.
   and installs bitbucket-cli's hints (`hints.go`).
 - `pkg/transport` re-exports the shared retrying HTTP client with
   bitbucket-cli's User-Agent.
+- `internal/config` registers bitbucket-cli's settings, file location and
+  wording with the shared config engine (`schema.go`), and keeps the YAML shape
+  of `config.yaml`, the Cloud/Data Center rules, the credential guide and the
+  init wizard.
 - `internal/auth` declares bitbucket-cli's auth schemes and recovery wording,
   maps config onto the shared resolver, and keeps secrets in the shared
   credential store under the `bitbucket-cli` keychain service.
