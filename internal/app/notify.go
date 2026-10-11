@@ -7,16 +7,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/angelmsger/bitbucket-cli/internal/output"
-	"github.com/angelmsger/bitbucket-cli/internal/update"
+	"github.com/angelmsger/agent-cli-kit/output"
+	"github.com/angelmsger/agent-cli-kit/update"
 	"github.com/angelmsger/bitbucket-cli/pkg/constants"
 	"github.com/spf13/cobra"
 )
 
 // notifyTimeout bounds the release lookup performed on a cache miss so a
 // routine command is never stalled by a slow or offline network. The result
-// is cached for 24h (see update.Cached), so at most one command per day pays
-// this cost.
+// is cached for 24h (see update.Checker.Cached), so at most one command per
+// day pays this cost.
 const notifyTimeout = 800 * time.Millisecond
 
 // noUpdateNotifierEnv silences the in-response update notice when set to a
@@ -27,6 +27,12 @@ const noUpdateNotifierEnv = "BITBUCKET_CLI_NO_UPDATE_NOTIFIER"
 // upgrade. There is no `bitbucket-cli update` subcommand, so it points at the
 // npm package the binary is distributed through.
 const updateCommandHint = "npm install -g @angelmsger/bitbucket-cli@latest"
+
+// releaseChecker looks up bitbucket-cli's latest GitHub release.
+// BITBUCKET_RELEASE_API overrides the endpoint; the e2e tests point it at the
+// mock server. The owner stays lowercase, as in the release URLs this CLI has
+// always used, so the update detail it prints is unchanged.
+var releaseChecker = update.Checker{Repo: "angelmsger/bitbucket-cli", EndpointEnv: "BITBUCKET_RELEASE_API"}
 
 // updateNoticeSkip lists the top-level command groups that must not emit the
 // update notice: doctor reports updates itself; the rest are setup/meta
@@ -60,7 +66,7 @@ func maybeNotifyUpdate(s *appState, cmd *cobra.Command) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), notifyTimeout)
 	defer cancel()
-	st := update.Cached(ctx, &http.Client{Timeout: notifyTimeout}, s.cfgDir, constants.Version)
+	st := releaseChecker.Cached(ctx, &http.Client{Timeout: notifyTimeout}, s.cfgDir, constants.Version)
 	if !st.Available {
 		return
 	}
