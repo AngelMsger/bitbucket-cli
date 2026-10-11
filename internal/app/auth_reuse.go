@@ -59,7 +59,7 @@ func newAuthReuseCmd(s *appState) *cobra.Command {
 		},
 	}
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "verify and preview the identity association without writing")
-	cmd.Flags().StringVar(&from, "from-context", "", "choose a matching source from config contexts when multiple identities are available")
+	cmd.Flags().StringVar(&from, "from-context", "", "choose a matching source from config get-contexts when multiple identities are available")
 	return cmd
 }
 

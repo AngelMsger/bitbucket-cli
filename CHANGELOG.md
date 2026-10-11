@@ -28,6 +28,8 @@
 
 ### Fixed
 
+- The `auth reuse --from-context` help named `config contexts`, which this CLI
+  does not have; it now names `config get-contexts`.
 - Never raise the macOS "Reset To Defaults" keychain dialog. When the user's
   HOME had no default keychain (common in agent sandboxes), saving a credential
   made macOS offer to reset the default keychain, then failed with `exit status
