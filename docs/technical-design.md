@@ -184,7 +184,9 @@ inside the resolved config directory (per-user DPAPI on Windows; file 0600 and
 dir 0700 on macOS/Linux) —
 `~/.angelmsger/bitbucket/credentials` by default, or
 `~/.bitbucket/credentials` when the CLI is running against the legacy
-location.
+location. The store is agent-cli-kit's `credstore` under the `bitbucket-cli`
+keychain service. On macOS it first checks for a default keychain, so a
+sandbox without one never raises the "Reset To Defaults" dialog.
 
 The account ignores the context name, the deployment path and the username,
 so every context on one host with one scheme shares a secret: a team preset and
@@ -345,9 +347,10 @@ a final `Thread{File: ""}` bucket.
 
 ### 7.1 Output
 
-Three `Formatter` implementations: `json` (default, agent-oriented,
-stdout), `table` (human-readable), and `ndjson` (streaming for large
-result sets). `--fields a,b.c` projects by dot-path relative to each record.
+Rendering is agent-cli-kit's `output` package. Three `Formatter`
+implementations: `json` (default, agent-oriented, stdout), `table`
+(human-readable), and `ndjson` (streaming for large result sets).
+`--fields a,b.c` projects by dot-path relative to each record.
 For list commands, omit the envelope prefix (`--fields id`, not `--fields
 items.id`); nested projections retain the full dotted path as a literal output
 key (`{"b.c": ...}`). Selecting the containing object preserves nested access
@@ -411,10 +414,12 @@ message from both Cloud's `{"error":{"message":"..."}}` and DC's
 | 4 | auth | 10 | parse |
 | 5 | permission | 11 | conflict |
 
-`hints.go` maps each category to `next_steps`, guiding agents to
-self-correct. **Discoverability rule**: any "missing input" error must
-put the discovery command at `next_steps[0]` (see the AGENTS.md
-Discoverability section).
+`pkg/errors` re-exports agent-cli-kit's error model and exit-code map;
+its `hints.go` holds bitbucket-cli's default guidance, installed with
+`SetGuidance` when the package loads, and maps each category to
+`next_steps`, guiding agents to self-correct. **Discoverability rule**:
+any "missing input" error must put the discovery command at
+`next_steps[0]` (see the AGENTS.md Discoverability section).
 
 ## 8. Safety modes
 
@@ -485,11 +490,12 @@ informational check that does not change connectivity health.
 ## 10. Testing strategy
 
 - **Unit tests**: stdlib `testing`, table-driven, `t.Parallel()`.
-  Coverage includes config precedence, auth resolution and file
-  permissions, offset / cursor pagination, two-flavor mapping
-  normalization, every output format and `--fields`, errors mapping,
-  urlref, and the read-only wrapper (every mutating method is asserted
-  to return a uniform `READONLY_BLOCKED`).
+  Coverage includes config precedence, auth resolution, offset / cursor
+  pagination, two-flavor mapping normalization, urlref, and the
+  read-only wrapper (every mutating method is asserted to return a
+  uniform `READONLY_BLOCKED`). Output formats and `--fields`, the error
+  model, argv correction, the release check, the retrying transport and
+  the credential store's file fallback are tested in agent-cli-kit.
 - **HTTP-layer tests**: `httptest.Server` drives every client method;
   assertions cover path / parameters / auth header.
 - **End-to-end**: `scripts/e2e.sh` builds the binary against an
@@ -548,6 +554,15 @@ informational check that does not change connectivity health.
    enumerating every accessible project and repository would be unbounded and
    still could not prove completeness. `--actor <user>` therefore filters known
    PR refs; it does not claim to discover them.
+10. **Shared packages live in agent-cli-kit** — output rendering,
+   argv correction (`cliflags`), the release check (`update`), the
+   credential store (`credstore`), and the code behind `pkg/errors` and
+   `pkg/transport` come from
+   [agent-cli-kit](https://github.com/AngelMsger/agent-cli-kit), shared by
+   every CLI in the family. bitbucket-cli supplies its own hints, User-Agent,
+   keychain service name, release repository, and the Markdown body flags
+   whose literal `\n` escapes are decoded (`bodyFlags` in
+   `internal/app/root.go`). Fix bugs in the shared code there, not here.
 
 ## Team service setup and login persistence
 

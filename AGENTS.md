@@ -62,6 +62,21 @@ up front.
   requesting changes; decline closes the PR.
 - Never commit `.env`, credentials, tokens, or build artifacts.
 
+## Shared packages — agent-cli-kit
+
+Output rendering, argv correction, the update check and the credential store
+come from [agent-cli-kit](https://github.com/AngelMsger/agent-cli-kit), shared
+by every CLI in the family. Fix bugs in those there, not here.
+
+- `pkg/errors` re-exports the shared `CLIError` model and exit-code map (0–11)
+  and installs bitbucket-cli's hints (`hints.go`).
+- `pkg/transport` re-exports the shared retrying HTTP client with
+  bitbucket-cli's User-Agent.
+- `internal/auth` keeps secrets in the shared credential store under the
+  `bitbucket-cli` keychain service.
+- The Markdown body flags whose literal `\n` escapes are decoded are listed in
+  `bodyFlags` (`internal/app/root.go`).
+
 ## Cloud / Data Center parity — touch both branches, always
 
 This CLI targets **two backends** (Bitbucket Cloud and Data Center / Server),
@@ -260,8 +275,9 @@ stderr with `next`, `has_more`, and a continuation hint. Preserve the notice for
 empty filtered pages and field projections; omit it on completed pages and
 stdout failures. Keep JSON envelopes unchanged. `Options.NoticeWriter` controls
 the notice destination (nil means stderr), and `Options.NextFlag` controls the
-NDJSON hint and table footer (empty means `--cursor`). Cover renderer edge cases
-and a real CLI cursor round trip in the mock end-to-end suite.
+NDJSON hint and table footer (empty means `--cursor`). The renderer is
+agent-cli-kit's `output`: cover its edge cases there, and a real CLI cursor
+round trip in the mock end-to-end suite.
 
 ## Credential reuse
 

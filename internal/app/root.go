@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/angelmsger/bitbucket-cli/internal/cliflags"
-	"github.com/angelmsger/bitbucket-cli/internal/output"
+	"github.com/angelmsger/agent-cli-kit/cliflags"
+	"github.com/angelmsger/agent-cli-kit/output"
 	"github.com/angelmsger/bitbucket-cli/pkg/constants"
 	cerrors "github.com/angelmsger/bitbucket-cli/pkg/errors"
 	"github.com/spf13/cobra"
@@ -47,7 +47,7 @@ func Execute() int {
 	//   - literal backslash escapes in Markdown body flags (--content "a\n\nb"),
 	//     which the shell did not expand and Bitbucket would render verbatim.
 	corrected, corrections := cliflags.Normalize(os.Args[1:], cliflags.Collect(root))
-	corrected, escCorrections := cliflags.InterpretEscapes(corrected, cliflags.BodyFlags)
+	corrected, escCorrections := cliflags.InterpretEscapes(corrected, bodyFlags)
 	corrections = append(corrections, escCorrections...)
 	if len(corrections) > 0 {
 		root.SetArgs(corrected)
@@ -70,6 +70,20 @@ func Execute() int {
 		return cerrors.ExitCode(ce)
 	}
 	return 0
+}
+
+// bodyFlags names the long flags whose values are free-text Markdown bodies a
+// human or agent types into the shell. When such a value carries a literal
+// backslash-n, the shell almost never expanded it (double quotes don't), so the
+// user meant a real newline — and Bitbucket would otherwise render the literal
+// "\n". cliflags.InterpretEscapes decodes a small escape whitelist in exactly
+// these values. The matching `*-file` / stdin inputs (e.g. --content-file) are
+// the exact-bytes escape hatch and are deliberately absent here.
+var bodyFlags = map[string]bool{
+	"content":     true, // comment add / comment update
+	"description": true, // pr create / pr update / repo
+	"message":     true, // pr decline / pr merge
+	"title":       true, // pr create / pr update
 }
 
 func isCLIError(err error) bool {

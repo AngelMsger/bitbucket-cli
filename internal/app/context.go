@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/angelmsger/agent-cli-kit/output"
 	"github.com/angelmsger/bitbucket-cli/internal/auth"
 	"github.com/angelmsger/bitbucket-cli/internal/config"
-	"github.com/angelmsger/bitbucket-cli/internal/output"
 	"github.com/angelmsger/bitbucket-cli/pkg/apiclient"
 	cerrors "github.com/angelmsger/bitbucket-cli/pkg/errors"
 )
