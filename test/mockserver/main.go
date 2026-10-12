@@ -11,6 +11,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"mime"
 	"net"
 	"net/http"
 	"os"
@@ -26,7 +27,7 @@ func main() {
 	fmt.Printf("http://%s\n", ln.Addr().String())
 	_ = os.Stdout.Sync()
 
-	if err := http.Serve(ln, routes()); err != nil {
+	if err := http.Serve(ln, xsrfGuard(routes())); err != nil {
 		fmt.Fprintln(os.Stderr, "mockserver:", err)
 		os.Exit(1)
 	}
@@ -469,6 +470,25 @@ func namedUser(name string) map[string]any {
 		"slug":         name,
 		"type":         "NORMAL",
 	}
+}
+
+// xsrfGuard mimics Data Center's XSRF check: a POST that declares no
+// Content-Type, or a form-like one, is refused with 403 unless it carries
+// X-Atlassian-Token: no-check.
+func xsrfGuard(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mediaType, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type"))
+		switch mediaType {
+		case "", "application/x-www-form-urlencoded", "multipart/form-data", "text/plain":
+			if r.Method == http.MethodPost && r.Header.Get("X-Atlassian-Token") != "no-check" {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusForbidden)
+				_, _ = fmt.Fprint(w, `{"errors":[{"message":"XSRF check failed"}]}`)
+				return
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func writeJSON(w http.ResponseWriter, v any) {
