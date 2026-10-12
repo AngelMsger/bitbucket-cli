@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.25.1] - 2026-10-12
+
 ### Fixed
 
 - `pr approve` failed with HTTP 403 on Bitbucket Data Center even with a token
@@ -927,7 +929,8 @@ PR-centric MVP supporting Bitbucket Cloud (REST 2.0) and Data Center (REST
 subtrees; layered configuration with keychain-backed auth; structured error
 model; and an embedded companion Skill.
 
-[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.25.0...HEAD
+[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.25.1...HEAD
+[0.25.1]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.25.0...v0.25.1
 [0.25.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.24.2...v0.25.0
 [0.24.2]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.24.1...v0.24.2
 [0.24.1]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.24.0...v0.24.1
