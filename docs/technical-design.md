@@ -152,6 +152,16 @@ layer is a sparse `Config`; non-zero fields override lower layers.
 Provenance is recorded per-field so `config show --explain` can report
 it.
 
+`internal/config` registers the settings (keys, `BITBUCKET_*` variables,
+defaults), the file location with its legacy directory, the command wording
+and the Atlassian rules with agent-cli-kit's `config` package, which owns the
+layering, context selection, the atomic file write and set-context planning.
+The rules are hooks on that engine: a detected flavor is dropped when the
+server or flavor changes, Cloud defaults to basic auth, and the flavor is
+validated with the service fields. bitbucket-cli keeps the YAML shape structs
+that define the file format, including the legacy flat file, and the init
+wizard.
+
 Environment variable mapping:
 
 | Variable | Field |
@@ -187,6 +197,11 @@ dir 0700 on macOS/Linux) —
 location. The store is agent-cli-kit's `credstore` under the `bitbucket-cli`
 keychain service. On macOS it first checks for a default keychain, so a
 sandbox without one never raises the "Reset To Defaults" dialog.
+
+`internal/auth` registers the two schemes with agent-cli-kit's `auth` package,
+which owns the credential model, the header encoding and the recovery errors.
+`Resolve` maps config and the supplied secrets onto it: basic sends the
+password when one is set, otherwise the API token.
 
 The account ignores the context name, the deployment path and the username,
 so every context on one host with one scheme shares a secret: a team preset and
@@ -490,12 +505,14 @@ informational check that does not change connectivity health.
 ## 10. Testing strategy
 
 - **Unit tests**: stdlib `testing`, table-driven, `t.Parallel()`.
-  Coverage includes config precedence, auth resolution, offset / cursor
-  pagination, two-flavor mapping normalization, urlref, and the
-  read-only wrapper (every mutating method is asserted to return a
-  uniform `READONLY_BLOCKED`). Output formats and `--fields`, the error
-  model, argv correction, the release check, the retrying transport and
-  the credential store's file fallback are tested in agent-cli-kit.
+  Coverage includes the config file format and settings table, auth
+  resolution, offset / cursor pagination, two-flavor mapping
+  normalization, urlref, and the read-only wrapper (every mutating
+  method is asserted to return a uniform `READONLY_BLOCKED`). Output
+  formats and `--fields`, the error model, argv correction, the release
+  check, the retrying transport, config precedence and context
+  selection, the credential store's file fallback and secret masking
+  are tested in agent-cli-kit.
 - **HTTP-layer tests**: `httptest.Server` drives every client method;
   assertions cover path / parameters / auth header.
 - **End-to-end**: `scripts/e2e.sh` builds the binary against an
@@ -556,18 +573,21 @@ informational check that does not change connectivity health.
    PR refs; it does not claim to discover them.
 10. **Shared packages live in agent-cli-kit** — output rendering,
    argv correction (`cliflags`), the release check (`update`), the
-   credential store (`credstore`), and the code behind `pkg/errors` and
+   credential store (`credstore`), credential resolution (`auth`), the
+   configuration engine (`config`), and the code behind `pkg/errors` and
    `pkg/transport` come from
    [agent-cli-kit](https://github.com/AngelMsger/agent-cli-kit), shared by
    every CLI in the family. bitbucket-cli supplies its own hints, User-Agent,
-   keychain service name, release repository, and the Markdown body flags
-   whose literal `\n` escapes are decoded (`bodyFlags` in
-   `internal/app/root.go`). Fix bugs in the shared code there, not here.
+   keychain service name, auth schemes, settings table, release
+   repository, and the Markdown body flags whose literal `\n` escapes are
+   decoded (`bodyFlags` in `internal/app/root.go`). Fix bugs in the shared
+   code there, not here.
 
 ## Team service setup and login persistence
 
-`internal/config/setup.go` owns offline service-field validation, acquisition
-links and the pure `PlanServiceContext` merge used by execution and dry-run.
+`internal/config/setup.go` owns the acquisition links and wraps the shared
+offline service-field validation and the pure `PlanServiceContext` merge used by
+execution and dry-run.
 `LoadOptions.Setup` selects the requested destination even when it is new and
 filters personal environment fields before credential-based scheme inference.
 Ordinary runtime precedence and transient environment secrets remain supported.

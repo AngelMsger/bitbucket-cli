@@ -36,7 +36,7 @@ func RunWizardHuh(hooks WizardHooks, inputs WizardInputs) (*WizardResult, error)
 	result := &WizardResult{
 		File: File{
 			CurrentContext: DefaultContextName,
-			Defaults:       configFromMap(defaultLayer()).Defaults,
+			Defaults:       defaultConfig().Defaults,
 		},
 	}
 	if hasExisting {

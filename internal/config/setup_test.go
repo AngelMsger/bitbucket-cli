@@ -11,12 +11,16 @@ import (
 	cerrors "github.com/angelmsger/bitbucket-cli/pkg/errors"
 )
 
+// envNames lists every variable the schema binds, plus the context selector.
+var envNames = []string{"BITBUCKET_SERVER", "BITBUCKET_FLAVOR", "BITBUCKET_CREDENTIAL_URL", "BITBUCKET_AUTH_SCHEME",
+	"BITBUCKET_USERNAME", "BITBUCKET_DEFAULT_WORKSPACE", "BITBUCKET_FORMAT", "BITBUCKET_CLI_READ_ONLY",
+	"BITBUCKET_PERSONAL_ACCESS_TOKEN", "BITBUCKET_TOKEN", "BITBUCKET_PASSWORD", "BITBUCKET_API_TOKEN", "BITBUCKET_CONTEXT"}
+
 func cleanSetupEnv(t *testing.T) {
 	t.Helper()
-	for key := range envBindings {
+	for _, key := range envNames {
 		t.Setenv(key, "")
 	}
-	t.Setenv("BITBUCKET_CONTEXT", "")
 }
 func setupFixture() NamedContext {
 	return NamedContext{Name: "team", BaseURL: "https://service.example.test/deploy", Auth: AuthConfig{Scheme: "pat", Username: "PersonalUser", CredentialURL: "https://help.example.test/tokens"}, Flavor: "datacenter"}

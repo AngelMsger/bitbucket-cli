@@ -4,6 +4,22 @@
 
 ### Changed
 
+- Layered configuration, context selection, the config file write and
+  `config set-context` planning now come from agent-cli-kit's `config`
+  package. Commands, output, error codes, hints and the `config.yaml` format
+  (including the legacy flat file and the legacy `~/.bitbucket` directory) are
+  unchanged, with two exceptions:
+  - `UNKNOWN_CONTEXT` errors, from `--use-context`, `BITBUCKET_CONTEXT`, a
+    stale `current_context`, `config use-context` and `config delete-context`,
+    now carry `next_steps: ["bitbucket-cli config get-contexts"]` in place of
+    the generic `config init` and `config show --explain` steps.
+  - When `BITBUCKET_TOKEN` and its legacy alias
+    `BITBUCKET_PERSONAL_ACCESS_TOKEN` are both set to different values,
+    `BITBUCKET_TOKEN` is used. Before, either one could win from one run to the
+    next.
+- Credential validation, header encoding, keychain lookup and the credential
+  recovery errors now come from agent-cli-kit's `auth` package. Messages, error
+  codes and stored credentials are unchanged.
 - Output rendering, argv correction, the release check, the credential store,
   and the code behind `pkg/errors` and `pkg/transport` now come from the shared
   [agent-cli-kit](https://github.com/AngelMsger/agent-cli-kit) module. Commands,
@@ -12,6 +28,8 @@
 
 ### Fixed
 
+- The `auth reuse --from-context` help named `config contexts`, which this CLI
+  does not have; it now names `config get-contexts`.
 - Never raise the macOS "Reset To Defaults" keychain dialog. When the user's
   HOME had no default keychain (common in agent sandboxes), saving a credential
   made macOS offer to reset the default keychain, then failed with `exit status

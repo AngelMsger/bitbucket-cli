@@ -2,8 +2,8 @@ package auth
 
 import (
 	"errors"
-	"net/http"
 	"os"
+	"reflect"
 	"testing"
 
 	"github.com/angelmsger/agent-cli-kit/credstore"
@@ -32,30 +32,44 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+// TestCredentialValidate pins bitbucket-cli's scheme rules and their error
+// codes and messages: pat needs only a token, basic needs a username too, and
+// an unknown scheme is named without listing the accepted ones.
 func TestCredentialValidate(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name string
-		cred Credential
-		ok   bool
+		name    string
+		cred    Credential
+		code    string
+		message string
 	}{
-		{"pat ok", Credential{Scheme: SchemePAT, Secret: "tok"}, true},
-		{"pat missing secret", Credential{Scheme: SchemePAT}, false},
-		{"basic ok", Credential{Scheme: SchemeBasic, Username: "u", Secret: "p"}, true},
-		{"basic missing user", Credential{Scheme: SchemeBasic, Secret: "p"}, false},
-		{"unknown scheme", Credential{Scheme: "oauth", Secret: "x"}, false},
+		{"pat ok", Credential{Scheme: SchemePAT, Secret: "tok"}, "", ""},
+		{"pat missing secret", Credential{Scheme: SchemePAT}, "AUTH_NO_TOKEN", "no Personal Access Token configured"},
+		{"basic ok", Credential{Scheme: SchemeBasic, Username: "u", Secret: "p"}, "", ""},
+		{"basic missing user", Credential{Scheme: SchemeBasic, Secret: "p"}, "AUTH_NO_BASIC", "basic auth requires both a username and a password/token"},
+		{"basic missing secret", Credential{Scheme: SchemeBasic, Username: "u"}, "AUTH_NO_BASIC", "basic auth requires both a username and a password/token"},
+		{"unknown scheme", Credential{Scheme: "oauth", Secret: "x"}, "AUTH_BAD_SCHEME", `unknown auth scheme "oauth"`},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			err := tc.cred.Validate()
-			if (err == nil) != tc.ok {
-				t.Errorf("Validate() err=%v, want ok=%v", err, tc.ok)
+			if tc.code == "" {
+				if err != nil {
+					t.Fatalf("Validate() err = %v, want nil", err)
+				}
+				return
+			}
+			ce := cerrors.AsCLIError(err)
+			if ce == nil || ce.Code != tc.code || ce.Message != tc.message || ce.Category != cerrors.CategoryConfig {
+				t.Fatalf("Validate() = %+v, want config %s %q", ce, tc.code, tc.message)
 			}
 		})
 	}
 }
 
+// TestCredentialHeader pins each scheme's wire form: pat is a Bearer token,
+// basic is HTTP Basic.
 func TestCredentialHeader(t *testing.T) {
 	t.Parallel()
 	pat := Credential{Scheme: SchemePAT, Secret: "abc"}
@@ -69,28 +83,17 @@ func TestCredentialHeader(t *testing.T) {
 	}
 }
 
-func TestDecoratorSetsAuthorization(t *testing.T) {
-	t.Parallel()
-	req, _ := http.NewRequest(http.MethodGet, "http://x", nil)
-	Credential{Scheme: SchemePAT, Secret: "tok"}.Decorator()(req)
-	if req.Header.Get("Authorization") != "Bearer tok" {
-		t.Errorf("Authorization = %q", req.Header.Get("Authorization"))
-	}
-}
-
+// TestAccountKey pins the keychain account every earlier release stored
+// secrets under: the host and scheme, ignoring any deployment path.
 func TestAccountKey(t *testing.T) {
 	t.Parallel()
-	got := AccountKey("https://kms.example.com", SchemePAT)
-	if got != "kms.example.com:pat" {
-		t.Errorf("AccountKey = %q", got)
-	}
-}
-
-func TestRedacted(t *testing.T) {
-	t.Parallel()
-	r := Credential{Scheme: SchemePAT, Secret: "supersecret"}.Redacted()
-	if r.Secret == "supersecret" || r.Secret[len(r.Secret)-4:] != "cret" {
-		t.Errorf("Redacted secret = %q", r.Secret)
+	for base, want := range map[string]string{
+		"https://kms.example.com":         "kms.example.com:pat",
+		"https://kms.example.com/deploy/": "kms.example.com:pat",
+	} {
+		if got := AccountKey(base, SchemePAT); got != want {
+			t.Errorf("AccountKey(%q) = %q, want %q", base, got, want)
+		}
 	}
 }
 
@@ -155,27 +158,74 @@ func TestResolveFallsBackToStore(t *testing.T) {
 	}
 }
 
+// TestResolveSchemeSecrets pins which supplied secret each scheme sends: pat is
+// the default and takes the PAT; basic takes the password (Data Center) when
+// one is set, otherwise the API token (Cloud).
+func TestResolveSchemeSecrets(t *testing.T) {
+	t.Parallel()
+	all := config.Secrets{PAT: "pat-tok", Password: "dc-pass", APIToken: "cloud-tok"}
+	tests := []struct {
+		name    string
+		scheme  string
+		secrets config.Secrets
+		want    Credential
+	}{
+		{"default is pat", "", all, Credential{Scheme: SchemePAT, Username: "alice", Secret: "pat-tok"}},
+		{"pat", SchemePAT, all, Credential{Scheme: SchemePAT, Username: "alice", Secret: "pat-tok"}},
+		{"basic password wins", SchemeBasic, all, Credential{Scheme: SchemeBasic, Username: "alice", Secret: "dc-pass"}},
+		{"basic api token", SchemeBasic, config.Secrets{APIToken: "cloud-tok"}, Credential{Scheme: SchemeBasic, Username: "alice", Secret: "cloud-tok"}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			cfg := config.Config{
+				BaseURL: "https://bitbucket.example.com",
+				Auth:    config.AuthConfig{Scheme: tc.scheme, Username: "alice"},
+			}
+			got, err := Resolve(cfg, tc.secrets, nil)
+			if err != nil || got != tc.want {
+				t.Fatalf("Resolve() = %+v, %v; want %+v", got, err, tc.want)
+			}
+		})
+	}
+}
+
+// TestResolveNoCredentialErrors pins the recovery bitbucket-cli returns when
+// the stored secret cannot be read: its code, product wording and steps.
 func TestResolveNoCredentialErrors(t *testing.T) {
 	t.Parallel()
 	cfg := config.Config{
 		BaseURL: "https://nocreds.example.com",
 		Auth:    config.AuthConfig{Scheme: SchemePAT},
 	}
+	const hostRetry = "Retry the same command with access to the host user environment (home directory and OS keychain)."
 	tests := []struct {
-		name string
-		err  error
-		code string
+		name    string
+		err     error
+		code    string
+		message string
+		steps   []string
 	}{
-		{"missing", keyring.ErrNotFound, "CREDENTIAL_NOT_VISIBLE_OR_MISSING"},
-		{"inaccessible", errors.New("sandbox denied keychain"), "CREDENTIAL_STORE_INACCESSIBLE"},
+		{"missing", keyring.ErrNotFound, "CREDENTIAL_NOT_VISIBLE_OR_MISSING",
+			"stored Bitbucket credentials are missing or not visible in this execution environment",
+			[]string{hostRetry, "bitbucket-cli doctor",
+				"Only if the host retry also reports missing credentials, run `bitbucket-cli config init` in the user's terminal or set BITBUCKET_* environment variables.",
+				"bitbucket-cli auth guide", "Credential page: https://nocreds.example.com"}},
+		{"inaccessible", errors.New("sandbox denied keychain"), "CREDENTIAL_STORE_INACCESSIBLE",
+			"stored Bitbucket credentials cannot be read in this execution environment",
+			[]string{hostRetry, "bitbucket-cli doctor",
+				"Do not run `config init` unless the same check also fails in the host environment."}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			s := newStoreWithKeyring(t.TempDir(), failingKeyring{err: tc.err})
 			_, err := Resolve(cfg, config.Secrets{}, s)
 			ce := cerrors.AsCLIError(err)
-			if ce == nil || ce.Code != tc.code {
-				t.Fatalf("Resolve() error = %+v, want code %s", ce, tc.code)
+			if ce == nil || ce.Code != tc.code || ce.Message != tc.message {
+				t.Fatalf("Resolve() error = %+v, want code %s %q", ce, tc.code, tc.message)
+			}
+			if !reflect.DeepEqual(ce.NextSteps, tc.steps) {
+				t.Errorf("next steps = %q, want %q", ce.NextSteps, tc.steps)
 			}
 			if ce.Recovery == nil || ce.Recovery.Scope != "host" || ce.Retryable {
 				t.Fatalf("Resolve() recovery = %+v retryable=%v, want host and false", ce.Recovery, ce.Retryable)
