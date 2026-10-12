@@ -71,6 +71,29 @@ func TestPRReviewPermissionRejection(t *testing.T) {
 	}
 }
 
+// Data Center's XSRF guard rejects a POST without a Content-Type with HTTP 403,
+// so votes, which carry no body, must still declare JSON.
+func TestApprovePRDeclaresJSONWithoutBody(t *testing.T) {
+	for _, flavor := range []Flavor{FlavorCloud, FlavorDataCenter} {
+		for _, approve := range []bool{true, false} {
+			t.Run(fmt.Sprintf("%s/approve=%t", flavor, approve), func(t *testing.T) {
+				var contentType string
+				c := newWriteTestClient(t, flavor, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					contentType = r.Header.Get("Content-Type")
+					w.WriteHeader(http.StatusNoContent)
+				}))
+				req := ApprovePRReq{Repo: RepoRef{Workspace: "PROJ", Slug: "repo"}, ID: 7, Approve: approve}
+				if err := c.ApprovePR(context.Background(), req); err != nil {
+					t.Fatal(err)
+				}
+				if contentType != "application/json" {
+					t.Errorf("Content-Type = %q, want application/json", contentType)
+				}
+			})
+		}
+	}
+}
+
 func TestDeclinePRDataCenterVersionReadFailure(t *testing.T) {
 	for _, dryRun := range []bool{false, true} {
 		t.Run(fmt.Sprintf("dry-run=%t", dryRun), func(t *testing.T) {

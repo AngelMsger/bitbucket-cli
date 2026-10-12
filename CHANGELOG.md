@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- `pr approve` failed with HTTP 403 on Bitbucket Data Center even with a token
+  allowed to approve. Writes without a body, such as approve, sent no
+  `Content-Type`, and Data Center's XSRF check refuses a POST like that. Every
+  write now declares `Content-Type: application/json`. The e2e mock server now
+  applies the same check.
+
 ## [0.25.0] - 2026-10-12
 
 ### Changed
