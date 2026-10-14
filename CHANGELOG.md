@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Credential storage failures retain host recovery instructions and distinguish
+  a saved credential with incomplete cleanup from a credential not saved;
+  neither failure changes the login identity configuration.
+
 ## [0.25.1] - 2026-10-12
 
 ### Fixed
