@@ -1,6 +1,6 @@
 ---
 name: bitbucket
-version: 0.18.4
+version: 0.18.5
 description: "Work with Bitbucket Cloud and Data Center / Server: browse repositories and source, create or update pull requests, review diffs, address review feedback, and manage comments or PR state. Use for Bitbucket repository or PR URLs, code review, inline findings, review threads, approvals, merges, and CLI dry-run or read-only workflows."
 metadata:
   requires:
@@ -119,7 +119,7 @@ bitbucket-cli pr threads <ref>               # review threads by file (--unresol
 bitbucket-cli pr activity <ref>...           # activity timeline; '-' reads refs from stdin
 bitbucket-cli pr fetch <ref>                 # print (or --exec) git fetch for the PR source + base
 bitbucket-cli pr checkout <ref>              # print (or --exec) fetch + checkout of the PR source
-bitbucket-cli pr create                      # open a PR (--repo --source --target --title)
+bitbucket-cli pr create                      # open a PR (--repo --source --target --title); adds default reviewers unless --reviewer
 bitbucket-cli pr update <ref>                # edit --title / --description / --reviewer
 bitbucket-cli pr approve <ref>...            # approve one or more PRs ('-' reads from stdin)
 bitbucket-cli pr unapprove <ref>             # withdraw an approval
@@ -173,7 +173,7 @@ Every write above accepts `--dry-run`; see `references/safety-modes.md`.
   either select the containing object for normal jq access or read the flat key
   as `.["repository.workspace"]`. Inspect `.items[0]` before composing a
   longer pipeline.
-- **Skill handshake — set `BITBUCKET_CLI_SKILL=0.18.4`.** Once you have loaded
+- **Skill handshake — set `BITBUCKET_CLI_SKILL=0.18.5`.** Once you have loaded
   this Skill, export that exact value in the environment used to run the CLI.
   The CLI compares it with the embedded Skill version and emits a structured
   stderr notice when the Skill is missing, old, or uses the legacy unversioned

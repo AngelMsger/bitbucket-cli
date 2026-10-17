@@ -160,7 +160,7 @@ written to the config file.
 | `pr diff` | unified diff; `--path` scopes to one file |
 | `pr threads` | PR comments regrouped into inline threads (by file + anchor) |
 | `pr commits` / `pr activity` | commits in the PR; activity timeline, including multi-PR/stdin queries filtered by actor, kind and time; filtered evidence excludes recognized system comments unless `--include-system` is set |
-| `pr create` / `update` / `decline` / `merge` | open / edit / close / merge PRs; `--dry-run`, destructive ones need `--yes` |
+| `pr create` / `update` / `decline` / `merge` | open / edit / close / merge PRs; create adds the repository's default reviewers unless `--reviewer` is given; `--dry-run`, destructive ones need `--yes` |
 | `pr approve` / `unapprove` / `request-changes` | review verdicts; Data Center withdrawal requires Needs Work and preserves approvals |
 | `pr fetch` / `pr checkout` | print the equivalent `git` commands; `--exec` runs them in your current checkout |
 | `file list` / `tree` / `get` | browse and read source at any ref; `--range L1:L2` slices a line range |

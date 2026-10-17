@@ -32,7 +32,7 @@ func TestFileFormat(t *testing.T) {
 					CredentialURL: "https://id.atlassian.com/manage-profile/security/api-tokens"}},
 		},
 		Defaults: Defaults{Format: "table", PageSize: 50, Timeout: 90 * time.Second, MaxRetries: 5,
-			Workspace: "TEAM", ReadOnly: true},
+			Workspace: "TEAM", ReadOnly: true, SkipDefaultReviewers: true},
 	}
 	if err := WriteFile(dir, in); err != nil {
 		t.Fatal(err)
@@ -63,6 +63,7 @@ defaults:
     timeout: 1m30s
     max_retries: 5
     read_only: true
+    skip_default_reviewers: true
 `
 	if string(raw) != want {
 		t.Errorf("config.yaml changed:\n%s", raw)
@@ -100,12 +101,14 @@ func TestSchema(t *testing.T) {
 	t.Setenv("BITBUCKET_DEFAULT_WORKSPACE", "PROJ")
 	t.Setenv("BITBUCKET_FORMAT", "table")
 	t.Setenv("BITBUCKET_CLI_READ_ONLY", "yes")
+	t.Setenv("BITBUCKET_CLI_SKIP_DEFAULT_REVIEWERS", "1")
 	t.Setenv("BITBUCKET_API_TOKEN", "api")
 	r = load()
 	if r.Config.BaseURL != "https://bitbucket.example.com" || r.Config.Flavor != FlavorDataCenter ||
 		r.Config.Auth.Username != "alice" || r.Config.Auth.Scheme != SchemeBasic ||
 		r.Config.Auth.CredentialURL != "https://help.example.com/token" || r.Config.Defaults.Workspace != "PROJ" ||
-		r.Config.Defaults.Format != "table" || !r.Config.Defaults.ReadOnly || r.Secrets != (Secrets{APIToken: "api"}) {
+		r.Config.Defaults.Format != "table" || !r.Config.Defaults.ReadOnly ||
+		!r.Config.Defaults.SkipDefaultReviewers || r.Secrets != (Secrets{APIToken: "api"}) {
 		t.Fatalf("environment = %+v %+v", r.Config, r.Secrets)
 	}
 	t.Setenv("BITBUCKET_PASSWORD", "pw")

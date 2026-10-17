@@ -138,7 +138,8 @@ writes raw bytes straight to stdout.
 ```
 Config   { BaseURL, Flavor, Auth, Defaults, DetectedFlavor }
 AuthConfig { Scheme: pat | basic, Username }
-Defaults { Format, PageSize, Timeout, MaxRetries, Workspace, ReadOnly }
+Defaults { Format, PageSize, Timeout, MaxRetries, Workspace, ReadOnly,
+           SkipDefaultReviewers }
                                               # ↑ default workspace; overridable via --workspace
                                               # ↑ ReadOnly is the session-level write block
 ```
@@ -176,6 +177,7 @@ Environment variable mapping:
 | `BITBUCKET_FORMAT` | `Defaults.Format` |
 | `BITBUCKET_CONTEXT` | currently selected context name |
 | `BITBUCKET_CLI_READ_ONLY` | `Defaults.ReadOnly` |
+| `BITBUCKET_CLI_SKIP_DEFAULT_REVIEWERS` | `Defaults.SkipDefaultReviewers` |
 
 ### 4.3 Authentication
 
@@ -459,6 +461,25 @@ Two orthogonal write-protections, layered on top of `--yes`:
    invocation. `DescribeWrite` (used by `--dry-run`) is intentionally
    not overridden by the wrapper, so previews still work under a
    locked session.
+
+`CreatePR` also uses a read-before-write preparation step when the caller omits
+`Reviewers`. Cloud follows every page of the repository's
+`effective-default-reviewers` endpoint. Data Center resolves source and target
+repository IDs plus full branch refs, then queries the `default-reviewers`
+plugin so branch-conditional rules match. Data Center versions have returned
+both flat users and condition objects from that endpoint, so the decoder accepts
+both and deduplicates usernames. `DescribeWrite` uses the same preparation step,
+making `--dry-run` show the reviewer payload that the live POST would send. A
+failed optional lookup emits `PR_DEFAULT_REVIEWERS_UNAVAILABLE` through the
+client's warning sink and falls back to the previous reviewer-less payload;
+validation and context cancellation errors still stop the operation.
+The behavior is on by default and can be turned off persistently with
+`defaults.skip_default_reviewers: true` or
+`BITBUCKET_CLI_SKIP_DEFAULT_REVIEWERS=true`; the setting is phrased as an
+opt-out because the shared config codec treats an unset boolean as false. The
+`pr create --default-reviewers=<bool>` flag overrides it for one invocation.
+Skipping sets an explicit empty reviewer list in `CreatePRReq`, which bypasses
+the lookup without changing the public API's nil-versus-explicit-list contract.
 
 Out of scope: `config init`, `auth login|logout`, `skill install`, and
 `file get --output` are CLI self-configuration / local IO, not remote

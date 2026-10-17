@@ -167,6 +167,7 @@ func TestCreatePRDataCenterFork(t *testing.T) {
 		Source:      "feature",
 		SourceRepo:  "FORK/repo",
 		Destination: "dev",
+		Reviewers:   []string{},
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -180,6 +181,173 @@ func TestCreatePRDataCenterFork(t *testing.T) {
 	to := body["toRef"].(map[string]any)["repository"].(map[string]any)
 	if to["project"].(map[string]any)["key"] != "UP" {
 		t.Errorf("toRef.repository = %v; want upstream UP/repo", to)
+	}
+}
+
+func TestCreatePRCloudAddsAllEffectiveDefaultReviewers(t *testing.T) {
+	var postBody map[string]any
+	c := newWriteTestClient(t, FlavorCloud, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/effective-default-reviewers") && r.URL.Query().Get("page") == "":
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"values": []any{map[string]any{"user": map[string]string{"uuid": "{alice}"}}},
+				"next":   "/2.0/repositories/ws/repo/effective-default-reviewers?page=2",
+			})
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/effective-default-reviewers") && r.URL.Query().Get("page") == "2":
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"values": []any{map[string]any{"user": map[string]string{"uuid": "{bob}"}}},
+			})
+		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/pullrequests"):
+			raw, _ := io.ReadAll(r.Body)
+			_ = json.Unmarshal(raw, &postBody)
+			_ = json.NewEncoder(w).Encode(map[string]any{"id": 1, "title": "t"})
+		default:
+			t.Fatalf("unexpected %s %s", r.Method, r.URL.String())
+		}
+	}))
+
+	if _, err := c.CreatePR(context.Background(), CreatePRReq{
+		Repo: RepoRef{Workspace: "ws", Slug: "repo"}, Title: "t", Source: "feature",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := json.Marshal(postBody["reviewers"])
+	got := string(raw)
+	if !strings.Contains(got, `"uuid":"{alice}"`) || !strings.Contains(got, `"uuid":"{bob}"`) {
+		t.Errorf("POST reviewers = %s; want both effective default reviewers", raw)
+	}
+}
+
+func TestDescribeCreatePRDataCenterResolvesConditionalDefaults(t *testing.T) {
+	var reviewerQuery string
+	c := newWriteTestClient(t, FlavorDataCenter, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/rest/api/1.0/projects/UP/repos/repo":
+			_ = json.NewEncoder(w).Encode(map[string]any{"id": 20})
+		case "/rest/api/1.0/projects/FORK/repos/repo":
+			_ = json.NewEncoder(w).Encode(map[string]any{"id": 10})
+		case "/rest/default-reviewers/latest/projects/UP/repos/repo/reviewers":
+			reviewerQuery = r.URL.RawQuery
+			_ = json.NewEncoder(w).Encode([]any{
+				map[string]any{
+					"reviewers": []any{
+						map[string]string{"name": "alice"},
+						map[string]string{"name": "bob"},
+					},
+				},
+				map[string]any{"reviewers": []any{map[string]string{"name": "alice"}}},
+			})
+		default:
+			t.Fatalf("dry-run should only resolve defaults; got %s %s", r.Method, r.URL.String())
+		}
+	}))
+
+	plan, err := c.DescribeWrite(context.Background(), CreatePRReq{
+		Repo: RepoRef{Workspace: "UP", Slug: "repo"}, Title: "t",
+		Source: "feature/x", SourceRepo: "FORK/repo", Destination: "dev",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantQueryParts := []string{
+		"sourceRepoId=10",
+		"targetRepoId=20",
+		"sourceRefId=refs%2Fheads%2Ffeature%2Fx",
+		"targetRefId=refs%2Fheads%2Fdev",
+	}
+	for _, part := range wantQueryParts {
+		if !strings.Contains(reviewerQuery, part) {
+			t.Errorf("default-reviewer query %q missing %q", reviewerQuery, part)
+		}
+	}
+	body := plan.Payload.(map[string]any)
+	if got := reviewerNamesFromPayload(t, body); strings.Join(got, ",") != "alice,bob" {
+		t.Errorf("planned reviewers = %v; want deduplicated conditional defaults [alice bob]", got)
+	}
+}
+
+func TestDescribeCreatePRDataCenterUsesDefaultTargetBranch(t *testing.T) {
+	c := newWriteTestClient(t, FlavorDataCenter, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/rest/api/1.0/projects/UP/repos/repo":
+			_ = json.NewEncoder(w).Encode(map[string]any{"id": 20})
+		case "/rest/api/1.0/projects/UP/repos/repo/default-branch":
+			_ = json.NewEncoder(w).Encode(map[string]string{"id": "refs/heads/main"})
+		case "/rest/default-reviewers/latest/projects/UP/repos/repo/reviewers":
+			if got := r.URL.Query().Get("targetRefId"); got != "refs/heads/main" {
+				t.Errorf("targetRefId = %q; want refs/heads/main", got)
+			}
+			_ = json.NewEncoder(w).Encode([]any{map[string]string{"name": "alice"}})
+		default:
+			t.Fatalf("dry-run should only resolve defaults; got %s %s", r.Method, r.URL.String())
+		}
+	}))
+
+	plan, err := c.DescribeWrite(context.Background(), CreatePRReq{
+		Repo: RepoRef{Workspace: "UP", Slug: "repo"}, Title: "t", Source: "feature",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := reviewerNamesFromPayload(t, plan.Payload.(map[string]any)); strings.Join(got, ",") != "alice" {
+		t.Errorf("planned reviewers = %v; want [alice]", got)
+	}
+}
+
+func TestDescribeCreatePRExplicitReviewersSkipDefaults(t *testing.T) {
+	for _, flavor := range []Flavor{FlavorCloud, FlavorDataCenter} {
+		t.Run(string(flavor), func(t *testing.T) {
+			c := newWriteTestClient(t, flavor, http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+				t.Fatalf("explicit reviewers should not pre-fetch defaults; got %s %s", r.Method, r.URL.Path)
+			}))
+			plan, err := c.DescribeWrite(context.Background(), CreatePRReq{
+				Repo: RepoRef{Workspace: "UP", Slug: "repo"}, Title: "t", Source: "feature",
+				Destination: "dev", Reviewers: []string{"carol"},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, ok := plan.Payload.(map[string]any)["reviewers"]; !ok {
+				t.Fatal("explicit reviewer missing from planned payload")
+			}
+		})
+	}
+}
+
+func TestCreatePRDefaultReviewerFailureStillPosts(t *testing.T) {
+	var posted bool
+	var warnings []Warning
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/effective-default-reviewers"):
+			http.Error(w, `{"error":{"message":"defaults unavailable"}}`, http.StatusForbidden)
+		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/pullrequests"):
+			posted = true
+			_ = json.NewEncoder(w).Encode(map[string]any{"id": 1, "title": "t"})
+		default:
+			t.Fatalf("unexpected %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	c := New(Config{
+		Flavor: FlavorCloud, BaseURL: srv.URL, Transport: transport.New(transport.Options{}),
+		WarningSink: func(w Warning) { warnings = append(warnings, w) },
+	})
+
+	if _, err := c.CreatePR(context.Background(), CreatePRReq{
+		Repo: RepoRef{Workspace: "ws", Slug: "repo"}, Title: "t", Source: "feature",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if !posted {
+		t.Fatal("expected the PR POST after the default-reviewer lookup failed")
+	}
+	if len(warnings) != 1 {
+		t.Fatalf("warnings = %#v; want one warning", warnings)
 	}
 }
 

@@ -92,6 +92,11 @@ type Defaults struct {
 	// effect (e.g. `pr fetch --exec`). Settable from the config file, from
 	// BITBUCKET_CLI_READ_ONLY, or temporarily overridden via --allow-writes.
 	ReadOnly bool `yaml:"read_only,omitempty" config:"defaults.read_only"`
+	// SkipDefaultReviewers stops `pr create` from adding the target
+	// repository's effective default reviewers when --reviewer is omitted.
+	// Settable from the config file or BITBUCKET_CLI_SKIP_DEFAULT_REVIEWERS;
+	// --default-reviewers overrides it for one command.
+	SkipDefaultReviewers bool `yaml:"skip_default_reviewers,omitempty" config:"defaults.skip_default_reviewers"`
 }
 
 // Secrets holds credentials observed in non-file layers. Empty fields mean the
@@ -144,6 +149,7 @@ const (
 	fieldMaxRetries     = "defaults.max_retries"
 	fieldWorkspace      = "defaults.workspace"
 	fieldReadOnly       = "defaults.read_only"
+	fieldSkipReviewers  = "defaults.skip_default_reviewers"
 	// Secret field keys (never persisted to the YAML file).
 	fieldPAT      = "secret.pat"
 	fieldPassword = "secret.password"

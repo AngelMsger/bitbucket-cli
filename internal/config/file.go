@@ -15,12 +15,13 @@ type authShape struct {
 }
 
 type defaultsShape struct {
-	Workspace  string `yaml:"workspace,omitempty"`
-	Format     string `yaml:"format,omitempty"`
-	PageSize   int    `yaml:"page_size,omitempty"`
-	Timeout    string `yaml:"timeout,omitempty"`
-	MaxRetries int    `yaml:"max_retries,omitempty"`
-	ReadOnly   bool   `yaml:"read_only,omitempty"`
+	Workspace            string `yaml:"workspace,omitempty"`
+	Format               string `yaml:"format,omitempty"`
+	PageSize             int    `yaml:"page_size,omitempty"`
+	Timeout              string `yaml:"timeout,omitempty"`
+	MaxRetries           int    `yaml:"max_retries,omitempty"`
+	ReadOnly             bool   `yaml:"read_only,omitempty"`
+	SkipDefaultReviewers bool   `yaml:"skip_default_reviewers,omitempty"`
 }
 
 type contextShape struct {
@@ -148,6 +149,7 @@ func WriteFile(dir string, f File) error {
 	}
 	fs.Defaults.MaxRetries = f.Defaults.MaxRetries
 	fs.Defaults.ReadOnly = f.Defaults.ReadOnly
+	fs.Defaults.SkipDefaultReviewers = f.Defaults.SkipDefaultReviewers
 	return kit.WriteFile(dir, &fs)
 }
 
@@ -156,11 +158,12 @@ func WriteFile(dir string, f File) error {
 func defaultsFromShape(ds defaultsShape) Defaults {
 	timeout, _ := time.ParseDuration(ds.Timeout)
 	return Defaults{
-		Workspace:  ds.Workspace,
-		Format:     ds.Format,
-		PageSize:   ds.PageSize,
-		Timeout:    timeout,
-		MaxRetries: ds.MaxRetries,
-		ReadOnly:   ds.ReadOnly,
+		Workspace:            ds.Workspace,
+		Format:               ds.Format,
+		PageSize:             ds.PageSize,
+		Timeout:              timeout,
+		MaxRetries:           ds.MaxRetries,
+		ReadOnly:             ds.ReadOnly,
+		SkipDefaultReviewers: ds.SkipDefaultReviewers,
 	}
 }
