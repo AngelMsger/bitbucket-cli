@@ -198,12 +198,19 @@ bitbucket-cli pr create \
   --source feature/x \
   --target main \
   --title "Add X" \
-  --description-file PR.md \
-  --reviewer alice --reviewer bob
+  --description-file PR.md
 ```
 
-On Cloud, `--reviewer` takes a UUID; on Data Center, a username. Pass
-`--dry-run` to see the request envelope before committing.
+When `--reviewer` is omitted, `pr create` adds the target repository's effective
+default reviewers, as the web UI does: inherited project defaults on Cloud and
+branch-conditional rules on Data Center. Explicit `--reviewer` values replace
+that list; Cloud takes UUIDs and Data Center takes usernames. `--dry-run` shows
+the resolved reviewers. If the lookup fails, the CLI warns
+`PR_DEFAULT_REVIEWERS_UNAVAILABLE` on stderr and continues without them; add
+reviewers afterwards or rerun with `--reviewer`. `--default-reviewers=false`
+skips the lookup for one command; `defaults.skip_default_reviewers: true` or
+`BITBUCKET_CLI_SKIP_DEFAULT_REVIEWERS=true` skips it persistently, and
+`--default-reviewers=true` overrides that.
 
 **Cross-fork PRs (from a fork into upstream).** When the source branch lives in a
 fork rather than the target repo, name the fork with `--source-repo <ws>/<repo>`;

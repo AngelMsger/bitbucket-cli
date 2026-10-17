@@ -4,9 +4,23 @@
 
 ### Fixed
 
+- `pr create` now adds the target repository's effective default reviewers when
+  `--reviewer` is omitted, as the Bitbucket web UI does; the REST API does not
+  add them on its own. Cloud includes inherited project defaults; Data Center
+  matches branch-conditional rules. Explicit `--reviewer` values still replace
+  the list, and `--dry-run` shows the resolved reviewers. When the lookup fails,
+  a `PR_DEFAULT_REVIEWERS_UNAVAILABLE` warning goes to stderr and the PR is
+  created without them. Skip the lookup with `--default-reviewers=false`, or
+  persistently with `defaults.skip_default_reviewers: true` or
+  `BITBUCKET_CLI_SKIP_DEFAULT_REVIEWERS=true`. Contributed by @hoplux (#3).
 - Credential storage failures retain host recovery instructions and distinguish
   a saved credential with incomplete cleanup from a credential not saved;
   neither failure changes the login identity configuration.
+
+### Skill
+
+- Document default reviewers on `pr create` and bump the companion Skill to
+  `0.18.5`.
 
 ## [0.25.1] - 2026-10-12
 

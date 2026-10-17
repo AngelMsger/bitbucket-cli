@@ -29,6 +29,7 @@ var fields = []kit.Field{
 	{Key: fieldTimeout, Default: constants.DefaultTimeout.String()},
 	{Key: fieldMaxRetries, Default: strconv.Itoa(constants.DefaultMaxRetries)},
 	{Key: fieldReadOnly, Env: []string{"BITBUCKET_CLI_READ_ONLY"}, Service: true},
+	{Key: fieldSkipReviewers, Env: []string{"BITBUCKET_CLI_SKIP_DEFAULT_REVIEWERS"}},
 	// A secret in the environment selects its scheme: a token wins over a
 	// password, a password over an API token. BITBUCKET_TOKEN wins over its
 	// legacy alias.
