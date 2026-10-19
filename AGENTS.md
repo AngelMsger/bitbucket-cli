@@ -287,12 +287,18 @@ round trip in the mock end-to-end suite.
 
 ## Credential reuse
 
-Keep `auth reuse` separate from public service setup. Match complete URLs and
-provider scope before credential access, preserve configured destination identities,
-verify native credentials before associating missing identity, and retain operational
-failures. Never copy secrets, infer identity from environment variables or activate
-a context. Cover dry-run, ambiguity, scope mismatch, concurrent edits and fresh-load
-credential resolution. Native self-configuration follows the existing read-only exception.
+Keep `auth reuse` separate from public service setup. The decision belongs to
+agent-cli-kit's `reuse` package; this repository only describes its contexts,
+resolves, verifies and writes. Match complete URLs and the known flavor (`auto`
+resolved through the detected flavor) before credential access, never replace a
+working login automatically, and retain operational failures. A username is an
+identity only under `basic`. Verification reuses the `CurrentUser` call and
+reports the canonical account (Cloud UUID, Data Center username) for both
+flavors; credentials of one account are one login. Never copy secrets, infer
+identity from environment variables or activate a context. Cover dry-run,
+ambiguity, scope mismatch, concurrent edits, fresh-load credential resolution and
+the account on both flavors. Native self-configuration follows the existing
+read-only exception.
 
 ## Credential cleanup
 

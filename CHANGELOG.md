@@ -2,6 +2,47 @@
 
 ## [Unreleased]
 
+### Changed
+
+- `auth reuse` crosses schemes. A context without a working login adopts a
+  `pat` or `basic` login already verified for the same service (complete URL
+  and deployment flavor): another context's, or a secret stored for this
+  service that no context points at any more, paired with the usernames the
+  service's contexts record. Contexts under the destination's own scheme still
+  come first. A working login is never replaced automatically. A username under
+  `pat` is now only a label: such a context is checked instead of being
+  reported `unchanged`, adopts a password only for that username, and a
+  labelled context sharing the destination's token no longer makes the command
+  fail when the keychain shows that token is gone. A `basic` context without a
+  username is no longer a source. Checks the command did not make before run
+  within ten seconds (or `--timeout`), adopt only when the keychain itself
+  showed that the destination has no working login, and otherwise leave the
+  earlier answer. A scheme supplied by flag, environment, `.env` or a
+  credential variable keeps reuse within it. The decision now comes from
+  agent-cli-kit's shared `reuse` package.
+- `auth reuse` reports the account a login acts as, which decides who later
+  comments, approvals and merges belong to: `account` is the Cloud account
+  UUID (the Atlassian account ID without one) or the Data Center username,
+  with `account_name` for display. Two credentials of one account count as one
+  login rather than an ambiguity. The result also adds `scheme`, `username`
+  and `next_steps` (`whoami` once a login is in place);
+  `AUTH_REUSE_AMBIGUOUS` adds `details.candidates`.
+- `auth reuse --from-context` naming a context of the other scheme selects it
+  instead of returning `AUTH_REUSE_SOURCE_MISMATCH` (unless the invocation
+  supplies a scheme). Adopting `pat` keeps the destination's own label instead
+  of copying the source's username. A change to the destination's own stored
+  credential during verification stops the write with
+  `AUTH_REUSE_CREDENTIAL_CHANGED`.
+- `config set-context`, `auth guide`, missing-credential errors, `doctor` and
+  HTTP 401 errors list `auth reuse` before any sign-in step when the
+  configuration file shows that a stored login could apply.
+
+### Added
+
+- `auth reuse --from-scheme <scheme>` selects the credential stored for the
+  service under that scheme; with `--from-context`, paired with that
+  context's username.
+
 ## [0.26.0] - 2026-10-19
 
 ### Changed

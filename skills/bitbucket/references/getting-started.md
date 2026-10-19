@@ -94,10 +94,27 @@ For preset team services, use `config set-context` and `auth guide` before perso
 
 ## Reuse existing authentication
 
-`bitbucket-cli --use-context team auth reuse --dry-run` previews association from
-an existing context with the same complete service URL, scheme and provider scope.
-Apply without `--dry-run`, then verify with `auth status`. No login, token copy,
-current-context switch or replacement of a populated identity occurs. A different
-verified source can be selected with `--from-context` after `config get-contexts`.
-`AUTH_REUSE_AMBIGUOUS` requires choosing an identity; store/network/permission
-errors require their named recovery, not automatic reauthentication.
+`bitbucket-cli --use-context team auth reuse` points a context without a working
+login at one this machine already verified for the same complete service URL and
+deployment flavor; `--dry-run` previews the same decision. Workspace setup tools
+run it for you, and the CLI lists it ahead of any sign-in step, including after an
+HTTP 401. It looks at contexts under the context's own scheme first, then at a
+login under either scheme (`pat` or `basic`, including a secret stored for this
+service that no context points at any more, paired with the usernames recorded on
+the service). A username under `pat` is only a label: it does not stop reuse, and
+a context with a label only adopts a password for that same username. A working
+login is never replaced automatically. The result reports `scheme`, `username`,
+`account` (Cloud account UUID, Data Center username) and, when the source is a
+context, `source_context`; its `next_steps` name the check to run next
+(`whoami`). No secret is copied and the current context does not change.
+
+Comments, approvals and merges then belong to `account`. Before the first write
+through a context that reuse changed, tell the user which account it acts as and
+confirm it is the intended one; this is part of the write's authorization, not a
+separate approval.
+
+`AUTH_REUSE_AMBIGUOUS` lists `details.candidates`; choose one with
+`--from-context <name>`, `--from-scheme <scheme>`, or both (the stored secret of
+that scheme paired with that context's username). Store, network and permission
+errors require their named recovery, not a new login. When the result says the
+keychain could not be read here, retry on the host before signing in.

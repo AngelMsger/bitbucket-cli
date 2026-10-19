@@ -631,12 +631,24 @@ canonical user-facing contract and product-specific authentication guidance.
 
 ### Existing credential reuse
 
-`internal/app/auth_reuse.go` matches stored contexts and verifies credentials
-through native auth/client code before associating identity with the destination.
-It never writes the credential store, consumes environment secrets or changes
-current_context. Public `config set-context` remains offline and credential-free.
-The destination's complete service identity and the captured config are checked
-again before writing. See the installation guide for the result and recovery contract.
+The decision is agent-cli-kit's `reuse` package, shared by the family.
+`internal/app/auth_reuse.go` describes the stored contexts to it
+(`config.ReuseContexts`: service identity = normalized URL plus the flavor the
+context is known to have, an `auto` context's detected flavor standing for it;
+credential-key spelling; effective scheme; username), and supplies native
+resolution (`auth.ResolveLookup`, which also reports what the keychain and file
+answered), verification and the write, which rereads and compares the config
+before replacing it. Verification (`verifyCredentialWithin`) is the same
+`CurrentUser` call login makes, bounded by the reuse deadline, run against the
+destination's configuration with its known flavor pinned; it returns the
+canonical account (`reuseAccount`: Cloud UUID, else account ID; Data Center
+username) without an extra request, which reuse reports and uses to count
+credentials of one account as one login. It never writes the credential store,
+consumes environment secrets or changes current_context. Public `config
+set-context` remains offline and credential-free. `config.Load` computes the
+runtime-only `Config.ReuseStep` offline, which the guide, the setup plan,
+credential errors, `doctor` and HTTP 401 errors (in `root.Execute`) list before
+sign-in. See the installation guide for the result and recovery contract.
 
 Equivalent service URL overrides preserve the persisted native credential lookup
 key without redirecting requests or copying secrets. Logout removes that same
