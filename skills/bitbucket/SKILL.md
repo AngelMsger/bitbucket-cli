@@ -258,7 +258,6 @@ semantics, credential URL overrides, and failure recovery.
 
 ## Reuse existing authentication
 
-A context without a working login adopts one verified for its service (any
-scheme); `auth reuse` precedes sign-in. Writes act as its `account`: confirm it
-before the first. See
+Before sign-in, run `auth reuse`: it adopts a login verified for the context's
+service. Writes act as its `account`; confirm it first. See
 [reuse](references/getting-started.md#reuse-existing-authentication).
