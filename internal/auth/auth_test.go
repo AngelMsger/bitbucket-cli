@@ -233,3 +233,21 @@ func TestResolveNoCredentialErrors(t *testing.T) {
 		})
 	}
 }
+
+// A context that reuse could serve lists `auth reuse` before any sign-in step:
+// first for a missing identity, after the host retry for a missing secret.
+func TestResolveListsReuseBeforeSignIn(t *testing.T) {
+	t.Parallel()
+	const step = "bitbucket-cli --use-context 'team' auth reuse"
+	cfg := config.Config{BaseURL: "https://reuse.example.com", ReuseStep: step, Auth: config.AuthConfig{Scheme: SchemeBasic}}
+	_, err := Resolve(cfg, config.Secrets{Password: "p"}, nil)
+	if ce := cerrors.AsCLIError(err); ce.Code != "AUTH_NO_BASIC" || len(ce.NextSteps) == 0 || ce.NextSteps[0] != step {
+		t.Fatalf("missing identity: %+v", ce)
+	}
+	cfg.Auth = config.AuthConfig{Scheme: SchemePAT}
+	_, err = Resolve(cfg, config.Secrets{}, newStoreWithKeyring(t.TempDir(), failingKeyring{err: keyring.ErrNotFound}))
+	ce := cerrors.AsCLIError(err)
+	if ce.Code != "CREDENTIAL_NOT_VISIBLE_OR_MISSING" || len(ce.NextSteps) < 4 || ce.NextSteps[2] != step || ce.NextSteps[3] != MissingStep {
+		t.Fatalf("missing secret: %+v", ce.NextSteps)
+	}
+}

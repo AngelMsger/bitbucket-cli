@@ -363,34 +363,64 @@ edit/add/replace flow and now uses target-specific presets and the same guide.
 
 ## Reuse an existing login
 
-After preparing a team context, associate an existing personal login without
-creating another token or changing the active context:
+After preparing a team context, point it at a login this machine already has for
+the same service, under either scheme, without creating another token or
+changing the active context:
 
 ```sh
 bitbucket-cli --use-context team auth reuse --dry-run
 bitbucket-cli --use-context team auth reuse
-bitbucket-cli --use-context team auth status
+bitbucket-cli --use-context team whoami
 ```
 
-Reuse matches the complete normalized service URL, authentication scheme and
-provider scope (deployment flavor, organization or tenant where applicable).
-It verifies the source credential before filling missing destination identity.
-A populated destination identity is preserved. Credentials stay in their native
-store; no secrets or environment credentials are copied. Both source and unrelated
-contexts remain unchanged. Configuration changes during verification stop the write.
+Reuse matches the complete normalized service URL and deployment flavor (an
+`auto` context counts as the flavor it detected) before any credential access;
+the scheme decides precedence, not whether two contexts share a service. It looks
+at contexts under the destination's scheme first, then at a login under any scheme
+(`pat` or `basic`), including a secret stored for the service that no context
+points at: a stored `basic` secret is paired with each username recorded on the
+service, and stored secrets are used only when every context on that credential
+key is this same service. A username recorded under `pat` is only a label; a
+destination with a label adopts a password only for that username. A destination
+with a `basic` username, and any login that still works, is kept. Credentials stay
+in their native store; no secrets or environment credentials are copied. Both
+source and unrelated contexts remain unchanged. Configuration or credential
+changes during verification stop the write.
 
-The JSON result reports `context`, `state`, `changed`, `verified`, `dry_run` and,
-when selected, `source_context`. States are `available` (verified preview),
-`reused`, `unchanged`, or `unavailable`. The last two do not establish successful
-authentication: always retain the separate `auth status` check. No reusable
-identity is a normal no-change result. Network, permission and credential-store
-failures retain their structured errors instead of suggesting a fresh login.
+Checks the command did not make before (of a labelled destination, of stored
+secrets, of the other scheme) run within ten seconds of the start, or the
+`--timeout` when shorter, and only adopt on reliable evidence that the destination
+has no working login: the keychain itself answered during this run, or a `basic`
+context records no username. Otherwise the earlier answer stands, with its
+`reason`. A scheme supplied by `--auth-scheme`, `BITBUCKET_AUTH_SCHEME`, `.env` or
+a credential variable keeps reuse within that scheme.
 
-Multiple different verified identities return `AUTH_REUSE_AMBIGUOUS`; discover
-context names with `config get-contexts`, then repeat with `--from-context <name>`.
-The command does not replace identities or switch authentication schemes. As
-with native `auth login`, updating this CLI's own settings remains available
-in remote read-only mode; `--dry-run` never changes settings or credentials.
+Verification calls the same current-user endpoint as `whoami` and reports the
+account the login acts as: `account` is the Cloud account UUID (the Atlassian
+account ID without one) or the Data Center username, and `account_name` is for
+display. Comments, approvals and merges made through the context belong to that
+account. Two credentials of one account count as one login; the destination's
+scheme is preferred.
+
+The JSON result reports `context`, `state`, `changed`, `verified`, `dry_run`,
+`next_steps` and, when a source was selected, `scheme`, `username` (for basic),
+`account`, `account_name` and `source_context` (when the source is a context).
+States are `available` (verified preview), `reused`, `unchanged`, or
+`unavailable`. The last two do not establish successful authentication: run the
+check `next_steps` names (`whoami`). No reusable login is a normal no-change
+result. Network, permission and credential-store failures retain their structured
+errors instead of suggesting a fresh login.
+
+Several different verified logins return `AUTH_REUSE_AMBIGUOUS` with
+`details.candidates`; discover context names with `config get-contexts`, then
+repeat with `--from-context <name>`, `--from-scheme <scheme>`, or both (the stored
+secret of that scheme paired with that context's username). As with native `auth
+login`, updating this CLI's own settings remains available in remote read-only
+mode; `--dry-run` never changes settings or credentials.
+
+`config set-context`, `auth guide`, missing-credential errors, `doctor` and HTTP
+401 errors list `auth reuse` before any sign-in step when the configuration file
+shows that a stored login could apply.
 
 Equivalent service URL overrides preserve the persisted native credential lookup
 key without redirecting requests or copying secrets. Logout removes that same

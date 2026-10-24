@@ -302,6 +302,8 @@ Released under the [MIT License](LICENSE).
 
 An installer can run `bitbucket-cli config set-context team --base-url <url> --auth-scheme pat --activate` without credentials or network access. Members then run `bitbucket-cli auth guide` and `bitbucket-cli auth login`. See [team distribution and personal login](docs/installation.md#team-distribution-and-personal-login) for environment-only presets, conflict handling, and version-specific credential pages.
 
-To associate an existing login with a prepared team context, run
-`bitbucket-cli --use-context team auth reuse --dry-run`, then omit `--dry-run`.
+To point a prepared team context at a login this machine already has for the
+same service, whatever scheme it uses, run
+`bitbucket-cli --use-context team auth reuse --dry-run`, then omit `--dry-run`;
+the result names the account the context will act as.
 See [existing-login reuse](docs/installation.md#reuse-an-existing-login).

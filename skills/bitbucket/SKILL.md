@@ -258,6 +258,6 @@ semantics, credential URL overrides, and failure recovery.
 
 ## Reuse existing authentication
 
-Before repeating login, preview `bitbucket-cli --use-context <target> auth reuse
---dry-run`, then apply. Keep the separate `auth status` check. See
-[reuse and ambiguity recovery](references/getting-started.md#reuse-existing-authentication).
+Before sign-in, run `auth reuse`: it adopts a login verified for the context's
+service. Writes act as its `account`; confirm it first. See
+[reuse](references/getting-started.md#reuse-existing-authentication).

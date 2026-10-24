@@ -1,12 +1,18 @@
 package app
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/angelmsger/agent-cli-kit/credstore"
+	"github.com/angelmsger/bitbucket-cli/internal/config"
+	"github.com/angelmsger/bitbucket-cli/pkg/constants"
 	cerrors "github.com/angelmsger/bitbucket-cli/pkg/errors"
+	"github.com/zalando/go-keyring"
 )
 
 func TestDoctorCredentialRecoveryStatus(t *testing.T) {
@@ -49,5 +55,28 @@ func TestCompanionSkillDoctorCheck(t *testing.T) {
 	t.Setenv(envSkillLoaded, version)
 	if got := companionSkillDoctorCheck(); got.Status != "current" || !got.OK {
 		t.Fatalf("loaded check = %+v", got)
+	}
+}
+
+// keychainAnswer is a keychain backend whose reads all return err.
+type keychainAnswer struct{ err error }
+
+func (k keychainAnswer) Get(string, string) (string, error) { return "", k.err }
+func (k keychainAnswer) Set(string, string, string) error   { return k.err }
+func (k keychainAnswer) Delete(string, string) error        { return k.err }
+
+// doctor lists reuse when a stored login could replace a missing one, but not
+// when the store itself cannot be read: that is recovered on the host.
+func TestDoctorOffersReuseForAMissingLogin(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	step := "bitbucket-cli --use-context 'team' auth reuse"
+	cfg := config.Config{BaseURL: "https://bitbucket.example.test", Flavor: "datacenter", Auth: config.AuthConfig{Scheme: "pat"}, ReuseStep: step}
+	for answer, want := range map[error][]string{keyring.ErrNotFound: {step}, errors.New("keychain locked"): nil} {
+		s := &appState{resolved: &config.Resolved{Config: cfg}, store: credstore.NewStoreWithBackend(t.TempDir(), constants.KeychainService, keychainAnswer{answer})}
+		if report := runDoctor(s, true); report.Healthy || !reflect.DeepEqual(report.NextSteps, want) {
+			t.Fatalf("%v: next steps %v, want %v", answer, report.NextSteps, want)
+		}
 	}
 }
