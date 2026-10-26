@@ -1,6 +1,6 @@
 ---
 name: bitbucket
-version: 0.18.6
+version: 0.18.7
 description: "Work with Bitbucket Cloud and Data Center / Server: browse repositories and source, create or update pull requests, review diffs, address review feedback, and manage comments or PR state. Use for Bitbucket repository or PR URLs, code review, inline findings, review threads, approvals, merges, and CLI dry-run or read-only workflows."
 metadata:
   requires:
@@ -173,7 +173,7 @@ Every write above accepts `--dry-run`; see `references/safety-modes.md`.
   either select the containing object for normal jq access or read the flat key
   as `.["repository.workspace"]`. Inspect `.items[0]` before composing a
   longer pipeline.
-- **Skill handshake — set `BITBUCKET_CLI_SKILL=0.18.6`.** Once you have loaded
+- **Skill handshake — set `BITBUCKET_CLI_SKILL=0.18.7`.** Once you have loaded
   this Skill, export that exact value in the environment used to run the CLI.
   The CLI compares it with the embedded Skill version and emits a structured
   stderr notice when the Skill is missing, old, or uses the legacy unversioned
@@ -210,15 +210,16 @@ authorization. Do not resolve human threads or push fixes without authorization.
 
 ## AI attribution (agent writes)
 
-Mark agent-written Bitbucket content — PR comments (`comment add`, including
-`--inline` / `--reply-to`) and PR descriptions (`pr create` / `pr update`) —
-with a clickable `[AI]` tag whose brackets stay visible:
-`[[AI]](https://angelmsger.github.io/bitbucket-cli/)` (double the outer brackets;
-`[AI](url)` renders as plain `AI`). Write the rest in the user's language; keep
-the label and URL constant. Text the human wrote or rewrote is posted verbatim
-**without** the marker. Details and the comment example are in
-[Commenting](references/commenting.md#ai-attribution-agent-writes); the PR
-description form is in `references/pr-workflows.md`.
+Use `[[AI]](https://angelmsger.github.io/bitbucket-cli/)` for agent-written PR
+descriptions and comments (general, inline, and replies). Keep the ASCII label
+and URL: doubled brackets render a clickable `[AI]`; `[AI](url)` hides the
+brackets. Never substitute an emoji.
+
+Prefix comments with the marker; put it on a separate first line in PR
+descriptions. Replace existing attribution instead of stacking it. Follow user
+and repository language rules. Post human-written or rewritten text verbatim
+**without** a marker; approving an agent draft does not change authorship.
+The CLI does not add attribution automatically.
 
 ## Configuration & credentials (agents)
 

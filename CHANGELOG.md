@@ -4,9 +4,11 @@
 
 ### Skill
 
-- Advance the companion Skill to `0.18.6`: combine generic review with local
+- Advance the companion Skill to `0.18.7`: combine generic review with local
   project guidance, assess material project-rule violations independently of
   runtime defects, and refresh changed descriptions and acceptance contracts.
+- Unify AI attribution for PR descriptions and comments under one rule with a
+  clickable `[AI]` marker; preserve human-written text without a marker.
 
 ### Changed
 

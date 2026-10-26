@@ -7,7 +7,7 @@ known context; do not invent motivation or benefits.
 
 ## Default shape
 
-After the existing [AI attribution line](pr-workflows.md#ai-attribution), use:
+After applying the [shared attribution rule](../SKILL.md#ai-attribution-agent-writes), use:
 
 1. **A short opening paragraph.** In one to three sentences, state the concrete
    problem or need and the resulting behavior. A separate "Summary" heading is
@@ -112,7 +112,7 @@ into a single helper that every endpoint calls.
 
 Follow explicit user instructions first, then the target repository's PR
 template and language rules. Otherwise use the user's language, including the
-review-focus label and attribution sentence. Keep technical identifiers exact.
+review-focus label. Keep technical identifiers exact.
 
 If a template is required, put the useful information into its existing fields;
 do not append a second template. Keep required fields, including verification
@@ -123,9 +123,7 @@ When updating an existing description, reflect the final change rather than
 appending a chronological update log. Preserve useful context, issue links,
 and human-authored text outside the requested edit; remove obsolete claims in
 the part being updated. Do not rewrite unrelated text just to impose a style.
-Follow the Skill's authorship rules: human-written text posted verbatim receives
-no AI marker; an agent-authored description uses the existing attribution line
-once, without stacking duplicates.
+Apply the [shared attribution rule](../SKILL.md#ai-attribution-agent-writes).
 
 ## Examples
 
@@ -137,7 +135,7 @@ language.
 ### Small fix
 
 ```markdown
-> [AI] This PR was created with the help of AI via [bitbucket-cli](https://angelmsger.github.io/bitbucket-cli/).
+[[AI]](https://angelmsger.github.io/bitbucket-cli/)
 
 Repository names containing spaces produced broken browser links. Encode the
 repository path so those links open the intended repository.

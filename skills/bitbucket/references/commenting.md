@@ -47,29 +47,8 @@ there's nothing to decode.
 
 ## AI attribution (agent writes)
 
-When you post a comment **on the user's behalf as an AI agent**, prefix the content
-with a clickable **`[AI]`** tag linking back to the tool — apply it to general,
-inline, and reply comments alike.
-
-Comment bodies are CommonMark, where `[` and `]` are link syntax. To keep the tag's
-**square brackets visible** in the rendered link text, **double the outer brackets**:
-write `[[AI]](url)`, which renders the link text literally as `[AI]`. A single-bracket
-`[AI](url)` renders as a plain `AI` with the brackets eaten by the link syntax — that
-was the bug.
-
-```sh
-bitbucket-cli comment add --pr myws/myrepo/42 \
-  --inline src/server.go:142 \
-  --content "[[AI]](https://angelmsger.github.io/bitbucket-cli/) An empty request reaches items[0] and panics; handle empty input before indexing."
-```
-
-That renders as a clickable **[AI]** (brackets visible) followed by the note. (If any
-Bitbucket instance mangles the doubled form, the escaped equivalent `[\[AI\]](url)`
-renders the same `[AI]`.)
-
-Write the note in the **user's language**; keep the `[AI]` label and URL
-constant. Human-written text is posted verbatim without the marker. Attribution
-is Skill guidance for agents, not a fixed CLI behavior.
+Follow the [shared attribution rule](../SKILL.md#ai-attribution-agent-writes).
+The inline example below shows its comment form.
 
 ## Inline (line-anchored) comments
 

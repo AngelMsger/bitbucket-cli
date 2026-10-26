@@ -437,3 +437,27 @@ field-order preservation for signature validation. An exact comparison shows
 the implementation changes that order. The author has disclosed this mismatch
 as a known risk but no authorized scope exception was agreed. There are no
 human holds or existing comments covering the issue.
+
+## 30. TEAM/archive/130
+
+User: "Review and approve if ready; report blockers here."
+The team's applicable AGENTS.md requires the shared registered error factory
+for service errors. An accepted ADR, explicitly approved by the authorized rule
+owner, exempts raw archival deserialization adapters to preserve historical
+error shapes. Its scope is those adapters only.
+
+The PR changes only `archive/raw-reader.ts:20`, constructing the historical
+error shape within that adapter. It satisfies the ADR and narrows raw values
+before typed business operations. The complete current change and applicable
+contracts have been reviewed, relevant tests pass, and no material unknowns,
+other blockers, or human holds remain.
+
+## 31. TEAM/archive/131
+
+User: "Review and approve if ready; report blockers here."
+The same mandatory error-factory rule and authorized adapter-only ADR from case
+30 apply. The PR preserves the compliant raw adapter but also adds a settlement
+service error at `services/settlement.ts:41` using `new Error` and ad-hoc metadata
+outside that boundary. No accepted exception covers the settlement service.
+All other behavior and contracts have been reviewed, tests pass, and no human
+holds or existing comments cover the issue.

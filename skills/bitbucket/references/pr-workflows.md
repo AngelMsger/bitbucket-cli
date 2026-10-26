@@ -237,20 +237,8 @@ Center it is rejected with a usage error; pass `--close-source-branch` to
 
 ### AI attribution
 
-When you create or update a PR description on the user's behalf as an AI agent,
-prepend a single attribution line to the top of the description (it's Markdown):
-
-```markdown
-> [AI] This PR was created with the help of AI via [bitbucket-cli](https://angelmsger.github.io/bitbucket-cli/).
-```
-
-Write the sentence in the description's language, following
-[Writing PR descriptions](writing-pr-descriptions.md); keep the `[AI]` marker,
-the URL, and the `bitbucket-cli` label constant. The marker is plain-ASCII `[AI]`
-(it renders as literal text), **never an emoji** — some Data Center databases
-(e.g. MySQL `utf8mb3`) can't store 4-byte characters and would reject or truncate
-the description. On `pr update` keep a single line — replace an existing one
-rather than stacking another.
+Follow the [shared attribution rule](../SKILL.md#ai-attribution-agent-writes).
+See the [description example](writing-pr-descriptions.md#small-fix).
 
 ## Updating descriptions
 
@@ -258,7 +246,7 @@ Before using `pr update` to edit a description, read
 [Writing PR descriptions](writing-pr-descriptions.md), including its guidance on
 existing text. Read the current body with `pr get <ref> --scope full` and compare
 it with the final PR changes. Preserve useful context and links, remove stale
-claims within the requested edit, and keep the attribution line above only once.
+claims within the requested edit, and apply the shared attribution rule above.
 Do not rewrite an existing description when the task only changes reviewers or
 other metadata.
 

@@ -34,6 +34,9 @@ up front.
   [Writing PR descriptions](skills/bitbucket/references/writing-pr-descriptions.md).
   Link to that source from creation and update workflows; keep repository checks
   in the creation workflow rather than adding routine results to descriptions.
+- Keep AI attribution rules in the companion
+  [Skill entrypoint](skills/bitbucket/SKILL.md#ai-attribution-agent-writes).
+  Link from writing workflows and keep their examples aligned.
 - Keep PR review scope, revision/worktree safety, evidence, verdict,
   information-placement, and publication rules in
   [Reviewing a pull request](skills/bitbucket/references/reviewing-locally.md),
