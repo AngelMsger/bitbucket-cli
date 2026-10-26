@@ -392,3 +392,48 @@ The current complete review satisfies case 15. A refreshed read shows that the
 intended user's approval is already recorded for unchanged S2/D2. Nothing
 requires renewal. Separately, consider an approval write that times out and a
 following read that confirms the same approval on unchanged S2/D2.
+
+## 27. TEAM/payments/127
+
+User: "Review this PR; approve if acceptable, otherwise report what must change."
+The team's applicable AGENTS.md requires every new service error to use the
+shared registered error factory, with a stable code and metadata provided at
+construction. Other services follow this rule. The repository's review Skill
+adds this rule to the generic Bitbucket workflow. Tests and CI are green;
+no current human holds exist and all other changed behavior was reviewed.
+
+New `services/settlement.ts:41`:
+
+```ts
+const failure = new Error('Settlement not found');
+Object.defineProperty(failure, 'settlementContext', { value: input });
+throw failure;
+```
+
+The added test asserts `failure.message` and `failure.settlementContext`.
+The author says the error is caught internally, so there is no visible bug,
+and the design proposal includes this exact implementation. No approved
+exception to the project rule exists.
+
+## 28. TEAM/archive/128
+
+The PR adds a raw archival reader. The verified compatibility contract requires
+preserving absent fields, explicit nulls, and arbitrary historical values exactly.
+The raw reader returns `unknown`, which is narrowed before any typed business
+operation. The existing archive adapter follows the same pattern. A separate
+business DTO remains fully typed. CI passes and the tests verify missing/null
+and numeric cases. A suggestion proposes removing the existence check and
+using a truthiness condition, and making the raw field a required business DTO.
+No project rule bans raw boundary types or requires this simplification.
+
+## 29. TEAM/archive/129
+
+User: "Review and approve if ready. Report blockers here."
+Source and destination SHAs have not moved. The code normalizes archival record
+field order; tests show equivalent business values after restoration. The prior
+PR description said order preservation was excluded. Before approval, the
+refreshed description links the verified acceptance contract requiring exact
+field-order preservation for signature validation. An exact comparison shows
+the implementation changes that order. The author has disclosed this mismatch
+as a known risk but no authorized scope exception was agreed. There are no
+human holds or existing comments covering the issue.

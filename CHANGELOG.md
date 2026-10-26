@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Skill
+
+- Advance the companion Skill to `0.18.6`: combine generic review with local
+  project guidance, assess material project-rule violations independently of
+  runtime defects, and refresh changed descriptions and acceptance contracts.
+
 ### Changed
 
 - `auth reuse` crosses schemes. A context without a working login adopts a

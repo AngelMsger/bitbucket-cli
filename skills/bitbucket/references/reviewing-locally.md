@@ -1,9 +1,9 @@
 # Reviewing a pull request
 
-Review the final change for functional correctness and significant
-maintainability problems, then publish only what the request authorizes.
-**Completing a review does not require a comment or a vote.** Feedback on the
-user's own PR follows [Responding to review comments](responding-to-review-comments.md).
+Review correctness, applicable project rules, and significant maintainability
+problems. Combine this workflow with repository/team guidance; local architecture
+and conventions belong there. **A review need not produce a comment or vote.**
+Author-side feedback: [Responding to review comments](responding-to-review-comments.md).
 
 ## Checklist
 
@@ -18,16 +18,17 @@ user's own PR follows [Responding to review comments](responding-to-review-comme
    `pr status <ref>` (reviewer states, conflicts, CI); `pr files <ref>` to budget
    paths and churn; `pr diff <ref>`, or `pr diff <ref> --path <path>` for a
    large change; `pr threads <ref>` for the full discussion, resolved threads
-   included (`--comment <id>` for one thread). A green check does not prove
-   correctness; a failed check or conflict does not prevent independent review.
+   included (`--comment <id>` for one thread). Read applicable project instructions
+   and representative neighboring implementations.
+   CI status does not establish correctness or prevent independent review.
 3. **Pin revisions.** Record `source.commit` and `destination.commit`, and
    review the change relative to their merge-base, never a stale local default
    branch. Use a [local checkout](#local-checkout)
    only when broad searches or tests need one.
 4. **Verify findings** with the [evidence rules](#verify-findings), including
-   claims in existing comments. Read callers, contracts, tests, history, or
-   linked requirements only to settle a specific uncertainty; check generated or
-   mechanical changes with a tool. Cover all meaningful changed code before a
+   claims in existing comments. Settle uncertainties with callers, contracts, tests,
+   history, or requirements;
+   check mechanical changes with a tool. Cover all meaningful changed code before a
    whole-PR approval; a deliberately partial review remains a partial report.
    Several PRs, or one too large for a pass: [Reviewing batches](reviewing-batches.md).
 5. **Choose a verdict** from the [verdict table](#choose-a-review-verdict).
@@ -37,9 +38,7 @@ user's own PR follows [Responding to review comments](responding-to-review-comme
 
 ## Local checkout
 
-Find an existing matching clone or worktree before creating one, and record
-its root, remotes, branch, HEAD, and dirty state (staged and untracked files
-included).
+Reuse matching clones; record root, remotes, branch, HEAD, staged and untracked changes.
 
 - **Match the repository and remote.** Verify the complete host/repository
   identity, including the canonical destination and a fork source; a matching
@@ -83,20 +82,20 @@ git diff "$merge_base" "$source_commit" --
 git worktree add --detach "$review_dir" "$source_commit"
 ```
 
-Stop on any failure after confirming the resolved commits match the PR. The
-diff equals `git diff <destination-commit>...<source-commit>`; the CLI's
-`review_diff` uses mutable refs, so pin IDs before handing work to other agents.
-Distinguish the PR delta from compatibility with the current destination and
-check changed contracts when destination-only changes could matter; approval is
-not a claim that merge checks pass. Read and test from the verified source
-tree, remove only review-created worktrees after preserving useful artifacts,
-never force-remove a dirty or user-owned tree, and report any retained worktree.
+Stop on failure. The diff equals `git diff <destination-commit>...<source-commit>`;
+`review_diff` uses mutable refs, so delegate pinned IDs. Check relevant
+destination-only contract changes separately; approval does not assert merge
+readiness. Test the verified source. Preserve artifacts before removing only
+review-created clean worktrees; report retained trees, never force-remove user work.
 
 ## Verify findings
 
 A publishable finding identifies a problem introduced or materially worsened by
 the PR, supports it with current code or a verified contract or project rule,
-and proposes a concrete, minimal correction that preserves required behavior.
+and proposes a minimal correction preserving required behavior. Material project-rule
+violations can block without a runtime failure: cite the applicable rule, not a
+personal preference. Documented risks or design choices are not accepted exceptions;
+verify their scope and acceptance. Passing tests cannot waive these checks.
 
 - **Functional defects** need a reachable trigger and a meaningful behavior
   consequence, shown by code evidence, a focused reproduction, or a relevant
@@ -136,9 +135,9 @@ Investigation cues, not automatic findings:
   behavior a test exercises and which regression its assertions would catch;
   check that added documentation, wrappers, and configuration serve the change.
 
-Length, repetition, or an absent caller in the diff is not evidence by itself.
-Explain the concrete burden and minimal remedy; omit wording preferences and
-cleanup requests unrelated to this change.
+Length, novelty, or absent callers alone prove nothing. Check whether unfamiliar
+patterns are necessary; do not extend a justified exception to unrelated code.
+Explain concrete burdens and remedies, omitting unrelated cleanup.
 
 ## Place information for its reader
 
@@ -175,8 +174,8 @@ Separate **confidence** (how well the evidence establishes a conclusion) from
 **impact** (whether the issue must block this PR). High confidence requires
 verified source/base identity, sufficient coverage of the changed behavior and
 its contracts, risk-appropriate verification, and no material open question.
-No comments, green CI, a worker's verdict, or another reviewer's approval alone
-cannot supply it; do not invent numerical scores.
+Assess behavior and project acceptability separately. Test counts, worker verdicts,
+and peer approvals cannot establish either; do not invent scores.
 
 **Discussion and votes.** Verify comments against current code and contracts,
 regardless of authorship. Classify claims as confirmed, non-blocking, disproved,
@@ -194,7 +193,7 @@ Apply in order, within the action scope:
 
 | Evidence | Verdict |
 | --- | --- |
-| A current, independently verified defect or significant maintainability problem warrants correction before acceptance | **Needs Work.** Cite the concrete trigger/impact or maintenance burden; existing comments may already hold the evidence. |
+| A verified defect, material project-rule violation, or significant maintenance burden requires correction | **Needs Work.** Cite the concrete trigger/impact or maintenance burden; existing comments may already hold the evidence. |
 | Another verified human reviewer currently has Needs Work | **Needs Work as a collaboration hold.** Inspect their reasoning and confirm it where possible. Do not counter-approve an active human block. If the reason is missing, disputed, or disproved, report that distinction to the user instead of inventing a defect or claiming agreement. |
 | No verified blocker or active human hold, but coverage, revision identity, or a material question remains open | **No vote yet.** Continue bounded investigation or report the precise gap. Uncertainty is neither approval nor a technical Needs Work finding. |
 | Sufficient current evidence supports acceptance; no blocker or active human hold remains | **Approve.** Other approvals corroborate but are not required. Minor, genuinely non-blocking suggestions may remain. |
@@ -233,23 +232,21 @@ make an issue unanchorable: use [anchor recovery](commenting.md#inline-line-anch
 Immediately before any comment or vote, refresh what the decision depends on:
 
 ```sh
-bitbucket-cli pr get <ref> --scope full --fields source.commit,destination.commit,reviewers,participants
+bitbucket-cli pr get <ref> --scope full --fields source.commit,destination.commit,description,reviewers,participants
 bitbucket-cli pr threads <ref>
 ```
 
-If revisions moved, inspect the new diff as allowed and revalidate affected
-findings, anchors, coverage, and the verdict. If only discussion or votes
-changed, reconsider the decision without repeating unchanged code review. A dry
-run does not lock PR revisions.
+Revalidate moved revisions and affected anchors/coverage. Changed descriptions,
+contracts, discussions, or votes require reconsidering dependent conclusions,
+without repeating unaffected review. A dry run locks nothing.
 
 For replies, classify authorship and apply the
 [human-reply gate](replying-to-people.md), including a human reply inside an
 agent-started thread; new evidence does not waive it. Keep AI attribution on
 agent-written text and use [Commenting](commenting.md) for syntax.
 
-Preview each authorized write with `--dry-run`, respect
-[read-only mode](safety-modes.md), execute once, and verify by reading state;
-if the intended vote is already current, report it without writing again.
+Preview authorized writes with `--dry-run`, respect [read-only mode](safety-modes.md),
+execute once, and verify state. Do not repeat a current vote.
 Approval, request-changes, unapproval, decline, thread resolution, and merge
 are separate actions, approval needs no companion comment, and decline is never
 a substitute for Needs Work ([vote commands](pr-workflows.md#reviewing)). For
@@ -260,9 +257,7 @@ after a partial failure.
 
 ## Report to the user
 
-Lead with findings, or state that no actionable findings were found in the
-reviewed scope. Include decisive references, source/base identity, coverage
-gaps, checks run, and environment limits; identify a collaboration hold
-separately from verified defects. Link published comments and votes, and
-distinguish verified writes, existing state, proposals, skipped duplicates, and
-blockers. Keep this report in the conversation unless asked to publish it.
+Lead with findings or a scoped no-findings conclusion. Include decisive references,
+source/base, coverage gaps, checks and limits. Separate collaboration holds from
+defects, and verified writes from existing state, proposals, skipped duplicates,
+and blockers. Link publications; keep the report here unless publication is requested.

@@ -1,3 +1,48 @@
+# Review rule layering validation - 2026-10-23
+
+## Scope and ownership
+
+The generic review workflow now explicitly combines functional evidence,
+applicable project rules, and maintainability. Concrete architecture, error,
+model, and release conventions remain in repository/team guidance. Description
+or acceptance-context changes are reconsidered even with unchanged commit IDs.
+No CLI command, remote-write authorization, or sibling product contract changes.
+The canonical rules remain in reviewing-locally.md; no second verdict table was
+introduced. The Skill advances from upstream 0.18.5 to 0.18.6; unrelated local
+HTTP 409 changes are excluded from this PR.
+
+Family applicability: Bitbucket applies because it owns PR review and votes.
+Confluence and Jira own document/issue workflows; Jenkins supplies CI evidence;
+OpenObserve and Prometheus supply operational evidence; WeCom Calendar supplies
+calendar data. Those six Skills do not own PR acceptance decisions and need no
+parallel changes. Their entrypoints and the family construction/CLI standards
+were inspected. Team-specific workflows remain in their owning repositories.
+
+## Independent offline comparison
+
+Two isolated evaluators received only their respective Skill snapshot and the
+same 29 cases, with no rubric or implementation discussion. Both inherited the
+parent model/settings without overrides. They read instructions and returned
+proposed decisions only; network access and scenario execution were prohibited.
+
+Both baseline and candidate matched all 29 rubric cases and variants. Cases
+1-26 retained their previous behavior. Added cases 27-29 covered an explicit
+project error protocol despite green tests, a justified raw unknown/existence
+boundary that must be preserved, and changed acceptance context despite stable
+SHAs. Both withheld approval for 27/29 without unauthorized votes/comments and
+preserved the valid boundary in 28. The candidate names these rules explicitly;
+the baseline also reached the expected decisions. This is no measured accuracy
+improvement, and synthetic passes do not estimate real PR precision.
+
+## Upstream integration checks
+
+Ported onto main at `c80e632`, preserving the newer shared Skill and credential
+reuse changes. The review guide and case changes are unchanged. On 2026-10-26,
+`GOWORK=off make test` passed and `GOWORK=off make e2e` passed all 146 checks
+plus offline team-setup checks. The Skill review path is 5525 words under its
+unchanged 5600-word budget. `git diff --check` passed. No live server operations
+were used by these checks.
+
 # Review-state fixes — 2026-09-23
 
 Skill `0.18.1` corrects the Cloud refresh to include `participants`, where the

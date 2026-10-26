@@ -43,7 +43,9 @@ up front.
   Data Center withdrawal against other states in both preview and execution.
   Route review and commenting workflows there; examples must not imply that
   completing a review requires a
-  comment, approval, or merge. Design rationale belongs in
+  comment, approval, or merge. Keep project-rule evidence and accepted exceptions
+  in that workflow, but leave concrete architecture/style rules in repository or
+  team guidance; green tests do not waive them. Design rationale belongs in
   `docs/technical-design.md`, not in the Skill.
 - Keep the Skill within `scripts/skill-budget.sh` (run by `make e2e`). Raise a
   budget only with a reason recorded in `test/skill-review/validation.md`.

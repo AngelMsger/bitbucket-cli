@@ -653,3 +653,16 @@ sign-in. See the installation guide for the result and recovery contract.
 Equivalent service URL overrides preserve the persisted native credential lookup
 key without redirecting requests or copying secrets. Logout removes that same
 entry. A different complete deployment URL cannot use the retained lookup key.
+
+## Review rule ownership
+
+The Bitbucket companion Skill owns generic evidence, verdict, authorization,
+and publication rules. Repository and team guidance own concrete engineering
+conventions. Review combines both: material violations of applicable project
+rules need not be disguised as runtime defects, while personal preferences and
+unrelated historical examples are not binding rules. Passing tests or a design
+proposal cannot substitute for checking the rule or an accepted exception.
+
+Before publication, description and acceptance-context changes are reconsidered
+even when source and destination commits are unchanged. This is an agent workflow
+contract, not automatic loading of other Skills by the CLI.
