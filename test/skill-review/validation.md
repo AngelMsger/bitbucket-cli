@@ -1,3 +1,72 @@
+# Review rule layering validation - 2026-10-23
+
+## Scope and ownership
+
+The generic review workflow now explicitly combines functional evidence,
+applicable project rules, and maintainability. Concrete architecture, error,
+model, and release conventions remain in repository/team guidance. Description
+or acceptance-context changes are reconsidered even with unchanged commit IDs.
+No CLI command, remote-write authorization, or sibling product contract changes.
+The canonical rules remain in reviewing-locally.md; no second verdict table was
+introduced. The Skill advances from upstream 0.18.5 to 0.18.7; unrelated local
+HTTP 409 changes are excluded from this PR.
+
+The Skill entrypoint also owns AI attribution for PR descriptions and comments;
+writing references link to it and retain aligned examples. Confluence's storage
+XHTML and Jira's native markup remain domain-specific; this consolidation does
+not change sibling attribution contracts.
+
+Family applicability: Bitbucket applies because it owns PR review and votes.
+Confluence and Jira own document/issue workflows; Jenkins supplies CI evidence;
+OpenObserve and Prometheus supply operational evidence; WeCom Calendar supplies
+calendar data. Those six Skills do not own PR acceptance decisions and need no
+parallel changes. Their entrypoints and the family construction/CLI standards
+were inspected. Team-specific workflows remain in their owning repositories.
+
+## Independent offline comparison
+
+### Initial comparison: Skill 0.18.5 to 0.18.6
+
+Two isolated evaluators received only their respective Skill snapshot and the
+same 29 cases, with no rubric or implementation discussion. Both inherited the
+parent model/settings without overrides. They read instructions and returned
+proposed decisions only; network access and scenario execution were prohibited.
+
+Both baseline and candidate matched all 29 rubric cases and variants. Cases
+1-26 retained their previous behavior. Added cases 27-29 covered an explicit
+project error protocol despite green tests, a justified raw unknown/existence
+boundary that must be preserved, and changed acceptance context despite stable
+SHAs. Both withheld approval for 27/29 without unauthorized votes/comments and
+preserved the valid boundary in 28. The candidate names these rules explicitly;
+the baseline also reached the expected decisions. This is no measured accuracy
+improvement, and synthetic passes do not estimate real PR precision.
+
+### Follow-up comparison: Skill 0.18.6 to 0.18.7
+
+Two fresh offline evaluator contexts compared `5a6dc9b` (0.18.6) with the final
+0.18.7 candidate on all 31 cases and variants, using the same inherited model
+and settings without overrides. Each received only its Skill snapshot and cases,
+not the rubric or implementation discussion; no scenario actions were executed.
+
+Both retained the expected review decisions and authorization boundaries,
+including approval within the accepted ADR in case 30 and withholding approval
+outside its scope in case 31. Neither introduced false positives, duplicate
+findings, or unnecessary actions. The baseline's case 10/11 drafts used the
+conflicting plain-marker banner; the candidate matched the updated rubric with
+one clickable marker on its own first line. All 31 candidate cases matched.
+This verifies the synthetic scenarios, not production review precision.
+
+## Upstream integration checks
+
+Based on main at `c80e632`, preserving the shared Skill and credential reuse
+changes. On 2026-10-26, the final candidate was tested with the pinned kit:
+`GOWORK=off make test` passed and `GOWORK=off make e2e` passed all 146 checks
+plus offline team-setup checks. The Skill review path is 5528 words under its
+unchanged 5600-word budget; the entrypoint is 2193/2200 words. Attribution links
+and anchors resolve, and the writing guides contain no obsolete plain-marker
+banner. No live server operations were used by these checks.
+`go vet ./...` with the pinned kit and `git diff --check` also passed.
+
 # Review-state fixes — 2026-09-23
 
 Skill `0.18.1` corrects the Cloud refresh to include `participants`, where the

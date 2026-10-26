@@ -34,6 +34,9 @@ up front.
   [Writing PR descriptions](skills/bitbucket/references/writing-pr-descriptions.md).
   Link to that source from creation and update workflows; keep repository checks
   in the creation workflow rather than adding routine results to descriptions.
+- Keep AI attribution rules in the companion
+  [Skill entrypoint](skills/bitbucket/SKILL.md#ai-attribution-agent-writes).
+  Link from writing workflows and keep their examples aligned.
 - Keep PR review scope, revision/worktree safety, evidence, verdict,
   information-placement, and publication rules in
   [Reviewing a pull request](skills/bitbucket/references/reviewing-locally.md),
@@ -43,7 +46,9 @@ up front.
   Data Center withdrawal against other states in both preview and execution.
   Route review and commenting workflows there; examples must not imply that
   completing a review requires a
-  comment, approval, or merge. Design rationale belongs in
+  comment, approval, or merge. Keep project-rule evidence and accepted exceptions
+  in that workflow, but leave concrete architecture/style rules in repository or
+  team guidance; green tests do not waive them. Design rationale belongs in
   `docs/technical-design.md`, not in the Skill.
 - Keep the Skill within `scripts/skill-budget.sh` (run by `make e2e`). Raise a
   budget only with a reason recorded in `test/skill-review/validation.md`.

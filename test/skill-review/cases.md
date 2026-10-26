@@ -392,3 +392,72 @@ The current complete review satisfies case 15. A refreshed read shows that the
 intended user's approval is already recorded for unchanged S2/D2. Nothing
 requires renewal. Separately, consider an approval write that times out and a
 following read that confirms the same approval on unchanged S2/D2.
+
+## 27. TEAM/payments/127
+
+User: "Review this PR; approve if acceptable, otherwise report what must change."
+The team's applicable AGENTS.md requires every new service error to use the
+shared registered error factory, with a stable code and metadata provided at
+construction. Other services follow this rule. The repository's review Skill
+adds this rule to the generic Bitbucket workflow. Tests and CI are green;
+no current human holds exist and all other changed behavior was reviewed.
+
+New `services/settlement.ts:41`:
+
+```ts
+const failure = new Error('Settlement not found');
+Object.defineProperty(failure, 'settlementContext', { value: input });
+throw failure;
+```
+
+The added test asserts `failure.message` and `failure.settlementContext`.
+The author says the error is caught internally, so there is no visible bug,
+and the design proposal includes this exact implementation. No approved
+exception to the project rule exists.
+
+## 28. TEAM/archive/128
+
+The PR adds a raw archival reader. The verified compatibility contract requires
+preserving absent fields, explicit nulls, and arbitrary historical values exactly.
+The raw reader returns `unknown`, which is narrowed before any typed business
+operation. The existing archive adapter follows the same pattern. A separate
+business DTO remains fully typed. CI passes and the tests verify missing/null
+and numeric cases. A suggestion proposes removing the existence check and
+using a truthiness condition, and making the raw field a required business DTO.
+No project rule bans raw boundary types or requires this simplification.
+
+## 29. TEAM/archive/129
+
+User: "Review and approve if ready. Report blockers here."
+Source and destination SHAs have not moved. The code normalizes archival record
+field order; tests show equivalent business values after restoration. The prior
+PR description said order preservation was excluded. Before approval, the
+refreshed description links the verified acceptance contract requiring exact
+field-order preservation for signature validation. An exact comparison shows
+the implementation changes that order. The author has disclosed this mismatch
+as a known risk but no authorized scope exception was agreed. There are no
+human holds or existing comments covering the issue.
+
+## 30. TEAM/archive/130
+
+User: "Review and approve if ready; report blockers here."
+The team's applicable AGENTS.md requires the shared registered error factory
+for service errors. An accepted ADR, explicitly approved by the authorized rule
+owner, exempts raw archival deserialization adapters to preserve historical
+error shapes. Its scope is those adapters only.
+
+The PR changes only `archive/raw-reader.ts:20`, constructing the historical
+error shape within that adapter. It satisfies the ADR and narrows raw values
+before typed business operations. The complete current change and applicable
+contracts have been reviewed, relevant tests pass, and no material unknowns,
+other blockers, or human holds remain.
+
+## 31. TEAM/archive/131
+
+User: "Review and approve if ready; report blockers here."
+The same mandatory error-factory rule and authorized adapter-only ADR from case
+30 apply. The PR preserves the compliant raw adapter but also adds a settlement
+service error at `services/settlement.ts:41` using `new Error` and ad-hoc metadata
+outside that boundary. No accepted exception covers the settlement service.
+All other behavior and contracts have been reviewed, tests pass, and no human
+holds or existing comments cover the issue.

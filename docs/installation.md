@@ -263,6 +263,14 @@ non-interactively, `--list` previews a repo's skills.
 > change to the Skill or its `references/`, so both `bitbucket-cli skill show`
 > and `npx skills update` report the new version.
 
+### Combining project and tool guidance
+
+This Skill supplies the generic Bitbucket review and publication workflow.
+Repository or team Skills supply their architecture, coding, and release rules;
+read both when applicable. Installing either Skill does not execute or load the
+other. Keep local standards in their owning repository instead of copying them
+into this companion Skill.
+
 ### Removing the Skill
 
 ```bash
