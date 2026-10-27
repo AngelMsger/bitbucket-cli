@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.27.0] - 2026-10-27
+
 ### Skill
 
 - Advance the companion Skill to `0.18.7`: combine generic review with local
@@ -1006,7 +1008,8 @@ PR-centric MVP supporting Bitbucket Cloud (REST 2.0) and Data Center (REST
 subtrees; layered configuration with keychain-backed auth; structured error
 model; and an embedded companion Skill.
 
-[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.26.0...HEAD
+[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.27.0...HEAD
+[0.27.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.26.0...v0.27.0
 [0.26.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.25.1...v0.26.0
 [0.25.1]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.25.0...v0.25.1
 [0.25.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.24.2...v0.25.0
