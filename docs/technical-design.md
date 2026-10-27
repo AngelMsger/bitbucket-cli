@@ -420,6 +420,13 @@ network server parse internal`. `extractAPIMessage` extracts the human
 message from both Cloud's `{"error":{"message":"..."}}` and DC's
 `{"errors":[{"message":"..."}]}` shapes.
 
+HTTP 409 retains that server message with `code=HTTP_Conflict`,
+`category=conflict`, and `retryable=false`. Default guidance asks callers to
+inspect the current state and resolve the reported cause before retrying;
+it does not assume an optimistic-lock failure. For example, approval of a
+closed PR reports the server's explanation that the PR is not open. If the
+server supplies no usable message, the CLI does not invent a cause.
+
 ### 7.3 Exit codes
 
 | Code | Category | Code | Category |

@@ -1,6 +1,6 @@
 # Errors and exit codes
 
-Every error is emitted on stderr as a single-line JSON envelope:
+Every error is emitted on stderr as a JSON envelope:
 
 ```json
 {
@@ -46,6 +46,12 @@ The process exit code matches the category:
   do not launch interactive login or log them out automatically. Host credential
   access failures use the separate recovery above.
 - **`not_found`** → confirm with `bitbucket-cli repo get <ref>` / `pr get <ref>`.
+- **`HTTP_Conflict` / HTTP 409** → read `message` for the server's actual
+  reason. A closed PR, merge conflict, or existing resource is not necessarily
+  a version conflict. For PR actions, read `pr get <ref> --scope full`;
+  approval requires an open PR. Resolve the reported cause before retrying;
+  refreshing alone cannot fix a closed PR. If no reason is returned, inspect
+  the current state instead of guessing.
 - **`PR_NO_CHANGE_REQUEST`** → Data Center found no confirmed Needs Work vote
   to withdraw. Read `pr get <ref> --scope full --fields reviewers,participants`;
   preserve approvals and do not retry through the browser.

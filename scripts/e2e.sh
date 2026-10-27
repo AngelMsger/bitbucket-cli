@@ -162,6 +162,28 @@ assert_contains  "pr activity --include-system" "predefined branch reviewers" \
 assert_contains  "comment list"              "Looks good"     "${CLI[@]}" comment list --pr PROJ/demo/1
 assert_contains  "comment add"               "added"          "${CLI[@]}" comment add --pr PROJ/demo/1 --content "added"
 assert_contains  "pr approve"                '"approved": true' "${CLI[@]}" pr approve PROJ/demo/1
+if python3 - "${CLI[@]}" <<'PY'
+import json
+import os
+import subprocess
+import sys
+
+env = dict(os.environ, BITBUCKET_CLI_NO_UPDATE_NOTIFIER="1", BITBUCKET_CLI_NO_SKILL_HINT="1")
+result = subprocess.run(sys.argv[1:] + ["pr", "approve", "PROJ/demo/409"], env=env, capture_output=True, text=True, timeout=30)
+assert result.returncode == 11, result
+assert result.stdout == "", result.stdout
+error = json.loads(result.stderr)["error"]
+assert error["code"] == "HTTP_Conflict" and error["category"] == "conflict", error
+assert error["http_status"] == 409 and error["retryable"] is False, error
+assert error["message"] == "Bitbucket returned HTTP 409: The pull request is not open.", error
+guidance = error["hint"] + " " + " ".join(error["next_steps"])
+assert "version" not in guidance.lower(), error
+PY
+then
+  pass "closed PR approval preserves the server reason without a version-conflict hint"
+else
+  fail "closed PR approval conflict diagnostics"
+fi
 assert_contains  "pr unapprove"              '"approved": false' "${CLI[@]}" pr unapprove PROJ/demo/1
 assert_contains  "pr request-changes (DC)"    '"requested_changes": true' "${CLI[@]}" pr request-changes PROJ/demo/1
 assert_contains  "pr needs-work --withdraw"   '"requested_changes": false' "${CLI[@]}" pr needs-work PROJ/demo/3 --withdraw

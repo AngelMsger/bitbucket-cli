@@ -21,8 +21,8 @@ func defaultGuidance(cat Category) (hint string, steps []string) {
 		return "The requested workspace, repository, pull request, branch or commit does not exist.",
 			[]string{"bitbucket-cli repo list --workspace <name>", "Double-check the <workspace>/<repo>/<id> reference or URL."}
 	case CategoryConflict:
-		return "The resource changed since it was last read (version conflict).",
-			[]string{"Re-fetch the resource to get its current version, then retry."}
+		return "The operation conflicts with the resource's current state. Check the error message for the specific reason.",
+			[]string{"Read the current resource state and resolve the reported conflict before retrying."}
 	case CategoryRateLimit:
 		return "The server is rate limiting requests. Retry after a short wait.",
 			[]string{"Wait and retry; reduce --limit or avoid --all for large queries."}
