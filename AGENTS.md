@@ -65,6 +65,9 @@ up front.
   read-only posture. Browser recovery preserves identity, action scope and
   uncertain-write reconciliation. Never suggest decline as an equivalent of
   requesting changes; decline closes the PR.
+- Keep HTTP 409 guidance neutral unless the server identifies the cause.
+  Preserve the server's message; a closed PR, merge conflict, or existing
+  resource must not be relabelled as a version conflict. Test both error shapes.
 - Never commit `.env`, credentials, tokens, or build artifacts.
 
 ## Shared packages — agent-cli-kit

@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+## [0.27.1] - 2026-10-27
+
+### Fixed
+
+- HTTP 409 guidance no longer assumes a version conflict or suggests a blind
+  retry after refreshing. The server's actual reason remains in `message`,
+  including a PR being closed, merge conflicts, or an existing resource.
+  Conflict recovery now directs callers to resolve the reported cause first.
+
+### Skill
+
+- Update the companion Skill to `0.18.8` for cause-based conflict recovery.
+
 ## [0.27.0] - 2026-10-27
 
 ### Skill
@@ -1008,7 +1021,8 @@ PR-centric MVP supporting Bitbucket Cloud (REST 2.0) and Data Center (REST
 subtrees; layered configuration with keychain-backed auth; structured error
 model; and an embedded companion Skill.
 
-[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.27.0...HEAD
+[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.27.1...HEAD
+[0.27.1]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.27.0...v0.27.1
 [0.27.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.26.0...v0.27.0
 [0.26.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.25.1...v0.26.0
 [0.25.1]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.25.0...v0.25.1

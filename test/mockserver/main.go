@@ -163,6 +163,9 @@ func routes() http.Handler {
 			return
 		}
 		result := pr(id, "Add login flow", "OPEN")
+		if id == 409 {
+			result = pr(id, "Closed pull request", "DECLINED")
+		}
 		if id == 3 || id == 4 {
 			status := "NEEDS_WORK"
 			if id == 4 {
@@ -249,7 +252,13 @@ func routes() http.Handler {
 			"id": 9100, "text": "added", "author": user(), "createdDate": 1, "version": 0,
 		})
 	})
-	mux.HandleFunc("POST "+prKey+"/{id}/approve", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
+	mux.HandleFunc("POST "+prKey+"/{id}/approve", func(w http.ResponseWriter, r *http.Request) {
+		if r.PathValue("id") == "409" {
+			http.Error(w, `{"errors":[{"message":"The pull request is not open."}]}`, http.StatusConflict)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	})
 	mux.HandleFunc("DELETE "+prKey+"/{id}/approve", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) })
 	// Data Center stores review votes on participants.
 	mux.HandleFunc("PUT "+prKey+"/{id}/participants/{user}", func(w http.ResponseWriter, r *http.Request) {

@@ -28,7 +28,7 @@ not label every permission failure a token-scope problem without evidence.
 | `CREDENTIAL_STORE_INACCESSIBLE`, `CREDENTIAL_NOT_VISIBLE_OR_MISSING`, or `recovery.scope=host` | Follow the single host retry in [Getting started](getting-started.md#for-agents-and-sandboxes). This does not diagnose server permissions. |
 | HTTP 401 | Check the selected instance and identity; the server rejected the credential. Do not erase or replace credentials automatically. |
 | HTTP 403 (`HTTP_Forbidden`) | Inspect the server message and known token/account permissions. Stop repeating the same write with unchanged credentials; `--allow-writes` and sandbox elevation cannot grant server permissions. Use the browser recovery below when authorized. |
-| HTTP 409 or changed PR state | Refresh the PR and re-evaluate the action against its current state and commits. A browser is not a way to ignore a conflict. |
+| HTTP 409 or changed PR state | Read the server's reason and refresh PR state and commits before re-evaluating the action; see [conflict recovery](errors-and-exit-codes.md#common-recovery-flows). A browser cannot bypass a conflict. |
 | Timeout, disconnected response, 5xx, or response decoding failure | The write may have succeeded. Read PR/reviewer state and relevant activity before another attempt through any tool. If still uncertain, report it and stop replaying the write. |
 
 A successful `--dry-run` checks the request plan, **not** write permission. A
