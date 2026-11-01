@@ -16,8 +16,19 @@ import (
 )
 
 // Client is the flavor-agnostic Bitbucket API surface. All methods return
-// normalized models; flavor-specific request shapes are hidden.
+// normalized models; flavor-specific request shapes are hidden. It is the
+// union of Reader and Writer, so every method is classified as one or the
+// other; NewReadOnly relies on that split.
 type Client interface {
+	Reader
+	Writer
+}
+
+// Reader is the part of Client that never changes remote state: lookups,
+// listings, connectivity probes, and the --dry-run preview. The read-only
+// wrapper delegates exactly this interface, so a method that can mutate
+// Bitbucket must never be declared here.
+type Reader interface {
 	Flavor() Flavor
 	BaseURL() string
 	Ping(ctx context.Context) (ServerInfo, error)
@@ -35,9 +46,6 @@ type Client interface {
 
 	ListRepositories(ctx context.Context, opt RepoListOpts) (ListResult[Repository], error)
 	GetRepository(ctx context.Context, ref RepoRef) (*Repository, error)
-	CreateRepository(ctx context.Context, req CreateRepoReq) (*Repository, error)
-	ForkRepository(ctx context.Context, req ForkRepoReq) (*Repository, error)
-	DeleteRepository(ctx context.Context, req DeleteRepoReq) error
 
 	ListPRs(ctx context.Context, opt PRListOpts) (ListResult[PullRequest], error)
 	ListMyPRs(ctx context.Context, opt MyPRListOpts) (ListResult[PullRequest], error)
@@ -46,23 +54,10 @@ type Client interface {
 	ListPRCommits(ctx context.Context, opt PRListOpts) (ListResult[Commit], error)
 	ListPRActivity(ctx context.Context, opt PRListOpts) (ListResult[Activity], error)
 
-	CreatePR(ctx context.Context, req CreatePRReq) (*PullRequest, error)
-	UpdatePR(ctx context.Context, req UpdatePRReq) (*PullRequest, error)
-	DeclinePR(ctx context.Context, req DeclinePRReq) (*PullRequest, error)
-	MergePR(ctx context.Context, req MergePRReq) (*PullRequest, error)
-	ApprovePR(ctx context.Context, req ApprovePRReq) error
-	RequestPRChanges(ctx context.Context, req RequestChangesReq) error
-
 	ListPRComments(ctx context.Context, opt ListPRCommentsOpts) (ListResult[Comment], error)
-	AddPRComment(ctx context.Context, req AddPRCommentReq) (*Comment, error)
-	UpdatePRComment(ctx context.Context, req UpdatePRCommentReq) (*Comment, error)
-	DeletePRComment(ctx context.Context, req DeletePRCommentReq) error
-	ResolvePRComment(ctx context.Context, req ResolvePRCommentReq) (*Comment, error)
 
 	ListBranches(ctx context.Context, opt BranchListOpts) (ListResult[Branch], error)
 	GetBranch(ctx context.Context, repo RepoRef, name string) (*Branch, error)
-	CreateBranch(ctx context.Context, req CreateBranchReq) (*Branch, error)
-	DeleteBranch(ctx context.Context, req DeleteBranchReq) error
 
 	GetCommit(ctx context.Context, repo RepoRef, hash string) (*Commit, error)
 	ListCommits(ctx context.Context, opt ListCommitsOpts) (ListResult[Commit], error)
@@ -85,7 +80,33 @@ type Client interface {
 	ListPRStatuses(ctx context.Context, repo RepoRef, id int) (ListResult[BuildStatus], error)
 	GetPRStatus(ctx context.Context, repo RepoRef, id int) (*PRStatus, error)
 
+	// DescribeWrite returns the request a write would send, without sending
+	// it; --dry-run previews use it, so it stays usable in read-only mode.
 	DescribeWrite(ctx context.Context, op any) (WriteRequestPlan, error)
+}
+
+// Writer is the part of Client that changes remote state. The read-only
+// wrapper (NewReadOnly) blocks each method explicitly, so adding one here
+// without its blocking override fails compilation.
+type Writer interface {
+	CreateRepository(ctx context.Context, req CreateRepoReq) (*Repository, error)
+	ForkRepository(ctx context.Context, req ForkRepoReq) (*Repository, error)
+	DeleteRepository(ctx context.Context, req DeleteRepoReq) error
+
+	CreatePR(ctx context.Context, req CreatePRReq) (*PullRequest, error)
+	UpdatePR(ctx context.Context, req UpdatePRReq) (*PullRequest, error)
+	DeclinePR(ctx context.Context, req DeclinePRReq) (*PullRequest, error)
+	MergePR(ctx context.Context, req MergePRReq) (*PullRequest, error)
+	ApprovePR(ctx context.Context, req ApprovePRReq) error
+	RequestPRChanges(ctx context.Context, req RequestChangesReq) error
+
+	AddPRComment(ctx context.Context, req AddPRCommentReq) (*Comment, error)
+	UpdatePRComment(ctx context.Context, req UpdatePRCommentReq) (*Comment, error)
+	DeletePRComment(ctx context.Context, req DeletePRCommentReq) error
+	ResolvePRComment(ctx context.Context, req ResolvePRCommentReq) (*Comment, error)
+
+	CreateBranch(ctx context.Context, req CreateBranchReq) (*Branch, error)
+	DeleteBranch(ctx context.Context, req DeleteBranchReq) error
 }
 
 // apiClient is the single Client implementation. Per-flavor behaviour is

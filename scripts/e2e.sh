@@ -90,7 +90,8 @@ MOCK_LOG="$MOCK_DIR/server.log"
 trap '[[ -z "${MOCK_PID:-}" ]] || kill "$MOCK_PID" 2>/dev/null || true; rm -rf "$MOCK_DIR"' EXIT
 # Build explicitly so cleanup owns the server PID rather than a go-run wrapper.
 go build -o "$MOCK_DIR/mockserver" ./test/mockserver || exit 1
-"$MOCK_DIR/mockserver" >"$MOCK_LOG" 2>/dev/null &
+WRITE_LOG="$MOCK_DIR/writes.log"
+MOCK_WRITE_LOG="$WRITE_LOG" "$MOCK_DIR/mockserver" >"$MOCK_LOG" 2>/dev/null &
 MOCK_PID=$!
 
 MOCK_URL=""
@@ -347,9 +348,11 @@ assert_contains  "repo delete --dry-run"     '"method": "DELETE"' \
 assert_contains  "repo fork --dry-run"       '"method": "POST"' \
                                              "${CLI[@]}" repo fork PROJ/demo --into '~alice' --name preview-fork --dry-run
 
-# Read-only mode: env BITBUCKET_CLI_READ_ONLY blocks writes; --allow-writes
-# overrides it; --dry-run remains usable.
+# Read-only mode: env BITBUCKET_CLI_READ_ONLY blocks every write command before
+# any request is sent; --dry-run remains usable; --allow-writes overrides it.
+# The mock server's write log must stay empty until the first --allow-writes call.
 RO_ENV=(env BITBUCKET_CLI_READ_ONLY=1)
+: >"$WRITE_LOG"
 assert_err_contains "read-only blocks pr approve"    "READONLY_BLOCKED" \
                                                      "${RO_ENV[@]}" "${CLI[@]}" pr approve PROJ/demo/1
 assert_err_contains "read-only error names --allow-writes" "--allow-writes" \
@@ -366,18 +369,52 @@ assert_err_contains "read-only blocks pr decline" "READONLY_BLOCKED" \
                                                      "${RO_ENV[@]}" "${CLI[@]}" pr decline PROJ/demo/1 --yes
 assert_contains     "read-only decline preview resolves version" '?version=0' \
                                                      "${RO_ENV[@]}" "${CLI[@]}" pr decline PROJ/demo/1 --dry-run
-assert_contains     "--allow-writes overrides read-only"   '"approved": true' \
-                                                     "${RO_ENV[@]}" "${CLI[@]}" --allow-writes pr approve PROJ/demo/1
+assert_err_contains "read-only blocks pr unapprove"  "READONLY_BLOCKED" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" pr unapprove PROJ/demo/1
+assert_err_contains "read-only blocks pr create"     "READONLY_BLOCKED" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" pr create --repo PROJ/demo --source feature/x --target main --title "X"
+assert_err_contains "read-only blocks pr update"     "READONLY_BLOCKED" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" pr update PROJ/demo/1 --title "new title"
+assert_err_contains "read-only blocks pr merge"      "READONLY_BLOCKED" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" pr merge PROJ/demo/1 --yes
+assert_err_contains "read-only blocks comment add"   "READONLY_BLOCKED" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" comment add --pr PROJ/demo/1 --content "x"
+assert_err_contains "read-only blocks comment update" "READONLY_BLOCKED" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" comment update --pr PROJ/demo/1 101 --content "edited"
+assert_err_contains "read-only blocks comment resolve" "READONLY_BLOCKED" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" comment resolve --pr PROJ/demo/1 101
+assert_err_contains "read-only blocks comment delete" "READONLY_BLOCKED" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" comment delete --pr PROJ/demo/1 101 --yes
+assert_err_contains "read-only blocks branch create" "READONLY_BLOCKED" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" branch create feat-x --repo PROJ/demo --from-ref main
+assert_err_contains "read-only blocks branch delete" "READONLY_BLOCKED" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" branch delete feat-x --repo PROJ/demo --yes
+assert_err_contains "read-only blocks repo create"   "READONLY_BLOCKED" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" repo create new-repo --workspace PROJ
+assert_err_contains "read-only blocks repo delete"   "READONLY_BLOCKED" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" repo delete PROJ/demo --yes
 assert_err_contains "read-only blocks repo fork"            "READONLY_BLOCKED" \
                                                      "${RO_ENV[@]}" "${CLI[@]}" repo fork PROJ/demo
 assert_contains     "read-only repo fork dry-run previews"  '"method": "POST"' \
                                                      "${RO_ENV[@]}" "${CLI[@]}" repo fork PROJ/demo --dry-run
-assert_contains     "--allow-writes permits repo fork"      "allowed-fork" \
-                                                     "${RO_ENV[@]}" "${CLI[@]}" --allow-writes repo fork PROJ/demo --into '~alice' --name allowed-fork
 assert_err_contains "read-only blocks pr fetch --exec"     "READONLY_BLOCKED" \
                                                      "${RO_ENV[@]}" "${CLI[@]}" pr fetch PROJ/demo/1 --exec
 assert_contains     "read-only allows pr fetch (print-only)" "git fetch" \
                                                      "${RO_ENV[@]}" "${CLI[@]}" pr fetch PROJ/demo/1
+if [[ -s "$WRITE_LOG" ]]; then
+  fail "read-only sent no write request (server saw: $(tr '\n' ';' <"$WRITE_LOG"))"
+else
+  pass "read-only sent no write request"
+fi
+assert_contains     "--allow-writes overrides read-only"   '"approved": true' \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" --allow-writes pr approve PROJ/demo/1
+assert_contains     "--allow-writes permits repo fork"      "allowed-fork" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" --allow-writes repo fork PROJ/demo --into '~alice' --name allowed-fork
+if grep -qx "POST /rest/api/1.0/projects/PROJ/repos/demo/pull-requests/1/approve" "$WRITE_LOG"; then
+  pass "write log records --allow-writes requests"
+else
+  fail "write log records --allow-writes requests"
+fi
 
 echo "==> multi-context checks"
 TMPCFG2="$(mktemp -d)"

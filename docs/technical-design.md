@@ -465,9 +465,13 @@ Two orthogonal write-protections, layered on top of `--yes`:
    mutating client method before any HTTP request is sent. The same
    posture also gates `pr fetch/checkout --exec`. The root persistent
    flag `--allow-writes` overrides the posture for a single
-   invocation. `DescribeWrite` (used by `--dry-run`) is intentionally
-   not overridden by the wrapper, so previews still work under a
-   locked session.
+   invocation. `Client` is the union of two interfaces: `Reader`
+   (lookups, listings, probes and `DescribeWrite`) and `Writer` (every
+   mutation). The wrapper keeps the inner client only as a `Reader` and
+   blocks each `Writer` method itself, so a new write without a blocking
+   override does not compile, and no write can be forwarded.
+   `DescribeWrite` (used by `--dry-run`) is a `Reader` method, so
+   previews still work under a locked session.
 
 `CreatePR` also uses a read-before-write preparation step when the caller omits
 `Reviewers`. Cloud follows every page of the repository's
@@ -536,7 +540,9 @@ informational check that does not change connectivity health.
   Coverage includes the config file format and settings table, auth
   resolution, offset / cursor pagination, two-flavor mapping
   normalization, urlref, and the read-only wrapper (every mutating
-  method is asserted to return a uniform `READONLY_BLOCKED`). Output
+  method is asserted to return a uniform `READONLY_BLOCKED`, and every
+  read to pass through unchanged; both tables are checked against the
+  `Writer` and `Reader` method sets). Output
   formats and `--fields`, the error model, argv correction, the release
   check, the retrying transport, config precedence and context
   selection, the credential store's file fallback and secret masking
@@ -549,8 +555,9 @@ informational check that does not change connectivity health.
   exit codes — **including the discoverability rule** (e.g.
   `repo list` without `--workspace` must include `workspace list` in
   stderr). The dry-run and read-only safety modes are covered here as
-  well — every blocked-write path is paired with its `--allow-writes`
-  override and `--dry-run` counter-test. Current coverage exceeds 100
+  well: every write command is run under read-only, the mock server's
+  write log (`MOCK_WRITE_LOG`) must show that none reached it, and
+  `--allow-writes` and `--dry-run` counter-tests follow. Current coverage exceeds 100
   assertions, including live mock fork execution, Cloud fork validation,
   Data Center `whoami`, dry-run, and read-only rejection.
 - **Read-only live verification**: `BITBUCKET_E2E_LIVE=1
@@ -582,7 +589,8 @@ informational check that does not change connectivity health.
    `q=reviewers.uuid="..."`, and swallows per-repo errors so a single
    bad repo cannot block the aggregate response.
 7. **Safety modes are uniform across the surface** — every new
-   mutating method must be added to `readOnlyClient`, get a
+   mutating method must be declared in `Writer` and blocked on
+   `readOnlyClient` (the build fails otherwise), get a
    `DescribeWrite` case, and have e2e assertions for both the
    `READONLY_BLOCKED` rejection and the `--dry-run` preview. AGENTS.md
    codifies this contract.
