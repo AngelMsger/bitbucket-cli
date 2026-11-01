@@ -5,7 +5,8 @@
 // The mock covers the Data Center (REST 1.0) endpoints the e2e flow touches:
 // application-properties probe, repos, pull requests (list / get / diff /
 // commits / activities / comments / approve), branches, commits, plus a
-// `/releases/latest` route for the update check.
+// `/releases/latest` route for the update check. When MOCK_WRITE_LOG names a
+// file, every write request is appended to it.
 package main
 
 import (
@@ -16,6 +17,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 )
 
 func main() {
@@ -27,10 +29,46 @@ func main() {
 	fmt.Printf("http://%s\n", ln.Addr().String())
 	_ = os.Stdout.Sync()
 
-	if err := http.Serve(ln, xsrfGuard(routes())); err != nil {
+	handler := xsrfGuard(routes())
+	if path := os.Getenv("MOCK_WRITE_LOG"); path != "" {
+		handler = logWrites(handler, path)
+	}
+	if err := http.Serve(ln, handler); err != nil {
 		fmt.Fprintln(os.Stderr, "mockserver:", err)
 		os.Exit(1)
 	}
+}
+
+// logWrites appends "METHOD PATH" to the file at path for every request that
+// can change state, so scripts/e2e.sh can assert that read-only mode let no
+// write reach the server. A request that cannot be logged fails with 500
+// rather than going unrecorded.
+func logWrites(next http.Handler, path string) http.Handler {
+	var mu sync.Mutex
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+			mu.Lock()
+			err := appendLine(path, r.Method+" "+r.URL.Path)
+			mu.Unlock()
+			if err != nil {
+				http.Error(w, "mockserver: write log failed: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func appendLine(path, line string) error {
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
+	if err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintln(f, line); err != nil {
+		f.Close()
+		return err
+	}
+	return f.Close()
 }
 
 func routes() http.Handler {
