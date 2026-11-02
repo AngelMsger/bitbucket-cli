@@ -18,11 +18,13 @@
 
 ### Fixed
 
-- `--verbose` now logs each HTTP request's method, URL and status on stderr,
-  for every command as well as `doctor`, the login check and flavor detection.
-  The flag was accepted but logged nothing, although the error guidance points
-  at it. It uses agent-cli-kit's transport log, which never writes headers or
-  bodies, so the parse-error guidance no longer says it shows the raw response.
+- `--verbose` now logs each request to the server (method, URL and status) on
+  stderr, for every command as well as `doctor`, the login check and flavor
+  detection. The flag was accepted but logged nothing, although the error
+  guidance points at it. It uses agent-cli-kit's transport log, which never
+  writes headers or bodies, so the parse-error guidance no longer says it shows
+  the raw response. The release check, which asks for a newer version, is not
+  logged.
 
 ## [0.27.1] - 2026-10-27
 

@@ -154,7 +154,7 @@ assert_not_contains "pr list DC --reviewer filters" "Bob cache change" \
 assert_contains  "pr get summary"            "Add login flow" "${CLI[@]}" pr get PROJ/demo/1
 # --verbose logs one line per request (method, URL, status) on stderr: never on
 # stdout, which stays data, and never a credential.
-VERBOSE_ERR="$(mktemp)"
+VERBOSE_ERR="$MOCK_DIR/verbose.err"
 VERBOSE_OUT="$("${CLI[@]}" --verbose pr get PROJ/demo/1 2>"$VERBOSE_ERR")"
 if grep -Eq '^GET http://[^ ]+ -> 200$' "$VERBOSE_ERR" &&
   [[ "$VERBOSE_OUT" == *"Add login flow"* && "$VERBOSE_OUT" != *" -> 200"* ]] &&
@@ -163,8 +163,12 @@ if grep -Eq '^GET http://[^ ]+ -> 200$' "$VERBOSE_ERR" &&
 else
   fail "--verbose logs each request on stderr only"; head -5 "$VERBOSE_ERR"
 fi
-assert_err_contains "--verbose doctor logs its requests" " -> 200" \
-                                             "${CLI[@]}" --verbose doctor --no-update-check
+if "${CLI[@]}" --verbose doctor --no-update-check >/dev/null 2>"$MOCK_DIR/verbose-doctor.err" &&
+  grep -Eq '^GET http://[^ ]+ -> 200$' "$MOCK_DIR/verbose-doctor.err"; then
+  pass "--verbose doctor logs its requests on stderr"
+else
+  fail "--verbose doctor logs its requests on stderr"; head -5 "$MOCK_DIR/verbose-doctor.err"
+fi
 assert_contains  "pr get diff"               "@@ -1 +1 @@"    "${CLI[@]}" pr get PROJ/demo/1 --scope diff
 assert_contains  "pr diff command"           "@@ -1 +1 @@"    "${CLI[@]}" pr diff PROJ/demo/1
 assert_contains  "pr commits"                "aaaa111"        "${CLI[@]}" pr commits PROJ/demo/1
