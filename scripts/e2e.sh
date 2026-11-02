@@ -152,6 +152,19 @@ assert_contains  "pr list DC --reviewer --all" "Add login flow" "${CLI[@]}" pr l
 assert_not_contains "pr list DC --reviewer filters" "Bob cache change" \
                                              "${CLI[@]}" pr list --repo PROJ/demo --reviewer alice --all
 assert_contains  "pr get summary"            "Add login flow" "${CLI[@]}" pr get PROJ/demo/1
+# --verbose logs one line per request (method, URL, status) on stderr: never on
+# stdout, which stays data, and never a credential.
+VERBOSE_ERR="$(mktemp)"
+VERBOSE_OUT="$("${CLI[@]}" --verbose pr get PROJ/demo/1 2>"$VERBOSE_ERR")"
+if grep -Eq '^GET http://[^ ]+ -> 200$' "$VERBOSE_ERR" &&
+  [[ "$VERBOSE_OUT" == *"Add login flow"* && "$VERBOSE_OUT" != *" -> 200"* ]] &&
+  ! grep -qF "$BITBUCKET_PERSONAL_ACCESS_TOKEN" "$VERBOSE_ERR"; then
+  pass "--verbose logs each request on stderr only"
+else
+  fail "--verbose logs each request on stderr only"; head -5 "$VERBOSE_ERR"
+fi
+assert_err_contains "--verbose doctor logs its requests" " -> 200" \
+                                             "${CLI[@]}" --verbose doctor --no-update-check
 assert_contains  "pr get diff"               "@@ -1 +1 @@"    "${CLI[@]}" pr get PROJ/demo/1 --scope diff
 assert_contains  "pr diff command"           "@@ -1 +1 @@"    "${CLI[@]}" pr diff PROJ/demo/1
 assert_contains  "pr commits"                "aaaa111"        "${CLI[@]}" pr commits PROJ/demo/1

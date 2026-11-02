@@ -34,7 +34,7 @@ func defaultGuidance(cat Category) (hint string, steps []string) {
 			[]string{"Retry later.", "bitbucket-cli doctor"}
 	case CategoryParse:
 		return "A response could not be parsed or rendered.",
-			[]string{"Retry with --format json --verbose to inspect the raw response."}
+			[]string{"Retry with --verbose to see each request's URL and status."}
 	default:
 		return "An unexpected internal error occurred.",
 			[]string{"Retry with --verbose for details."}
