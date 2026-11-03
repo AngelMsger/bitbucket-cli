@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"io"
 	"os"
 	"strings"
 	"time"
@@ -105,6 +106,7 @@ func (s *appState) newClient(ctx context.Context) (apiclient.Client, error) {
 		AuthDecorator: cred.Decorator(),
 		Timeout:       cfg.Defaults.Timeout,
 		MaxRetries:    cfg.Defaults.MaxRetries,
+		Verbose:       s.verboseLog(),
 		PageSize:      cfg.Defaults.PageSize,
 		WarningSink: func(w apiclient.Warning) {
 			output.EmitNotice(os.Stderr, map[string]any{"_notice": map[string]any{"warning": w}})
@@ -117,6 +119,14 @@ func (s *appState) newClient(ctx context.Context) (apiclient.Client, error) {
 		client = apiclient.NewReadOnly(client)
 	}
 	return client, nil
+}
+
+// verboseLog is where --verbose writes its request log, or nil without it.
+func (s *appState) verboseLog() io.Writer {
+	if s.gflags.verbose {
+		return os.Stderr
+	}
+	return nil
 }
 
 // readOnly reports whether the effective posture for this invocation is

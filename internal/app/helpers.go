@@ -18,6 +18,7 @@ func buildProbeTransport(s *appState) *transport.Client {
 	return transport.New(transport.Options{
 		Timeout:    s.timeout(),
 		MaxRetries: s.cfg().Defaults.MaxRetries,
+		Verbose:    s.verboseLog(),
 	})
 }
 
