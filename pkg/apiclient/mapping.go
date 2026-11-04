@@ -628,23 +628,60 @@ type dcComment struct {
 //	"likedBy":   {"total": 1, "likers": [<user>...]}
 //
 // There is no per-emoji count; the users list is it. likedBy is the older
-// like, which 7.7+ mirrors from the thumbsup reaction, so it is read only
-// when a comment has no reactions (servers before 7.7).
+// like, which reads as thumbsup: 7.7+ mirrors it from the thumbsup reaction,
+// and servers before 7.7 have only likes. Users are pointers so a null entry
+// can be told from a real user.
 type dcCommentProperties struct {
 	Reactions []struct {
 		Emoticon struct {
 			Shortcut string `json:"shortcut"`
 		} `json:"emoticon"`
-		Users []dcUser `json:"users"`
+		Users []*dcUser `json:"users"`
 	} `json:"reactions"`
 	LikedBy *struct {
-		Total  int      `json:"total"`
-		Likers []dcUser `json:"likers"`
+		Total  int       `json:"total"`
+		Likers []*dcUser `json:"likers"`
 	} `json:"likedBy"`
 }
 
-// mapDCReactions reads a comment's reactions from its raw properties. A shape
-// it cannot decode yields no reactions rather than an error.
+// reactionTally collects one emoji's users, each user once.
+type reactionTally struct {
+	emoji string
+	users []User
+	seen  map[string]bool
+	total int // a count the server reports, which can exceed the users listed
+}
+
+func (t *reactionTally) add(users []*dcUser) {
+	for _, u := range users {
+		if key := dcUserKey(u); key != "" && !t.seen[key] {
+			t.seen[key] = true
+			t.users = append(t.users, mapDCUser(*u))
+		}
+	}
+}
+
+// dcUserKey identifies a user across reaction lists; "" means the entry names
+// no one (null, or no slug, name or ID).
+func dcUserKey(u *dcUser) string {
+	switch {
+	case u == nil:
+		return ""
+	case u.Slug != "":
+		return "slug:" + u.Slug
+	case u.Name != "":
+		return "name:" + u.Name
+	case u.ID != 0:
+		return "id:" + strconv.Itoa(u.ID)
+	}
+	return ""
+}
+
+// mapDCReactions reads a comment's reactions from its raw properties: one
+// entry per emoji, each user counted once, and likers merged into thumbsup,
+// so a user who both liked and reacted thumbsup counts once while a like
+// with no matching reaction still shows. An emoji with no users is omitted.
+// A shape it cannot decode yields no reactions rather than an error.
 func mapDCReactions(raw json.RawMessage) []CommentReaction {
 	if len(raw) == 0 {
 		return nil
@@ -653,24 +690,32 @@ func mapDCReactions(raw json.RawMessage) []CommentReaction {
 	if err := json.Unmarshal(raw, &p); err != nil {
 		return nil
 	}
-	var out []CommentReaction
-	for _, r := range p.Reactions {
-		if r.Emoticon.Shortcut == "" {
-			continue
+	var tallies []*reactionTally
+	tally := func(emoji string) *reactionTally {
+		for _, t := range tallies {
+			if t.emoji == emoji {
+				return t
+			}
 		}
-		out = append(out, CommentReaction{Emoji: r.Emoticon.Shortcut, Count: len(r.Users), Users: mapDCUsers(r.Users)})
+		t := &reactionTally{emoji: emoji, users: []User{}, seen: map[string]bool{}}
+		tallies = append(tallies, t)
+		return t
 	}
-	if len(out) == 0 && p.LikedBy != nil && (p.LikedBy.Total > 0 || len(p.LikedBy.Likers) > 0) {
-		out = append(out, CommentReaction{Emoji: likeEmoticon,
-			Count: max(p.LikedBy.Total, len(p.LikedBy.Likers)), Users: mapDCUsers(p.LikedBy.Likers)})
+	for _, r := range p.Reactions {
+		if r.Emoticon.Shortcut != "" {
+			tally(r.Emoticon.Shortcut).add(r.Users)
+		}
 	}
-	return out
-}
-
-func mapDCUsers(in []dcUser) []User {
-	out := make([]User, 0, len(in))
-	for _, u := range in {
-		out = append(out, mapDCUser(u))
+	if p.LikedBy != nil && (p.LikedBy.Total > 0 || len(p.LikedBy.Likers) > 0) {
+		t := tally(likeEmoticon)
+		t.add(p.LikedBy.Likers)
+		t.total = p.LikedBy.Total
+	}
+	var out []CommentReaction
+	for _, t := range tallies {
+		if n := max(len(t.users), t.total); n > 0 {
+			out = append(out, CommentReaction{Emoji: t.emoji, Count: n, Users: t.users})
+		}
 	}
 	return out
 }

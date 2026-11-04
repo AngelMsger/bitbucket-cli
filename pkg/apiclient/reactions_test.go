@@ -306,9 +306,38 @@ func TestMapDCReactions(t *testing.T) {
 		t.Errorf("likes only = %+v, want one thumbsup counting the total", likes)
 	}
 
+	// A like with no matching thumbsup reaction still shows, merged by user.
+	merged := mapDCReactions([]byte(`{
+	  "reactions": [{"emoticon": {"shortcut": "eyes"}, "users": [{"slug": "carol"}]},
+	                {"emoticon": {"shortcut": "thumbsup"}, "users": [{"slug": "alice"}]}],
+	  "likedBy": {"total": 2, "likers": [{"slug": "alice"}, {"slug": "bob"}]}}`))
+	if len(merged) != 2 || merged[0].Emoji != "eyes" || merged[0].Count != 1 ||
+		merged[1].Emoji != "thumbsup" || merged[1].Count != 2 || len(merged[1].Users) != 2 ||
+		merged[1].Users[1].Slug != "bob" {
+		t.Errorf("merged likes = %+v, want eyes 1 and thumbsup alice+bob", merged)
+	}
+	onlyEyes := mapDCReactions([]byte(`{
+	  "reactions": [{"emoticon": {"shortcut": "eyes"}, "users": [{"slug": "carol"}]}],
+	  "likedBy": {"total": 1, "likers": [{"slug": "bob"}]}}`))
+	if len(onlyEyes) != 2 || onlyEyes[1].Emoji != "thumbsup" || onlyEyes[1].Users[0].Slug != "bob" {
+		t.Errorf("eyes plus a like = %+v, want the like kept as thumbsup", onlyEyes)
+	}
+
+	// Each user counts once, and a null user is no one.
+	dup := mapDCReactions([]byte(`{"reactions": [
+	  {"emoticon": {"shortcut": "heart"}, "users": [{"slug": "alice"}, null, {"slug": "alice"}]},
+	  {"emoticon": {"shortcut": "heart"}, "users": [{"slug": "bob"}]}]}`))
+	if len(dup) != 1 || dup[0].Count != 2 || len(dup[0].Users) != 2 {
+		t.Errorf("duplicates = %+v, want one heart from alice and bob", dup)
+	}
+
 	for name, raw := range map[string]string{
 		"absent": ``, "null": `null`, "repository only": `{"repositoryId": 9}`,
 		"no likes": `{"likedBy": {"total": 0, "likers": []}}`, "unexpected shape": `{"reactions": "many"}`,
+		"null user":   `{"reactions": [{"emoticon": {"shortcut": "eyes"}, "users": [null]}]}`,
+		"empty users": `{"reactions": [{"emoticon": {"shortcut": "eyes"}, "users": []}]}`,
+		"no users":    `{"reactions": [{"emoticon": {"shortcut": "eyes"}, "users": null}]}`,
+		"blank user":  `{"reactions": [{"emoticon": {"shortcut": "eyes"}, "users": [{}]}]}`,
 	} {
 		if got := mapDCReactions([]byte(raw)); got != nil {
 			t.Errorf("%s: reactions = %+v, want none", name, got)

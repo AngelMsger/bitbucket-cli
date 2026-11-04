@@ -20,9 +20,9 @@
   `pr threads`, `pr activity` and the comment write commands' output, as
   `reactions: [{emoji, count, users}]` (omitted when a comment has none), so an
   agent can see a reaction before adding it. `emoji` is the name
-  `comment react --emoji` takes. On servers before 7.7 a like reads as
-  `thumbsup`; the like that 7.7+ keeps beside a `thumbsup` reaction is not
-  counted twice. Bitbucket Cloud has no reactions.
+  `comment react --emoji` takes. A like reads as `thumbsup`, and someone who
+  both liked and reacted `thumbsup` counts once. Bitbucket Cloud has no
+  reactions.
 - Update the companion Skill to `0.19.0` for comment reactions.
 - `apiclient.Reader` and `apiclient.Writer`, the read and write halves of
   `apiclient.Client`, for library callers. `Client` keeps exactly the same
