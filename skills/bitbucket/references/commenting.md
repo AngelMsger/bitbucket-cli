@@ -221,6 +221,15 @@ the server's HTTP 400 with its reason. Output is
 `--dry-run` reads the server version and previews the exact endpoint; read-only
 mode blocks the write.
 
+Read existing reactions before adding one: on Data Center, each comment in
+`comment list`, `pr threads` and `pr activity` carries
+`reactions: [{emoji, count, users}]`, omitted when there are none. On servers
+before 7.7 a like reads as `thumbsup`. Cloud comments have no `reactions`.
+
+```sh
+bitbucket-cli comment list --pr myws/myrepo/42 --fields id,reactions
+```
+
 ## Cloud vs Data Center
 
 Both flavors are supported. The CLI hides the inline anchor shape difference

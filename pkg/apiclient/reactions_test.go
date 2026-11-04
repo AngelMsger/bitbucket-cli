@@ -229,3 +229,75 @@ func TestCommentReactionRefusalKeepsServerMessage(t *testing.T) {
 		}
 	}
 }
+
+// dcReactionProps is the properties block a Data Center 7.17 server returned
+// for a reacted comment (names replaced): likedBy mirrors the thumbsup users.
+const dcReactionProps = `{
+  "repositoryId": 9,
+  "reactions": [
+    {"emoticon": {"shortcut": "thumbsup", "url": "https://bb.example/s/twemoji/12.1.2/1f44d.svg"},
+     "users": [{"name": "alice", "slug": "alice", "displayName": "Alice", "id": 1, "type": "NORMAL"}]},
+    {"emoticon": {"shortcut": "white_check_mark", "url": "https://bb.example/s/twemoji/12.1.2/2705.svg"},
+     "users": [{"name": "alice", "slug": "alice", "id": 1}, {"name": "bob", "slug": "bob", "id": 2}]}
+  ],
+  "likedBy": {"total": 1, "likers": [{"name": "alice", "slug": "alice", "id": 1}]}
+}`
+
+func TestMapDCReactions(t *testing.T) {
+	got := mapDCReactions([]byte(dcReactionProps))
+	if len(got) != 2 {
+		t.Fatalf("reactions = %+v, want thumbsup and white_check_mark only (likedBy must not count twice)", got)
+	}
+	if got[0].Emoji != "thumbsup" || got[0].Count != 1 || len(got[0].Users) != 1 || got[0].Users[0].Name != "alice" {
+		t.Errorf("thumbsup = %+v", got[0])
+	}
+	if got[1].Emoji != "white_check_mark" || got[1].Count != 2 || got[1].Users[1].Name != "bob" {
+		t.Errorf("white_check_mark = %+v", got[1])
+	}
+
+	// A server without reactions (before 7.7) only has the like.
+	likes := mapDCReactions([]byte(`{"likedBy": {"total": 3, "likers": [{"name": "alice"}, {"name": "bob"}]}}`))
+	if len(likes) != 1 || likes[0].Emoji != likeEmoticon || likes[0].Count != 3 || len(likes[0].Users) != 2 {
+		t.Errorf("likes only = %+v, want one thumbsup counting the total", likes)
+	}
+
+	for name, raw := range map[string]string{
+		"absent": ``, "null": `null`, "repository only": `{"repositoryId": 9}`,
+		"no likes": `{"likedBy": {"total": 0, "likers": []}}`, "unexpected shape": `{"reactions": "many"}`,
+	} {
+		if got := mapDCReactions([]byte(raw)); got != nil {
+			t.Errorf("%s: reactions = %+v, want none", name, got)
+		}
+	}
+}
+
+// Reactions reach every comment the activity stream carries, replies
+// included, and a shape the client cannot read never fails the listing.
+func TestListPRCommentsCarriesReactions(t *testing.T) {
+	c := newWriteTestClient(t, FlavorDataCenter, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = fmt.Fprintf(w, `{"isLastPage": true, "values": [
+		  {"action": "COMMENTED", "comment": {"id": 1, "text": "root", "properties": %s,
+		    "comments": [{"id": 2, "text": "reply", "properties": {"reactions": [
+		      {"emoticon": {"shortcut": "eyes"}, "users": [{"name": "bob"}]}]}}]}},
+		  {"action": "COMMENTED", "comment": {"id": 3, "text": "odd", "properties": {"reactions": {"x": 1}}}}
+		]}`, dcReactionProps)
+	}))
+	res, err := c.ListPRComments(context.Background(), ListPRCommentsOpts{
+		Repo: RepoRef{Workspace: "PROJ", Slug: "repo"}, PRID: 7})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Items) != 3 {
+		t.Fatalf("items = %d, want 3", len(res.Items))
+	}
+	if r := res.Items[0].Reactions; len(r) != 2 || r[1].Count != 2 {
+		t.Errorf("root reactions = %+v", r)
+	}
+	if r := res.Items[1].Reactions; len(r) != 1 || r[0].Emoji != "eyes" {
+		t.Errorf("reply reactions = %+v", r)
+	}
+	if r := res.Items[2].Reactions; r != nil {
+		t.Errorf("unreadable reactions = %+v, want none", r)
+	}
+}
