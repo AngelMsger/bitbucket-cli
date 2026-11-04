@@ -90,6 +90,14 @@ func commentWriteTarget(r RepoRef, prID, id int) cerrors.WriteTarget {
 	}
 }
 
+// reactionWriteTarget is for the caller's own reaction on a comment: comment
+// list shows each comment's reactions and who added them.
+func reactionWriteTarget(r RepoRef, prID, id int, emoji string) cerrors.WriteTarget {
+	t := commentWriteTarget(r, prID, id)
+	t.Description = fmt.Sprintf("your %s reaction on comment %d on pull request %s", emoji, id, prName(r, prID))
+	return t
+}
+
 func branchWriteTarget(r RepoRef, name string) cerrors.WriteTarget {
 	return cerrors.WriteTarget{
 		Description: "branch " + name + " in " + repoName(r),

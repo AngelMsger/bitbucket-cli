@@ -230,6 +230,51 @@ func TestCommentReactionRefusalKeepsServerMessage(t *testing.T) {
 	}
 }
 
+// A reaction that fails after it was sent may have been applied, so it follows
+// the write rule like every other write: not retryable, and pointing at the
+// comment listing, which shows each comment's reactions.
+func TestCommentReactionFailureIsUnknownOutcome(t *testing.T) {
+	for _, tc := range []struct {
+		version string
+		remove  bool
+		method  string
+	}{
+		{"8.19.0", false, http.MethodPut},
+		{"8.19.0", true, http.MethodDelete},
+		{"7.6.3", false, http.MethodPost},
+	} {
+		t.Run(tc.method+"/"+tc.version, func(t *testing.T) {
+			var sent string
+			c := newWriteTestClient(t, FlavorDataCenter, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method == http.MethodGet {
+					w.Header().Set("Content-Type", "application/json")
+					_, _ = fmt.Fprintf(w, `{"version":%q}`, tc.version)
+					return
+				}
+				sent = r.Method
+				w.WriteHeader(http.StatusServiceUnavailable)
+			}))
+			repo := RepoRef{Workspace: "PROJ", Slug: "repo"}
+			_, err := c.ReactPRComment(context.Background(), ReactPRCommentReq{
+				Repo: repo, PRID: 7, ID: 42, Emoji: "thumbsup", Remove: tc.remove})
+			if sent != tc.method {
+				t.Fatalf("sent %q, want %s", sent, tc.method)
+			}
+			ce := cerrors.AsCLIError(err)
+			target := reactionWriteTarget(repo, 7, 42, "thumbsup")
+			if ce == nil || ce.Retryable || ce.HTTPStatus != http.StatusServiceUnavailable {
+				t.Fatalf("error = %+v, want a non-retryable 503", ce)
+			}
+			if !strings.HasPrefix(ce.Message, "Write outcome is unknown for "+target.Description) {
+				t.Fatalf("message %q does not name the reaction", ce.Message)
+			}
+			if len(ce.NextSteps) == 0 || ce.NextSteps[0] != target.ReadSteps[0] {
+				t.Fatalf("next steps %q, want the comment listing %q", ce.NextSteps, target.ReadSteps)
+			}
+		})
+	}
+}
+
 // dcReactionProps is the properties block a Data Center 7.17 server returned
 // for a reacted comment (names replaced): likedBy mirrors the thumbsup users.
 const dcReactionProps = `{
@@ -261,9 +306,46 @@ func TestMapDCReactions(t *testing.T) {
 		t.Errorf("likes only = %+v, want one thumbsup counting the total", likes)
 	}
 
+	// A like with no matching thumbsup reaction still shows, merged by user.
+	merged := mapDCReactions([]byte(`{
+	  "reactions": [{"emoticon": {"shortcut": "eyes"}, "users": [{"slug": "carol"}]},
+	                {"emoticon": {"shortcut": "thumbsup"}, "users": [{"slug": "alice"}]}],
+	  "likedBy": {"total": 2, "likers": [{"slug": "alice"}, {"slug": "bob"}]}}`))
+	if len(merged) != 2 || merged[0].Emoji != "eyes" || merged[0].Count != 1 ||
+		merged[1].Emoji != "thumbsup" || merged[1].Count != 2 || len(merged[1].Users) != 2 ||
+		merged[1].Users[1].Slug != "bob" {
+		t.Errorf("merged likes = %+v, want eyes 1 and thumbsup alice+bob", merged)
+	}
+	onlyEyes := mapDCReactions([]byte(`{
+	  "reactions": [{"emoticon": {"shortcut": "eyes"}, "users": [{"slug": "carol"}]}],
+	  "likedBy": {"total": 1, "likers": [{"slug": "bob"}]}}`))
+	if len(onlyEyes) != 2 || onlyEyes[1].Emoji != "thumbsup" || onlyEyes[1].Users[0].Slug != "bob" {
+		t.Errorf("eyes plus a like = %+v, want the like kept as thumbsup", onlyEyes)
+	}
+
+	// A user is matched by ID first, whatever other fields an entry carries.
+	byID := mapDCReactions([]byte(`{
+	  "reactions": [{"emoticon": {"shortcut": "thumbsup"}, "users": [{"id": 5, "slug": "alice", "name": "alice"}]}],
+	  "likedBy": {"total": 1, "likers": [{"id": 5, "name": "alice"}, {"id": 6, "slug": "bob"}]}}`))
+	if len(byID) != 1 || byID[0].Count != 2 || len(byID[0].Users) != 2 || byID[0].Users[1].Slug != "bob" {
+		t.Errorf("by ID = %+v, want thumbsup from alice and bob", byID)
+	}
+
+	// Each user counts once, and a null user is no one.
+	dup := mapDCReactions([]byte(`{"reactions": [
+	  {"emoticon": {"shortcut": "heart"}, "users": [{"slug": "alice"}, null, {"slug": "alice"}]},
+	  {"emoticon": {"shortcut": "heart"}, "users": [{"slug": "bob"}]}]}`))
+	if len(dup) != 1 || dup[0].Count != 2 || len(dup[0].Users) != 2 {
+		t.Errorf("duplicates = %+v, want one heart from alice and bob", dup)
+	}
+
 	for name, raw := range map[string]string{
 		"absent": ``, "null": `null`, "repository only": `{"repositoryId": 9}`,
 		"no likes": `{"likedBy": {"total": 0, "likers": []}}`, "unexpected shape": `{"reactions": "many"}`,
+		"null user":   `{"reactions": [{"emoticon": {"shortcut": "eyes"}, "users": [null]}]}`,
+		"empty users": `{"reactions": [{"emoticon": {"shortcut": "eyes"}, "users": []}]}`,
+		"no users":    `{"reactions": [{"emoticon": {"shortcut": "eyes"}, "users": null}]}`,
+		"blank user":  `{"reactions": [{"emoticon": {"shortcut": "eyes"}, "users": [{}]}]}`,
 	} {
 		if got := mapDCReactions([]byte(raw)); got != nil {
 			t.Errorf("%s: reactions = %+v, want none", name, got)

@@ -20,11 +20,10 @@
   `pr threads`, `pr activity` and the comment write commands' output, as
   `reactions: [{emoji, count, users}]` (omitted when a comment has none), so an
   agent can see a reaction before adding it. `emoji` is the name
-  `comment react --emoji` takes. On servers before 7.7 a like reads as
-  `thumbsup`; the like that 7.7+ keeps beside a `thumbsup` reaction is not
-  counted twice. Bitbucket Cloud has no reactions.
+  `comment react --emoji` takes. A like reads as `thumbsup`, and someone who
+  both liked and reacted `thumbsup` counts once. Bitbucket Cloud has no
+  reactions.
 - Update the companion Skill to `0.19.0` for comment reactions.
-
 - `apiclient.Reader` and `apiclient.Writer`, the read and write halves of
   `apiclient.Client`, for library callers. `Client` keeps exactly the same
   methods and signatures.
@@ -59,12 +58,11 @@
   5xx, unexpected redirect) no longer reports `retryable: true`. It says
   "Write outcome is unknown for …", keeps its code, category and status, and
   names the read that shows the result (`pr get`, `comment list --pr`,
-  `branch get`, `repo get`), following agent-cli-kit's shared write rule. A 2xx
-  response that cannot be decoded reports `WRITE_SUCCEEDED_RESPONSE_INVALID`,
-  and Cloud's `comment resolve` reports `WRITE_SUCCEEDED_READ_FAILED` when only
-  the read-back fails. `comment react` keeps its transport classification:
-  repeating a reaction leaves the same state, and no command reads reactions
-  yet.
+  `branch get`, `repo get`), following agent-cli-kit's shared write rule. This
+  covers `comment react` too, whose read is `comment list --pr` (it shows each
+  comment's reactions). A 2xx response that cannot be decoded reports
+  `WRITE_SUCCEEDED_RESPONSE_INVALID`, and Cloud's `comment resolve` reports
+  `WRITE_SUCCEEDED_READ_FAILED` when only the read-back fails.
 - `BATCH_PARTIAL_FAILURE` (several items to `pr approve|decline` or
   `comment delete`) is no longer retryable: the items marked `ok` were applied,
   and its hint says to retry only failed items whose own error allows it. Its

@@ -75,7 +75,7 @@ the site root):
 | Source file raw | `GET .../src/{ref}/{path}` | `GET .../raw/{path}?at={ref}` |
 | List users | `GET /2.0/workspaces/{ws}/members` (workspace-scoped) | `GET /rest/api/1.0/users?filter=` |
 | Inline comment anchor | `inline:{path,from,to}` | `anchor:{path,line,lineType,fileType}` |
-| Comment reaction | Not available (no reaction API) | 7.7+: `PUT` / `DELETE /rest/comment-likes/latest/.../pull-requests/{id}/comments/{commentId}/reactions/{emoticon}`; before 7.7 only `thumbsup`, as `POST` / `DELETE .../comments/{commentId}/likes`. Read from each comment's `properties.reactions` (`[{emoticon:{shortcut,url}, users}]`, no count field); `properties.likedBy` mirrors the thumbsup users on 7.7+ and is read only when there are no reactions |
+| Comment reaction | Not available (no reaction API) | 7.7+: `PUT` / `DELETE /rest/comment-likes/latest/.../pull-requests/{id}/comments/{commentId}/reactions/{emoticon}`; before 7.7 only `thumbsup`, as `POST` / `DELETE .../comments/{commentId}/likes`. Read from each comment's `properties.reactions` (`[{emoticon:{shortcut,url}, users}]`, no count field); `properties.likedBy` likers are merged into the thumbsup users (7.7+ mirrors them there), each user counted once (by ID, else slug or name); an emoji with no users is omitted, except that thumbsup keeps a positive `likedBy.total` (a lower bound when likers are cut short) |
 | Ping | `GET /2.0/user` | `GET /rest/api/1.0/application-properties` |
 
 **Pagination**: Cloud is cursor-based (the `next` field is an absolute
@@ -442,9 +442,8 @@ server supplies no usable message, the CLI does not invent a cause.
 Writes follow the family's write-outcome rule from agent-cli-kit
 (`errors.FromWrite`). Every write goes through `doWriteJSON` with a write target
 (`pkg/apiclient/write_targets.go`): what it changes and a bounded read-only
-command that shows it. The exception is a comment reaction: it is the
-caller's own, so repeating it leaves the same state, and no command reads
-reactions yet. A definite refusal (usage, config, auth, permission, not found,
+command that shows it; for a comment reaction that read is `comment list`,
+which shows each comment's reactions. A definite refusal (usage, config, auth, permission, not found,
 conflict) is returned unchanged. Any other failure, including a network error,
 429, 5xx, a non-2xx redirect or an internal error, becomes "Write outcome is
 unknown for …" with `retryable=false`, the original code, category and HTTP
