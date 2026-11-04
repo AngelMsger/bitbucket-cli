@@ -260,9 +260,6 @@ func (c *apiClient) doJSON(ctx context.Context, method, path string, query url.V
 	}
 	defer resp.Body.Close()
 
-	if err := redirectedRequest(method, resp); err != nil {
-		return err
-	}
 	// Only a 2xx acknowledges a request: an unfollowed redirect is not success,
 	// and for a write it leaves the outcome unknown.
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
@@ -349,24 +346,4 @@ func extractAPIMessage(raw []byte) string {
 		return dc.Errors[0].Message
 	}
 	return ""
-}
-
-// redirectedRequest reports a request that a followed redirect turned into
-// another method. The HTTP client follows a 301, 302 or 303 after a POST, PUT
-// or DELETE with a GET, so the final response answers that GET (often a login
-// page or a proxy), never the request sent, and a status or body read from it
-// would prove nothing. For a write, whether it was applied is unknown (a server
-// may also apply a write and then redirect to its result), so the error is not
-// a refusal and the write rule reports it as an unknown outcome.
-func redirectedRequest(method string, resp *http.Response) error {
-	if resp.Request == nil || resp.Request.Method == method {
-		return nil
-	}
-	e := cerrors.Newf(cerrors.CategoryServer, "HTTP_REDIRECTED",
-		"Bitbucket redirected the %s request to %s", method, resp.Request.URL.Redacted()).
-		WithHint("A followed redirect usually means a login page, a single sign-on proxy, " +
-			"or a base URL that should use https. Check --base-url, then run doctor.")
-	// The same request is redirected the same way again.
-	e.Retryable = false
-	return e
 }
