@@ -18,8 +18,8 @@
 
 ### Fixed
 
-- Mask passwords embedded in the server URL in `--verbose` request logs by
-  pinning agent-cli-kit's merged transport fix (`8e0dd08af52d`).
+- Mask passwords embedded in the server URL in `--verbose` request logs, with
+  agent-cli-kit v0.6.0's transport.
 
 - `--verbose` now logs each request to the server (method, URL and status) on
   stderr, for every command as well as `doctor`, the login check and flavor
