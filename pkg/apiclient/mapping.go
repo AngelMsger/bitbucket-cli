@@ -652,36 +652,49 @@ type reactionTally struct {
 	total int // a count the server reports, which can exceed the users listed
 }
 
+// add records each user once. A user can appear with fewer fields in one list
+// than another, so two entries are the same user when any of ID, slug or name
+// match; null and nameless entries are skipped.
 func (t *reactionTally) add(users []*dcUser) {
 	for _, u := range users {
-		if key := dcUserKey(u); key != "" && !t.seen[key] {
-			t.seen[key] = true
+		keys := dcUserKeys(u)
+		known := false
+		for _, k := range keys {
+			known = known || t.seen[k]
+			t.seen[k] = true
+		}
+		if len(keys) > 0 && !known {
 			t.users = append(t.users, mapDCUser(*u))
 		}
 	}
 }
 
-// dcUserKey identifies a user across reaction lists; "" means the entry names
-// no one (null, or no slug, name or ID).
-func dcUserKey(u *dcUser) string {
-	switch {
-	case u == nil:
-		return ""
-	case u.Slug != "":
-		return "slug:" + u.Slug
-	case u.Name != "":
-		return "name:" + u.Name
-	case u.ID != 0:
-		return "id:" + strconv.Itoa(u.ID)
+// dcUserKeys lists the identities a user entry carries; none means the entry
+// names no one.
+func dcUserKeys(u *dcUser) []string {
+	if u == nil {
+		return nil
 	}
-	return ""
+	var keys []string
+	if u.ID != 0 {
+		keys = append(keys, "id:"+strconv.Itoa(u.ID))
+	}
+	if u.Slug != "" {
+		keys = append(keys, "slug:"+u.Slug)
+	}
+	if u.Name != "" {
+		keys = append(keys, "name:"+u.Name)
+	}
+	return keys
 }
 
 // mapDCReactions reads a comment's reactions from its raw properties: one
 // entry per emoji, each user counted once, and likers merged into thumbsup,
 // so a user who both liked and reacted thumbsup counts once while a like
-// with no matching reaction still shows. An emoji with no users is omitted.
-// A shape it cannot decode yields no reactions rather than an error.
+// with no matching reaction still shows. An emoji with no users is omitted,
+// except thumbsup when likedBy reports a positive total: likers can be cut
+// short, so that count is kept and is a lower bound. A shape it cannot decode
+// yields no reactions rather than an error.
 func mapDCReactions(raw json.RawMessage) []CommentReaction {
 	if len(raw) == 0 {
 		return nil
