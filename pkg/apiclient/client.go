@@ -321,8 +321,14 @@ func (c *apiClient) httpError(resp *http.Response) error {
 	if detail := extractAPIMessage(snippet); detail != "" {
 		msg += ": " + detail
 	}
-	return cerrors.New(cat, "HTTP_"+http.StatusText(resp.StatusCode), msg).
-		WithHTTPStatus(resp.StatusCode)
+	code := "HTTP_" + http.StatusText(resp.StatusCode)
+	if resp.StatusCode >= 300 && resp.StatusCode < 400 {
+		// The kit's transport hands a write its redirect instead of following
+		// it. 0.28.0 reported a redirected write as HTTP_REDIRECTED, so every
+		// 3xx keeps that code; http_status says which redirect it was.
+		code = "HTTP_REDIRECTED"
+	}
+	return cerrors.New(cat, code, msg).WithHTTPStatus(resp.StatusCode)
 }
 
 // extractAPIMessage best-effort extracts a human message from a Bitbucket JSON

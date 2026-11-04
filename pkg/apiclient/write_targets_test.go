@@ -149,11 +149,13 @@ func TestMergeBranchCleanupKeepsTheDeleteOutcome(t *testing.T) {
 }
 
 // The transport returns a write's redirect instead of following it, so a
-// redirect (here to a login page) is an unknown outcome with its status.
-// Before, a 302 was followed with a GET and an approve that landed on a login
-// page read as approved; a 307 sent the approve again.
+// redirect (here to a login page) is an unknown outcome with its status and
+// the code 0.28.0 gave a redirected write, HTTP_REDIRECTED. Before, a 302
+// was followed with a GET and reported as HTTP_REDIRECTED, but a 307 or 308
+// sent the approve again and read as approved.
 func TestRedirectedWriteIsAnUnknownOutcome(t *testing.T) {
-	for _, status := range []int{http.StatusFound, http.StatusTemporaryRedirect} {
+	for _, status := range []int{http.StatusMovedPermanently, http.StatusFound, http.StatusSeeOther,
+		http.StatusTemporaryRedirect, http.StatusPermanentRedirect} {
 		t.Run(http.StatusText(status), func(t *testing.T) {
 			var landed int
 			c := newWriteTestClient(t, FlavorDataCenter, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -167,7 +169,7 @@ func TestRedirectedWriteIsAnUnknownOutcome(t *testing.T) {
 			}))
 			err := c.ApprovePR(context.Background(), ApprovePRReq{Repo: writeTestRepo, ID: 7, Approve: true})
 			ce := cerrors.AsCLIError(err)
-			if ce == nil || ce.Retryable || ce.HTTPStatus != status || landed != 0 ||
+			if ce == nil || ce.Code != "HTTP_REDIRECTED" || ce.Retryable || ce.HTTPStatus != status || landed != 0 ||
 				!strings.HasPrefix(ce.Message, "Write outcome is unknown for your review on pull request") ||
 				!strings.Contains(ce.Hint, "answered it with a redirect") {
 				t.Fatalf("got %+v after %d login page requests; want an unknown outcome with the %d", ce, landed, status)
