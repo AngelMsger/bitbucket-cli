@@ -46,12 +46,19 @@ func forkWriteTarget(req ForkRepoReq) cerrors.WriteTarget {
 	}
 }
 
-func createPRWriteTarget(req CreatePRReq) cerrors.WriteTarget {
+// createPRWriteTarget reads the PRs from the new PR's source branch.
+// --state ALL: the new PR may already be merged or declined by the time it is
+// looked for. Data Center lists a repository's PRs from a branch as outgoing
+// from that branch's repository, so a cross-fork PR is read in the fork;
+// Cloud keeps every PR in its destination repository.
+func createPRWriteTarget(flavor Flavor, req CreatePRReq) cerrors.WriteTarget {
+	listIn := repoName(req.Repo)
+	if flavor == FlavorDataCenter && req.SourceRepo != "" {
+		listIn = req.SourceRepo
+	}
 	return cerrors.WriteTarget{
 		Description: fmt.Sprintf("new pull request from %s in %s", req.Source, repoName(req.Repo)),
-		// --state ALL: the new PR may already be merged or declined by the
-		// time it is looked for.
-		ReadSteps: []string{"bitbucket-cli pr list --repo " + cerrors.ShellArg(repoName(req.Repo)) +
+		ReadSteps: []string{"bitbucket-cli pr list --repo " + cerrors.ShellArg(listIn) +
 			" --source " + cerrors.ShellArg(req.Source) + " --state ALL --limit 25"},
 	}
 }

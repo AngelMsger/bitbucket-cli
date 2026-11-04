@@ -171,3 +171,56 @@ func TestRedirectedWriteIsAnUnknownOutcome(t *testing.T) {
 		t.Fatalf("cause %+v; want HTTP_REDIRECTED", cause)
 	}
 }
+
+// A branch is not found only once every substring match has been read. The
+// read after an uncertain branch create or delete is branch get, which used
+// to give up after the first 50 matches.
+func TestGetBranchFollowsEveryPage(t *testing.T) {
+	var starts []string
+	c := newWriteTestClient(t, FlavorDataCenter, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		start := r.URL.Query().Get("start")
+		starts = append(starts, start)
+		if start == "" || start == "0" {
+			_, _ = w.Write([]byte(`{"values":[{"id":"refs/heads/feature-a","displayId":"feature-a"}],"isLastPage":false,"nextPageStart":50}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"values":[{"id":"refs/heads/feature","displayId":"feature"}],"isLastPage":true}`))
+	}))
+	b, err := c.GetBranch(context.Background(), writeTestRepo, "feature")
+	if err != nil || b.Name != "feature" || len(starts) != 2 {
+		t.Fatalf("got %+v, %v after pages %q; want feature from the second page", b, err, starts)
+	}
+}
+
+// Data Center lists PRs from a branch as outgoing from the branch's own
+// repository, so an uncertain cross-fork create is read in the fork. Cloud
+// keeps the PR in its destination repository.
+func TestCreatePRReadFindsCrossForkPRs(t *testing.T) {
+	req := CreatePRReq{Repo: writeTestRepo, Source: "feature", SourceRepo: "FORK/repo", Destination: "main"}
+	for flavor, want := range map[Flavor]string{
+		FlavorDataCenter: "bitbucket-cli pr list --repo 'FORK/repo' --source 'feature' --state ALL --limit 25",
+		FlavorCloud:      "bitbucket-cli pr list --repo 'PROJ/repo' --source 'feature' --state ALL --limit 25",
+	} {
+		if got := createPRWriteTarget(flavor, req).ReadSteps[0]; got != want {
+			t.Errorf("%s read %q, want %q", flavor, got, want)
+		}
+	}
+}
+
+// Cloud filters pr list --source and --target server-side; both flags used to
+// be ignored there, so the read after an uncertain create listed every PR.
+func TestCloudPRListFiltersBranches(t *testing.T) {
+	var q string
+	c := newWriteTestClient(t, FlavorCloud, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		q = r.URL.Query().Get("q")
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"values":[]}`))
+	}))
+	if _, err := c.ListPRs(context.Background(), PRListOpts{Repo: writeTestRepo, Source: "feature", Target: "main"}); err != nil {
+		t.Fatal(err)
+	}
+	if q != `source.branch.name="feature" AND destination.branch.name="main"` {
+		t.Fatalf("q = %q", q)
+	}
+}

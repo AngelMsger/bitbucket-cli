@@ -73,16 +73,25 @@ func (c *apiClient) GetBranch(ctx context.Context, repo RepoRef, name string) (*
 	if name == "" {
 		return nil, cerrors.New(cerrors.CategoryUsage, "BRANCH_NO_NAME", "branch name is required")
 	}
-	// Both flavors offer "filter" / "filterText" — we list with the filter and
-	// pick the exact match.
-	listed, err := c.ListBranches(ctx, BranchListOpts{Repo: repo, Query: name, ListOpts: ListOpts{Limit: 50}})
-	if err != nil {
-		return nil, err
-	}
-	for _, b := range listed.Items {
-		if b.Name == name {
-			return &b, nil
+	// Both flavors offer "filter" / "filterText", a substring match: list with
+	// the filter and pick the exact match, following every page. A branch is
+	// not found only once the matches are exhausted, so the read after an
+	// uncertain branch create or delete can be trusted.
+	opts := BranchListOpts{Repo: repo, Query: name, ListOpts: ListOpts{Limit: 50}}
+	for {
+		listed, err := c.ListBranches(ctx, opts)
+		if err != nil {
+			return nil, err
 		}
+		for _, b := range listed.Items {
+			if b.Name == name {
+				return &b, nil
+			}
+		}
+		if listed.Next == "" || listed.Next == opts.Cursor {
+			break
+		}
+		opts.Cursor = listed.Next
 	}
 	return nil, cerrors.New(cerrors.CategoryNotFound, "BRANCH_NOT_FOUND",
 		"branch not found").

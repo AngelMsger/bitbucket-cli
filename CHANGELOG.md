@@ -76,7 +76,16 @@
   5xx) is the new `PR_MERGED_BRANCH_DELETE_UNKNOWN`. Before, every delete
   failure read as a retryable server error that kept the branch.
 - The read suggested after an uncertain `pr create` lists PRs in every state
-  (`--state ALL`), so a PR merged or declined in the meantime still shows.
+  (`--state ALL`), so a PR merged or declined in the meantime still shows. For
+  a cross-fork PR on Data Center it lists the fork's PRs from the source
+  branch, where Data Center files them, instead of the target repository's.
+- `pr list --source` and `--target` now filter on Bitbucket Cloud
+  (`source.branch.name` / `destination.branch.name`); Cloud used to ignore
+  both flags and list every PR.
+- `branch get` follows every page of substring matches before it reports
+  `BRANCH_NOT_FOUND`. It used to stop after the first 50, so a branch with many
+  similarly named siblings could read as missing, including in the read after
+  an uncertain branch create or delete.
 - `config init`'s plain prompts read through agent-cli-kit's `terminal`
   package: an answer cut short by a failed read (not the end of input) is an
   error, not an answer, so a broken stdin can no longer confirm a save.

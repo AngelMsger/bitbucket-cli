@@ -25,13 +25,13 @@ func (c *apiClient) CreatePR(ctx context.Context, req CreatePRReq) (*PullRequest
 	}
 	if c.flavor == FlavorCloud {
 		var raw cloudPR
-		if err := c.doWriteJSON(ctx, method, path, nil, payload, &raw, createPRWriteTarget(req)); err != nil {
+		if err := c.doWriteJSON(ctx, method, path, nil, payload, &raw, createPRWriteTarget(c.flavor, req)); err != nil {
 			return nil, err
 		}
 		return mapCloudPR(req.Repo, raw), nil
 	}
 	var raw dcPR
-	if err := c.doWriteJSON(ctx, method, path, nil, payload, &raw, createPRWriteTarget(req)); err != nil {
+	if err := c.doWriteJSON(ctx, method, path, nil, payload, &raw, createPRWriteTarget(c.flavor, req)); err != nil {
 		return nil, err
 	}
 	return mapDCPR(req.Repo, raw), nil
