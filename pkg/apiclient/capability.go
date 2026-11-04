@@ -1,5 +1,7 @@
 package apiclient
 
+import "context"
+
 // This file is the single source of truth for features whose behaviour differs
 // between Bitbucket Cloud and Data Center. Bitbucket exposes the same concepts
 // through different APIs, and the recurring bug class in this CLI is a Cloud
@@ -25,6 +27,8 @@ const (
 	CapPRInboxClosedSince Capability = "pr.inbox-closed-since"
 	// CapPRListUserFilters: repository-scoped PR author/reviewer filters.
 	CapPRListUserFilters Capability = "pr.list-user-filters"
+	// CapCommentReactions: native emoji reactions on PR comments.
+	CapCommentReactions Capability = "comment.reactions"
 )
 
 // SupportLevel describes how a flavor provides a capability.
@@ -41,13 +45,31 @@ const (
 
 // Support is a flavor's support for a capability, with a reason for the
 // non-native cases (shown in errors / help).
+//
+// Since and Before declare a version floor inside one flavor: servers at or
+// after Since get this support, older ones get Before (unsupported when nil).
+// A row without Since applies to every server version and costs no request.
 type Support struct {
 	Level  SupportLevel `json:"level"`
 	Reason string       `json:"reason,omitempty"`
+	Since  string       `json:"since,omitempty"`
+	Before *Support     `json:"before,omitempty"`
 }
 
 // Supported reports whether the capability can be used at all on this flavor.
 func (s Support) Supported() bool { return s.Level != SupportUnsupported }
+
+// at resolves the support for one server version. An unknown version counts
+// as current, so the request reaches the server and any refusal is its own.
+func (s Support) at(v serverVersion) Support {
+	if s.Since == "" || !v.known || v.atLeast(parseServerVersion(s.Since)) {
+		return s
+	}
+	if s.Before != nil {
+		return *s.Before
+	}
+	return Support{Level: SupportUnsupported, Reason: "needs server version " + s.Since + " or later"}
+}
 
 // capabilitySupport is the divergence table. A flavor missing from a row (or a
 // capability missing entirely) defaults to native support.
@@ -82,11 +104,33 @@ var capabilitySupport = map[Capability]map[Flavor]Support{
 		FlavorDataCenter: {Level: SupportEmulated,
 			Reason: "Data Center has no server-side PR author/reviewer filter; --all performs an explicit repository-scoped scan"},
 	},
+	CapCommentReactions: {
+		FlavorCloud: {Level: SupportUnsupported,
+			Reason: "Bitbucket Cloud's REST API has no comment reaction endpoints"},
+		FlavorDataCenter: {Level: SupportNative, Since: "7.7",
+			Before: &Support{Level: SupportEmulated,
+				Reason: "servers before 7.7 have no reactions, only a like; thumbsup is sent as a like and other emoji are rejected"}},
+	},
 }
 
 // supportFor returns this client's flavor's support for a capability.
 func (c *apiClient) supportFor(cap Capability) Support {
 	return capabilitySupportFor(cap, c.flavor)
+}
+
+// versionedSupport is supportFor resolved against the server version. It reads
+// the version (one GET) only for a Data Center row that declares Since, so
+// both --dry-run and the live write may call it.
+func (c *apiClient) versionedSupport(ctx context.Context, cap Capability) (Support, serverVersion, error) {
+	sup := c.supportFor(cap)
+	if sup.Since == "" || c.flavor != FlavorDataCenter {
+		return sup, serverVersion{}, nil
+	}
+	v, err := c.dcServerVersion(ctx)
+	if err != nil {
+		return Support{}, serverVersion{}, err
+	}
+	return sup.at(v), v, nil
 }
 
 func capabilitySupportFor(cap Capability, flavor Flavor) Support {
@@ -105,6 +149,10 @@ func CapabilityMatrix() map[Capability]map[Flavor]Support {
 	for cap, byFlavor := range capabilitySupport {
 		row := make(map[Flavor]Support, len(byFlavor))
 		for f, s := range byFlavor {
+			if s.Before != nil {
+				before := *s.Before
+				s.Before = &before
+			}
 			row[f] = s
 		}
 		out[cap] = row

@@ -196,6 +196,31 @@ completed or reopened. Both honor `--dry-run` and read-only mode.
 > Note: this resolves comment *threads* (the `resolved` field). Bitbucket
 > Cloud's separate task objects are still not covered.
 
+## Reactions
+
+React with a native emoji instead of posting a reply. A reaction carries the
+user's name like a reply does, so add one only when the user asked for it.
+
+```sh
+bitbucket-cli comment react 9876 --pr myws/myrepo/42 --emoji thumbsup
+bitbucket-cli comment react 9876 --pr myws/myrepo/42 --emoji heart --remove
+```
+
+`--emoji` takes the server's short name (`thumbsup`, `heart`, `smile`,
+`laughing`; `:thumbsup:` also works), never the emoji character
+(`REACTION_BAD_EMOJI`). The CLI cannot list the names; an unknown one returns
+the server's HTTP 400 with its reason. Output is
+`{comment_id, pr_id, emoji, value?, user?, removed?}`. Support depends on the server:
+
+| Server | Behavior |
+|---|---|
+| Data Center 7.7+ | any emoticon the server knows |
+| Data Center before 7.7 | `thumbsup` only, sent as a like; other emoji fail with `REACTION_EMOJI_UNSUPPORTED` (exit 2) |
+| Cloud | no reaction API: `REACTION_UNSUPPORTED` (exit 2); ask before replying in text instead |
+
+`--dry-run` reads the server version and previews the exact endpoint; read-only
+mode blocks the write.
+
 ## Cloud vs Data Center
 
 Both flavors are supported. The CLI hides the inline anchor shape difference

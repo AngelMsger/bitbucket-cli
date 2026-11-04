@@ -79,6 +79,9 @@ func (r *readOnlyClient) DeletePRComment(_ context.Context, _ DeletePRCommentReq
 func (r *readOnlyClient) ResolvePRComment(_ context.Context, _ ResolvePRCommentReq) (*Comment, error) {
 	return nil, blocked("ResolvePRComment")
 }
+func (r *readOnlyClient) ReactPRComment(_ context.Context, _ ReactPRCommentReq) (*Reaction, error) {
+	return nil, blocked("ReactPRComment")
+}
 
 // Branch writes.
 func (r *readOnlyClient) CreateBranch(_ context.Context, _ CreateBranchReq) (*Branch, error) {

@@ -4,6 +4,20 @@
 
 ### Added
 
+- `comment react <comment-id> --pr <ref> --emoji <name>` adds a native emoji
+  reaction to a PR comment, and `--remove` takes it back, instead of posting a
+  text reply. `--emoji` takes the emoticon's short name (`thumbsup`, `heart`,
+  `laughing`; `:thumbsup:` also works). The CLI reads the Data Center version
+  first: 7.7 and later use the reaction API with any emoticon; older servers
+  only have a like, so `thumbsup` is sent as a like and other emoji fail with
+  `REACTION_EMOJI_UNSUPPORTED`. Bitbucket Cloud has no reaction API and fails
+  with `REACTION_UNSUPPORTED`. Supports `--dry-run` and read-only mode. Output
+  is `{comment_id, pr_id, emoji, value?, user?, removed?}`.
+- The capability table can declare a server version floor (`Since`, with the
+  older servers' support in `Before`), so a Data Center feature that depends
+  on the server version is declared in one place.
+- Update the companion Skill to `0.19.0` for comment reactions.
+
 - `apiclient.Reader` and `apiclient.Writer`, the read and write halves of
   `apiclient.Client`, for library callers. `Client` keeps exactly the same
   methods and signatures.
@@ -15,6 +29,12 @@
   to the client without a blocking override fails to compile instead of
   passing through read-only mode. CLI behavior, output and errors are
   unchanged.
+
+### Known gaps
+
+- No command lists the emoticon short names a server accepts. Bitbucket Data
+  Center has no public REST endpoint for them; an unknown name returns the
+  server's HTTP 400. `comment list` does not show reactions yet either.
 
 ### Fixed
 

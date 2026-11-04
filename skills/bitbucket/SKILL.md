@@ -1,6 +1,6 @@
 ---
 name: bitbucket
-version: 0.18.8
+version: 0.19.0
 description: "Work with Bitbucket Cloud and Data Center / Server: browse repositories and source, create or update pull requests, review diffs, address review feedback, and manage comments or PR state. Use for Bitbucket repository or PR URLs, code review, inline findings, review threads, approvals, merges, and CLI dry-run or read-only workflows."
 metadata:
   requires:
@@ -130,6 +130,7 @@ bitbucket-cli comment list --pr <ref>        # PR comments (--unresolved, --task
 bitbucket-cli comment add --pr <ref>         # comment (--inline <path>:<line>, --reply-to <id>)
 bitbucket-cli comment update <comment-id>    # edit a comment (--pr <ref>)
 bitbucket-cli comment resolve <comment-id>   # resolve a thread (--unresolve reopens; --pr <ref>)
+bitbucket-cli comment react <comment-id>     # emoji reaction (--emoji thumbsup, --remove; --pr <ref>)
 bitbucket-cli comment delete <comment-id>... # delete one or more comments (needs --yes)
 bitbucket-cli file list <repo-ref>           # directory entries at a ref (--ref, --path)
 bitbucket-cli file get <repo-ref>            # raw file contents at a ref (-o writes to a file)

@@ -213,6 +213,18 @@ type Comment struct {
 	Task bool `json:"task,omitempty"`
 }
 
+// Reaction is the caller's emoji reaction on a PR comment, as just added or
+// removed by ReactPRComment.
+type Reaction struct {
+	CommentID int    `json:"comment_id"`
+	PRID      int    `json:"pr_id"`
+	Emoji     string `json:"emoji"`
+	// Value is the emoji character, when the server reports it.
+	Value   string `json:"value,omitempty"`
+	User    *User  `json:"user,omitempty"`
+	Removed bool   `json:"removed,omitempty"`
+}
+
 // Activity is one entry in a PR's activity stream.
 type Activity struct {
 	Kind        string                  `json:"kind"` // comment / approval / update / merge / decline
@@ -380,6 +392,18 @@ type ResolvePRCommentReq struct {
 	PRID    int
 	ID      int
 	Resolve bool
+}
+
+// ReactPRCommentReq adds the caller's emoji reaction to a PR comment, or takes
+// it back when Remove is set. Emoji is the server's short name for the
+// emoticon (thumbsup, heart, laughing), not the emoji character; surrounding
+// colons (":thumbsup:") are accepted.
+type ReactPRCommentReq struct {
+	Repo   RepoRef
+	PRID   int
+	ID     int
+	Emoji  string
+	Remove bool
 }
 
 // ListCommitsOpts narrows a commit listing.

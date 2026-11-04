@@ -33,6 +33,7 @@ is published at <https://angelmsger.github.io/bitbucket-cli/cli/>.
 | [`bitbucket-cli comment add`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-comment-add) | Add a comment on a PR (general or inline) |
 | [`bitbucket-cli comment delete`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-comment-delete) | Delete one or more comments |
 | [`bitbucket-cli comment list`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-comment-list) | List comments on a PR |
+| [`bitbucket-cli comment react`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-comment-react) | Add (or remove) an emoji reaction on a comment |
 | [`bitbucket-cli comment resolve`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-comment-resolve) | Resolve (or reopen) a comment thread |
 | [`bitbucket-cli comment update`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-comment-update) | Edit a comment |
 

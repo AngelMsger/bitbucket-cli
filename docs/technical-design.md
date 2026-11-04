@@ -75,6 +75,7 @@ the site root):
 | Source file raw | `GET .../src/{ref}/{path}` | `GET .../raw/{path}?at={ref}` |
 | List users | `GET /2.0/workspaces/{ws}/members` (workspace-scoped) | `GET /rest/api/1.0/users?filter=` |
 | Inline comment anchor | `inline:{path,from,to}` | `anchor:{path,line,lineType,fileType}` |
+| Comment reaction | Not available (no reaction API) | 7.7+: `PUT` / `DELETE /rest/comment-likes/latest/.../pull-requests/{id}/comments/{commentId}/reactions/{emoticon}`; before 7.7 only `thumbsup`, as `POST` / `DELETE .../comments/{commentId}/likes` |
 | Ping | `GET /2.0/user` | `GET /rest/api/1.0/application-properties` |
 
 **Pagination**: Cloud is cursor-based (the `next` field is an absolute
@@ -87,6 +88,16 @@ both behind one callback.
 **Flavor detection**: explicit `--flavor` / config wins; otherwise URL
 heuristics (host `*.bitbucket.org` → cloud); otherwise `auto` probes
 `/2.0/user` vs `/rest/api/1.0/application-properties`.
+
+**Feature support differences live in one table**:
+`pkg/apiclient/capability.go` lists every capability whose support differs
+between Cloud and Data Center, with a reason for anything not native. A row can
+also set a version floor inside a flavor: `Since` is the first server release
+with that support and `Before` is the support on older servers. Only such a row
+reads the Data Center release from `application-properties`, once per request
+build, so `--dry-run` previews the request for that server version. An
+unreadable version counts as current. Comment reactions are the first such row
+(native since 7.7, a thumbsup-only like before).
 
 **Endpoint differences are isolated to two files**:
 `pkg/apiclient/dialect.go` (path helpers — `repoPath`, `prPath`,

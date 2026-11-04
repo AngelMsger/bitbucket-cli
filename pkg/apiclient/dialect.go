@@ -214,6 +214,17 @@ func (c *apiClient) commitStatusesPath(ref RepoRef, hash string) string {
 	return "/rest/build-status/1.0/commits/" + hash
 }
 
+// prCommentLikesPath is a PR comment's root in Data Center's comment-likes
+// plugin, which serves both reactions and the older likes outside
+// /rest/api/1.0. Bitbucket Cloud has no equivalent (see CapCommentReactions).
+//
+//	DC: /rest/comment-likes/latest/projects/{key}/repos/{slug}/pull-requests/{id}/comments/{commentId}
+func (c *apiClient) prCommentLikesPath(ref RepoRef, prID, commentID int) string {
+	return "/rest/comment-likes/latest/projects/" + url.PathEscape(ref.Workspace) +
+		"/repos/" + url.PathEscape(ref.Slug) + "/pull-requests/" + strconv.Itoa(prID) +
+		"/comments/" + strconv.Itoa(commentID)
+}
+
 // prStatusesPath is the Cloud-only per-PR aggregate of build statuses.
 // On DC the CLI walks via the PR's toRef.latestCommit and the build-status plugin.
 func (c *apiClient) prStatusesPath(ref RepoRef, id int) string {
