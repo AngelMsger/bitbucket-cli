@@ -89,8 +89,8 @@ TTY; agents never pass it.
 - **Comment** — for review feedback, apply the
   [publication rules](references/reviewing-locally.md#decide-what-to-publish) first.
   `bitbucket-cli comment add --pr <ws>/<repo>/<id> --content "<text>"`,
-  add `--inline <path>:<line>` for inline review comments. Resolve or reopen a
-  thread with `comment resolve <id> --pr <ref>` (`--unresolve` to reopen); on
+  add `--inline <path>:<line>` for inline review comments. Resolve a
+  thread with `comment resolve <id> --pr <ref>` (`--unresolve` reopens); on
   Data Center this also completes/reopens a task.
 - **Repository / branches / commits** — browse, create, fork, and delete
   repositories with `repo ...`; see `references/reading-repos.md` for the
@@ -130,7 +130,7 @@ bitbucket-cli comment list --pr <ref>        # PR comments (--unresolved, --task
 bitbucket-cli comment add --pr <ref>         # comment (--inline <path>:<line>, --reply-to <id>)
 bitbucket-cli comment update <comment-id>    # edit a comment (--pr <ref>)
 bitbucket-cli comment resolve <comment-id>   # resolve a thread (--unresolve reopens; --pr <ref>)
-bitbucket-cli comment react <comment-id>     # emoji reaction (--emoji thumbsup, --remove; --pr <ref>)
+bitbucket-cli comment react <comment-id>     # --emoji <name> (--remove; --pr <ref>)
 bitbucket-cli comment delete <comment-id>... # delete one or more comments (needs --yes)
 bitbucket-cli file list <repo-ref>           # directory entries at a ref (--ref, --path)
 bitbucket-cli file get <repo-ref>            # raw file contents at a ref (-o writes to a file)
