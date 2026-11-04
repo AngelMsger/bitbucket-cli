@@ -9,10 +9,9 @@
   the write again to the new location, so a POST could reach a login page and
   `pr approve` read as approved. agent-cli-kit v0.7.0's transport returns a
   write's redirect instead of following it, so the local check for a followed
-  redirect is gone. The error's code is the redirect's status, as for other
-  HTTP failures (`HTTP_Found` for a 302), instead of `HTTP_REDIRECTED`; it
-  keeps that status in `http_status`, and its hint says what a redirect
-  usually means.
+  redirect is gone. Every redirected write keeps the code `HTTP_REDIRECTED`,
+  with the redirect's status in `http_status`, and its hint says what a
+  redirect usually means.
 
 ## [0.28.0] - 2026-11-04
 

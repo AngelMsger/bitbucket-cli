@@ -321,8 +321,21 @@ func (c *apiClient) httpError(resp *http.Response) error {
 	if detail := extractAPIMessage(snippet); detail != "" {
 		msg += ": " + detail
 	}
-	return cerrors.New(cat, "HTTP_"+http.StatusText(resp.StatusCode), msg).
-		WithHTTPStatus(resp.StatusCode)
+	code := "HTTP_" + http.StatusText(resp.StatusCode)
+	if resp.StatusCode >= 300 && resp.StatusCode < 400 && sentAWrite(resp.Request) {
+		// The kit's transport hands a write its redirect instead of following
+		// it. 0.28.0 reported a redirected write as HTTP_REDIRECTED, so a
+		// write's 3xx keeps that code; http_status says which redirect it was.
+		// A read's 3xx (a 304, say) keeps its own code, as in 0.28.0.
+		code = "HTTP_REDIRECTED"
+	}
+	return cerrors.New(cat, code, msg).WithHTTPStatus(resp.StatusCode)
+}
+
+// sentAWrite reports whether req, the request a response answered, is a
+// write. Every read is a GET (an empty method is one too).
+func sentAWrite(req *http.Request) bool {
+	return req != nil && req.Method != "" && req.Method != http.MethodGet && req.Method != http.MethodHead
 }
 
 // extractAPIMessage best-effort extracts a human message from a Bitbucket JSON
