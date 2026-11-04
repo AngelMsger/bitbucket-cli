@@ -548,7 +548,7 @@ func newPRApproveCmd(s *appState) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return runBatch(s, items, func(arg string) (any, error) {
+			return runBatch(s, items, dryRun, func(arg string) (any, error) {
 				return doPRApproval(s, arg, true, dryRun)
 			})
 		},
@@ -666,7 +666,7 @@ func newPRDeclineCmd(s *appState) *cobra.Command {
 				return cerrors.New(cerrors.CategoryUsage, "NEEDS_YES",
 					"pass --yes to confirm declining (or --dry-run to preview)")
 			}
-			return runBatch(s, items, func(arg string) (any, error) {
+			return runBatch(s, items, dryRun, func(arg string) (any, error) {
 				ref, id, err := resolvePRRef(arg, apiclient.RepoRef{})
 				if err != nil {
 					return nil, err

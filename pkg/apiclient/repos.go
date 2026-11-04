@@ -88,13 +88,13 @@ func (c *apiClient) CreateRepository(ctx context.Context, req CreateRepoReq) (*R
 	method, path, payload := c.buildCreateRepo(req)
 	if c.flavor == FlavorCloud {
 		var raw cloudRepo
-		if err := c.doJSON(ctx, method, path, nil, payload, &raw); err != nil {
+		if err := c.doWriteJSON(ctx, method, path, nil, payload, &raw, repoWriteTarget(RepoRef{Workspace: req.Workspace, Slug: req.Slug})); err != nil {
 			return nil, err
 		}
 		return mapCloudRepo(raw), nil
 	}
 	var raw dcRepo
-	if err := c.doJSON(ctx, method, path, nil, payload, &raw); err != nil {
+	if err := c.doWriteJSON(ctx, method, path, nil, payload, &raw, repoWriteTarget(RepoRef{Workspace: req.Workspace, Slug: req.Slug})); err != nil {
 		return nil, err
 	}
 	return mapDCRepo(raw), nil
@@ -136,13 +136,13 @@ func (c *apiClient) ForkRepository(ctx context.Context, req ForkRepoReq) (*Repos
 
 	if c.flavor == FlavorCloud {
 		var raw cloudRepo
-		if err := c.doJSON(ctx, method, path, nil, payload, &raw); err != nil {
+		if err := c.doWriteJSON(ctx, method, path, nil, payload, &raw, forkWriteTarget(req)); err != nil {
 			return nil, err
 		}
 		return mapCloudRepo(raw), nil
 	}
 	var raw dcRepo
-	if err := c.doJSON(ctx, method, path, nil, payload, &raw); err != nil {
+	if err := c.doWriteJSON(ctx, method, path, nil, payload, &raw, forkWriteTarget(req)); err != nil {
 		return nil, err
 	}
 	return mapDCRepo(raw), nil
@@ -214,7 +214,7 @@ func (c *apiClient) DeleteRepository(ctx context.Context, req DeleteRepoReq) err
 	if err := checkRepoRef(req.Repo); err != nil {
 		return err
 	}
-	return c.doJSON(ctx, "DELETE", c.repoPath(req.Repo), nil, nil, nil)
+	return c.doWriteJSON(ctx, "DELETE", c.repoPath(req.Repo), nil, nil, nil, repoWriteTarget(req.Repo))
 }
 
 // checkRepoRef validates a RepoRef has both workspace and slug set.

@@ -65,14 +65,14 @@ func (c *apiClient) AddPRComment(ctx context.Context, req AddPRCommentReq) (*Com
 	method, path, payload := c.buildAddPRComment(req)
 	if c.flavor == FlavorCloud {
 		var raw cloudComment
-		if err := c.doJSON(ctx, method, path, nil, payload, &raw); err != nil {
+		if err := c.doWriteJSON(ctx, method, path, nil, payload, &raw, commentWriteTarget(req.Repo, req.PRID, 0)); err != nil {
 			return nil, err
 		}
 		cm := mapCloudComment(req.PRID, raw)
 		return &cm, nil
 	}
 	var raw dcComment
-	if err := c.doJSON(ctx, method, path, nil, payload, &raw); err != nil {
+	if err := c.doWriteJSON(ctx, method, path, nil, payload, &raw, commentWriteTarget(req.Repo, req.PRID, 0)); err != nil {
 		return nil, err
 	}
 	cm := mapDCComment(req.PRID, raw)
@@ -151,14 +151,14 @@ func (c *apiClient) UpdatePRComment(ctx context.Context, req UpdatePRCommentReq)
 	}
 	if c.flavor == FlavorCloud {
 		var raw cloudComment
-		if err := c.doJSON(ctx, method, path, nil, payload, &raw); err != nil {
+		if err := c.doWriteJSON(ctx, method, path, nil, payload, &raw, commentWriteTarget(req.Repo, req.PRID, req.ID)); err != nil {
 			return nil, err
 		}
 		cm := mapCloudComment(req.PRID, raw)
 		return &cm, nil
 	}
 	var raw dcComment
-	if err := c.doJSON(ctx, method, path, nil, payload, &raw); err != nil {
+	if err := c.doWriteJSON(ctx, method, path, nil, payload, &raw, commentWriteTarget(req.Repo, req.PRID, req.ID)); err != nil {
 		return nil, err
 	}
 	cm := mapDCComment(req.PRID, raw)
@@ -201,13 +201,18 @@ func (c *apiClient) ResolvePRComment(ctx context.Context, req ResolvePRCommentRe
 	if c.flavor == FlavorCloud {
 		// The resolve endpoint returns a resolution object (or 204 on reopen),
 		// not the comment, so re-read it for a consistent Comment result.
-		if derr := c.doJSON(ctx, method, path, nil, payload, nil); derr != nil {
+		if derr := c.doWriteJSON(ctx, method, path, nil, payload, nil, commentWriteTarget(req.Repo, req.PRID, req.ID)); derr != nil {
 			return nil, derr
 		}
-		return c.getPRComment(ctx, req.Repo, req.PRID, req.ID)
+		cm, err := c.getPRComment(ctx, req.Repo, req.PRID, req.ID)
+		if err != nil {
+			return nil, cerrors.WriteSucceeded(err, cerrors.CodeWriteSucceededReadFailed,
+				"reading the comment back failed", commentWriteTarget(req.Repo, req.PRID, req.ID))
+		}
+		return cm, nil
 	}
 	var raw dcComment
-	if derr := c.doJSON(ctx, method, path, nil, payload, &raw); derr != nil {
+	if derr := c.doWriteJSON(ctx, method, path, nil, payload, &raw, commentWriteTarget(req.Repo, req.PRID, req.ID)); derr != nil {
 		return nil, derr
 	}
 	cm := mapDCComment(req.PRID, raw)
@@ -264,7 +269,7 @@ func (c *apiClient) DeletePRComment(ctx context.Context, req DeletePRCommentReq)
 	if err != nil {
 		return err
 	}
-	return c.doJSON(ctx, method, path, nil, nil, nil)
+	return c.doWriteJSON(ctx, method, path, nil, nil, nil, commentWriteTarget(req.Repo, req.PRID, req.ID))
 }
 
 // buildDeletePRComment assembles the HTTP call for deleting a PR comment.

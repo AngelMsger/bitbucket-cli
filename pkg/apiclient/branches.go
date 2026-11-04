@@ -73,16 +73,25 @@ func (c *apiClient) GetBranch(ctx context.Context, repo RepoRef, name string) (*
 	if name == "" {
 		return nil, cerrors.New(cerrors.CategoryUsage, "BRANCH_NO_NAME", "branch name is required")
 	}
-	// Both flavors offer "filter" / "filterText" — we list with the filter and
-	// pick the exact match.
-	listed, err := c.ListBranches(ctx, BranchListOpts{Repo: repo, Query: name, ListOpts: ListOpts{Limit: 50}})
-	if err != nil {
-		return nil, err
-	}
-	for _, b := range listed.Items {
-		if b.Name == name {
-			return &b, nil
+	// Both flavors offer "filter" / "filterText", a substring match: list with
+	// the filter and pick the exact match, following every page. A branch is
+	// not found only once the matches are exhausted, so the read after an
+	// uncertain branch create or delete can be trusted.
+	opts := BranchListOpts{Repo: repo, Query: name, ListOpts: ListOpts{Limit: 50}}
+	for {
+		listed, err := c.ListBranches(ctx, opts)
+		if err != nil {
+			return nil, err
 		}
+		for _, b := range listed.Items {
+			if b.Name == name {
+				return &b, nil
+			}
+		}
+		if listed.Next == "" || listed.Next == opts.Cursor {
+			break
+		}
+		opts.Cursor = listed.Next
 	}
 	return nil, cerrors.New(cerrors.CategoryNotFound, "BRANCH_NOT_FOUND",
 		"branch not found").
@@ -97,14 +106,14 @@ func (c *apiClient) CreateBranch(ctx context.Context, req CreateBranchReq) (*Bra
 	method, path, payload := c.buildCreateBranch(req)
 	if c.flavor == FlavorCloud {
 		var raw cloudBranch
-		if err := c.doJSON(ctx, method, path, nil, payload, &raw); err != nil {
+		if err := c.doWriteJSON(ctx, method, path, nil, payload, &raw, branchWriteTarget(req.Repo, req.Name)); err != nil {
 			return nil, err
 		}
 		b := mapCloudBranch(raw, "")
 		return &b, nil
 	}
 	var raw dcBranch
-	if err := c.doJSON(ctx, method, path, nil, payload, &raw); err != nil {
+	if err := c.doWriteJSON(ctx, method, path, nil, payload, &raw, branchWriteTarget(req.Repo, req.Name)); err != nil {
 		return nil, err
 	}
 	b := mapDCBranch(raw)
@@ -137,7 +146,7 @@ func (c *apiClient) DeleteBranch(ctx context.Context, req DeleteBranchReq) error
 		return err
 	}
 	method, path := c.buildDeleteBranch(req)
-	return c.doJSON(ctx, method, path, nil, nil, nil)
+	return c.doWriteJSON(ctx, method, path, nil, nil, nil, branchWriteTarget(req.Repo, req.Name))
 }
 
 func (c *apiClient) buildDeleteBranch(req DeleteBranchReq) (method, path string) {

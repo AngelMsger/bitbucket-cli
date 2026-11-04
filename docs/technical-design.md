@@ -438,6 +438,28 @@ it does not assume an optimistic-lock failure. For example, approval of a
 closed PR reports the server's explanation that the PR is not open. If the
 server supplies no usable message, the CLI does not invent a cause.
 
+Writes follow the family's write-outcome rule from agent-cli-kit
+(`errors.FromWrite`). Every write goes through `doWriteJSON` with a write target
+(`pkg/apiclient/write_targets.go`): what it changes and a bounded read-only
+command that shows it. The exception is a comment reaction: it is the
+caller's own, so repeating it leaves the same state, and no command reads
+reactions yet. A definite refusal (usage, config, auth, permission, not found,
+conflict) is returned unchanged. Any other failure, including a network error,
+429, 5xx, a non-2xx redirect or an internal error, becomes "Write outcome is
+unknown for …" with `retryable=false`, the original code, category and HTTP
+status, and the target's read as next steps. A same-origin 301, 302 or 303 is
+followed with a GET, so its final response answers that GET (often a login
+page), not the write: `doJSON` reports it as `HTTP_REDIRECTED` (server), an
+unknown outcome. A 2xx response that cannot be decoded reports
+`WRITE_SUCCEEDED_RESPONSE_INVALID`, and Cloud's resolve, which reads the
+comment back, reports `WRITE_SUCCEEDED_READ_FAILED` when only that read fails.
+Data Center's `pr merge --close-source-branch` deletes the branch after the
+merge; when only that delete fails, the merge is reported as done with the
+kit's `WriteSucceeded` and the branch read: `PR_MERGED_BRANCH_KEPT` for a
+refused delete, `PR_MERGED_BRANCH_DELETE_UNKNOWN` when its outcome is unknown.
+A batch with failed items returns a non-retryable `BATCH_PARTIAL_FAILURE`: the
+items marked `ok` were applied (for `--dry-run`, previewed; nothing was sent).
+
 ### 7.3 Exit codes
 
 | Code | Category | Code | Category |

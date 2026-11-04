@@ -29,6 +29,16 @@
   to the client without a blocking override fails to compile instead of
   passing through read-only mode. CLI behavior, output and errors are
   unchanged.
+- `READONLY_BLOCKED` uses the family's wording from agent-cli-kit. The hint
+  says nothing was sent and that read-only mode is the user's setting, naming
+  `BITBUCKET_CLI_READ_ONLY` and `defaults.read_only`. The next steps are
+  `--dry-run` (for `pr fetch|checkout --exec`, re-running without `--exec`)
+  and, only for a write the user authorized, `--allow-writes`; they no longer
+  suggest unsetting the variable or editing the config. Code, category and
+  exit code are unchanged.
+- `pkg/errors` re-exports agent-cli-kit's `WriteTarget`, `FromWrite`,
+  `WriteSucceeded`, `MissingWriteIdentity`, `ShellArg`, `ReadOnlyBlocked` and
+  their codes.
 
 ### Known gaps
 
@@ -37,6 +47,52 @@
   server's HTTP 400. `comment list` does not show reactions yet either.
 
 ### Fixed
+
+- A write that fails after it may have reached Bitbucket (network error, 429,
+  5xx, unexpected redirect) no longer reports `retryable: true`. It says
+  "Write outcome is unknown for …", keeps its code, category and status, and
+  names the read that shows the result (`pr get`, `comment list --pr`,
+  `branch get`, `repo get`), following agent-cli-kit's shared write rule. A 2xx
+  response that cannot be decoded reports `WRITE_SUCCEEDED_RESPONSE_INVALID`,
+  and Cloud's `comment resolve` reports `WRITE_SUCCEEDED_READ_FAILED` when only
+  the read-back fails. `comment react` keeps its transport classification:
+  repeating a reaction leaves the same state, and no command reads reactions
+  yet.
+- `BATCH_PARTIAL_FAILURE` (several items to `pr approve|decline` or
+  `comment delete`) is no longer retryable: the items marked `ok` were applied,
+  and its hint says to retry only failed items whose own error allows it. Its
+  next step now points at each item's own `next_steps` instead of "retry". With
+  `--dry-run` it says nothing was sent, instead of claiming the items were
+  applied.
+- A write that Bitbucket answered with a redirect (a login page or single
+  sign-on proxy, or `http` to `https`) is an unknown outcome caused by
+  `HTTP_REDIRECTED`. The HTTP client follows the redirect with a GET, and the
+  page it landed on used to confirm the write: `pr approve` read as approved.
+- `pr merge --close-source-branch` on Data Center, when the merge worked but
+  the branch delete did not, says the PR was merged ("Write succeeded for pull
+  request …") with `retryable: false` and a `branch get` as next step. The
+  delete's own category and status are kept. A refused delete is still
+  `PR_MERGED_BRANCH_KEPT`; a delete with an unknown outcome (network error,
+  5xx) is the new `PR_MERGED_BRANCH_DELETE_UNKNOWN`. Before, every delete
+  failure read as a retryable server error that kept the branch.
+- The read suggested after an uncertain `pr create` lists PRs in every state
+  (`--state ALL`), so a PR merged or declined in the meantime still shows. For
+  a cross-fork PR on Data Center it lists the fork's PRs from the source
+  branch, where Data Center files them, instead of the target repository's.
+- `pr list --source` and `--target` now filter on Bitbucket Cloud
+  (`source.branch.name` / `destination.branch.name`); Cloud used to ignore
+  both flags and list every PR.
+- `branch get` follows every page of substring matches before it reports
+  `BRANCH_NOT_FOUND`. It used to stop after the first 50, so a branch with many
+  similarly named siblings could read as missing, including in the read after
+  an uncertain branch create or delete.
+- `config init`'s plain prompts read through agent-cli-kit's `terminal`
+  package: an answer cut short by a failed read (not the end of input) is an
+  error, not an answer, so a broken stdin can no longer confirm a save.
+- A command started with stdin on `/dev/null` (cron, CI, agent runners) no
+  longer counts it as a terminal, so `auth login` and `config init --pretty`
+  refuse to prompt instead of reading an empty answer. Terminal checks and
+  prompts use agent-cli-kit's `terminal` package.
 
 - Mask passwords embedded in the server URL in `--verbose` request logs, with
   agent-cli-kit v0.6.0's transport.

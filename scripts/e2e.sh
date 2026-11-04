@@ -390,6 +390,17 @@ assert_err_contains "read-only blocks pr approve"    "READONLY_BLOCKED" \
                                                      "${RO_ENV[@]}" "${CLI[@]}" pr approve PROJ/demo/1
 assert_err_contains "read-only error names --allow-writes" "--allow-writes" \
                                                      "${RO_ENV[@]}" "${CLI[@]}" pr approve PROJ/demo/1
+# Turning read-only mode off is the user's call: the error offers --allow-writes
+# only for an authorized write and never tells an agent to unset the switch.
+RO_ERR="$("${RO_ENV[@]}" "${CLI[@]}" pr approve PROJ/demo/1 2>&1 >/dev/null)"
+if [[ "$RO_ERR" == *"Only if the user authorized this write"* && "$RO_ERR" != *"unset BITBUCKET_CLI_READ_ONLY"* ]]; then
+  pass "read-only error leaves the switch to the user"
+else
+  fail "read-only error leaves the switch to the user"; printf '%s\n' "$RO_ERR" | head -5
+fi
+# /dev/null is a character device but not a terminal, so login refuses to prompt.
+assert_err_contains "auth login with stdin on /dev/null needs a terminal" "AUTH_LOGIN_NEEDS_TTY" \
+                                                     "${CLI[@]}" auth login </dev/null
 assert_exit         "read-only exit category=permission -> 5" 5 \
                                                      "${RO_ENV[@]}" "${CLI[@]}" pr approve PROJ/demo/1
 assert_contains     "read-only + --dry-run still previews" '"method": "POST"' \

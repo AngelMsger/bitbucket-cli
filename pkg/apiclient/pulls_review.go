@@ -17,7 +17,7 @@ func (c *apiClient) ApprovePR(ctx context.Context, req ApprovePRReq) error {
 	if !req.Approve {
 		method = "DELETE"
 	}
-	return c.doJSON(ctx, method, c.prPath(req.Repo, req.ID)+"/approve", nil, nil, nil)
+	return c.doWriteJSON(ctx, method, c.prPath(req.Repo, req.ID)+"/approve", nil, nil, nil, prReviewWriteTarget(req.Repo, req.ID))
 }
 
 // RequestPRChanges casts or withdraws the authenticated user's change request.
@@ -26,7 +26,7 @@ func (c *apiClient) RequestPRChanges(ctx context.Context, req RequestChangesReq)
 	if err != nil {
 		return err
 	}
-	return c.doJSON(ctx, method, path, nil, payload, nil)
+	return c.doWriteJSON(ctx, method, path, nil, payload, nil, prReviewWriteTarget(req.Repo, req.ID))
 }
 
 // Preview and execution share the same participant-state guard.

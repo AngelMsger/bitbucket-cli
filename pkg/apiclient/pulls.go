@@ -80,12 +80,20 @@ func (c *apiClient) ListPRs(ctx context.Context, opt PRListOpts) (ListResult[Pul
 }
 
 func (c *apiClient) cloudPRFilter(ctx context.Context, opt PRListOpts) (string, error) {
-	if strings.TrimSpace(opt.Author) == "" && strings.TrimSpace(opt.Reviewer) == "" {
+	if strings.TrimSpace(opt.Author) == "" && strings.TrimSpace(opt.Reviewer) == "" &&
+		opt.Source == "" && opt.Target == "" {
 		return opt.Query, nil
 	}
-	parts := make([]string, 0, 3)
+	parts := make([]string, 0, 5)
 	if opt.Query != "" {
 		parts = append(parts, "("+opt.Query+")")
+	}
+	// Branch filters are BBQL clauses on Cloud (Data Center uses at/direction).
+	if opt.Source != "" {
+		parts = append(parts, "source.branch.name="+strconv.Quote(opt.Source))
+	}
+	if opt.Target != "" {
+		parts = append(parts, "destination.branch.name="+strconv.Quote(opt.Target))
 	}
 	for _, filter := range []struct {
 		field    string
