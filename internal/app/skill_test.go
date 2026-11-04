@@ -4,10 +4,12 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/angelmsger/agent-cli-kit/skill"
+	bitbucketcli "github.com/angelmsger/bitbucket-cli"
 )
 
 // The kit's skill package owns the version, load-state, inspection and agent
@@ -59,6 +61,25 @@ func TestSkillLoadStateReadsTheHandshakeVariable(t *testing.T) {
 	t.Setenv(envSkillLoaded, "0.0.0")
 	if got := currentSkillLoadState(); got.Status != "outdated" {
 		t.Fatalf("outdated load = %+v", got)
+	}
+}
+
+// The Skill tells agents which handshake value to export. That value must be
+// the embedded Skill's own version, or an agent that follows the Skill is
+// reported as outdated on every command, even after reinstalling it.
+func TestSkillHandshakeInstructionMatchesTheEmbeddedVersion(t *testing.T) {
+	data, err := bitbucketcli.SkillFS.ReadFile(bitbucketcli.SkillRoot + "/SKILL.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := regexp.MustCompile("`" + envSkillLoaded + `=([^` + "`" + `]+)` + "`").FindSubmatch(data)
+	if m == nil {
+		t.Fatalf("SKILL.md does not tell agents which %s value to export", envSkillLoaded)
+	}
+	t.Setenv(envSkillLoaded, string(m[1]))
+	if got := currentSkillLoadState(); got.Status != "current" || !got.Loaded {
+		t.Fatalf("the documented %s=%s yields %+v; want current for embedded %s",
+			envSkillLoaded, m[1], got, embeddedSkillVersion())
 	}
 }
 
