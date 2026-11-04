@@ -447,10 +447,11 @@ which shows each comment's reactions. A definite refusal (usage, config, auth, p
 conflict) is returned unchanged. Any other failure, including a network error,
 429, 5xx, a non-2xx redirect or an internal error, becomes "Write outcome is
 unknown for …" with `retryable=false`, the original code, category and HTTP
-status, and the target's read as next steps. A same-origin 301, 302 or 303 is
-followed with a GET, so its final response answers that GET (often a login
-page), not the write: `doJSON` reports it as `HTTP_REDIRECTED` (server), an
-unknown outcome. A 2xx response that cannot be decoded reports
+status, and the target's read as next steps. The kit's transport follows a
+redirect only for a GET or HEAD, so a write's 3xx reaches `doJSON` as is and
+becomes an unknown outcome with that status. Following it would answer a
+different request: a GET to the redirect's target (often a login page) after
+a 301, 302 or 303, or the write sent again after a 307 or 308. A 2xx response that cannot be decoded reports
 `WRITE_SUCCEEDED_RESPONSE_INVALID`, and Cloud's resolve, which reads the
 comment back, reports `WRITE_SUCCEEDED_READ_FAILED` when only that read fails.
 Data Center's `pr merge --close-source-branch` deletes the branch after the

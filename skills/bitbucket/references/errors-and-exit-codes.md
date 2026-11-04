@@ -35,8 +35,9 @@ The process exit code matches the category:
 ## Common recovery flows
 
 - **"Write outcome is unknown for …"** → a write failed after it may have
-  reached Bitbucket (network error, 429, 5xx, a redirect, which usually means
-  a login page or single sign-on proxy: cause `HTTP_REDIRECTED`). It is
+  reached Bitbucket (network error, 429, 5xx, or a redirect, a 3xx
+  `http_status` that usually means a login page or single sign-on proxy:
+  check the base URL with `doctor`). It is
   `retryable=false`: do not repeat it. Run the read in `next_steps` (for
   example `pr get`, `comment list --pr`, `branch get`), follow pagination if
   needed, and repeat the write only if the read shows it did not happen.
