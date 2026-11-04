@@ -253,6 +253,8 @@ assert_contains  "pr status mergeable=false" '"can_merge": false' "${CLI[@]}" pr
 assert_contains  "pr status has builds"      "SUCCESSFUL"     "${CLI[@]}" pr status PROJ/demo/1
 assert_contains  "pr threads"                "Looks good"     "${CLI[@]}" pr threads PROJ/demo/1
 # v0.4 — comment resolution / task status surfacing + filters
+assert_contains      "comment list shows reactions" '"emoji": "white_check_mark"' "${CLI[@]}" comment list --pr PROJ/demo/1
+assert_contains      "pr threads shows reactions"   '"emoji": "thumbsup"'         "${CLI[@]}" pr threads PROJ/demo/1
 assert_contains      "comment list resolved field" '"resolved": true'  "${CLI[@]}" comment list --pr PROJ/demo/1
 assert_contains      "comment list task field"     '"task": true'      "${CLI[@]}" comment list --pr PROJ/demo/1
 assert_not_contains  "comment list --unresolved drops resolved" "Already fixed" "${CLI[@]}" comment list --pr PROJ/demo/1 --unresolved

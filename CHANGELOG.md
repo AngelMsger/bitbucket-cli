@@ -16,6 +16,13 @@
 - The capability table can declare a server version floor (`Since`, with the
   older servers' support in `Before`), so a Data Center feature that depends
   on the server version is declared in one place.
+- Data Center comments now show their emoji reactions in `comment list`,
+  `pr threads`, `pr activity` and the comment write commands' output, as
+  `reactions: [{emoji, count, users}]` (omitted when a comment has none), so an
+  agent can see a reaction before adding it. `emoji` is the name
+  `comment react --emoji` takes. On servers before 7.7 a like reads as
+  `thumbsup`; the like that 7.7+ keeps beside a `thumbsup` reaction is not
+  counted twice. Bitbucket Cloud has no reactions.
 - Update the companion Skill to `0.19.0` for comment reactions.
 
 - `apiclient.Reader` and `apiclient.Writer`, the read and write halves of
@@ -34,7 +41,7 @@
 
 - No command lists the emoticon short names a server accepts. Bitbucket Data
   Center has no public REST endpoint for them; an unknown name returns the
-  server's HTTP 400. `comment list` does not show reactions yet either.
+  server's HTTP 400.
 
 ### Fixed
 

@@ -1,6 +1,7 @@
 package apiclient
 
 import (
+	"encoding/json"
 	"strconv"
 	"strings"
 )
@@ -613,6 +614,65 @@ type dcComment struct {
 	Parent   *struct {
 		ID int `json:"id"`
 	} `json:"parent"`
+	// Properties carries plugin data, including the comment-likes plugin's
+	// reactions. It is decoded separately (mapDCReactions) so an unexpected
+	// shape there never breaks reading the comment itself.
+	Properties json.RawMessage `json:"properties"`
+}
+
+// dcCommentProperties is the reaction part of a comment's properties, as
+// Data Center 7.17 returns it on both the activities stream and a single
+// comment GET:
+//
+//	"reactions": [{"emoticon": {"shortcut": "thumbsup", "url": "..."}, "users": [<user>...]}]
+//	"likedBy":   {"total": 1, "likers": [<user>...]}
+//
+// There is no per-emoji count; the users list is it. likedBy is the older
+// like, which 7.7+ mirrors from the thumbsup reaction, so it is read only
+// when a comment has no reactions (servers before 7.7).
+type dcCommentProperties struct {
+	Reactions []struct {
+		Emoticon struct {
+			Shortcut string `json:"shortcut"`
+		} `json:"emoticon"`
+		Users []dcUser `json:"users"`
+	} `json:"reactions"`
+	LikedBy *struct {
+		Total  int      `json:"total"`
+		Likers []dcUser `json:"likers"`
+	} `json:"likedBy"`
+}
+
+// mapDCReactions reads a comment's reactions from its raw properties. A shape
+// it cannot decode yields no reactions rather than an error.
+func mapDCReactions(raw json.RawMessage) []CommentReaction {
+	if len(raw) == 0 {
+		return nil
+	}
+	var p dcCommentProperties
+	if err := json.Unmarshal(raw, &p); err != nil {
+		return nil
+	}
+	var out []CommentReaction
+	for _, r := range p.Reactions {
+		if r.Emoticon.Shortcut == "" {
+			continue
+		}
+		out = append(out, CommentReaction{Emoji: r.Emoticon.Shortcut, Count: len(r.Users), Users: mapDCUsers(r.Users)})
+	}
+	if len(out) == 0 && p.LikedBy != nil && (p.LikedBy.Total > 0 || len(p.LikedBy.Likers) > 0) {
+		out = append(out, CommentReaction{Emoji: likeEmoticon,
+			Count: max(p.LikedBy.Total, len(p.LikedBy.Likers)), Users: mapDCUsers(p.LikedBy.Likers)})
+	}
+	return out
+}
+
+func mapDCUsers(in []dcUser) []User {
+	out := make([]User, 0, len(in))
+	for _, u := range in {
+		out = append(out, mapDCUser(u))
+	}
+	return out
 }
 
 func mapDCComment(prID int, c dcComment) Comment {
@@ -625,6 +685,7 @@ func mapDCComment(prID int, c dcComment) Comment {
 		UpdatedAt: epochToISO(c.UpdatedDate),
 		Resolved:  c.State == "RESOLVED",
 		Task:      c.Severity == "BLOCKER",
+		Reactions: mapDCReactions(c.Properties),
 	}
 	cm.Inline = inlineFromDCAnchor(c.Anchor)
 	if c.Parent != nil {

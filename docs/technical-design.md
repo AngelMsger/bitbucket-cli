@@ -75,7 +75,7 @@ the site root):
 | Source file raw | `GET .../src/{ref}/{path}` | `GET .../raw/{path}?at={ref}` |
 | List users | `GET /2.0/workspaces/{ws}/members` (workspace-scoped) | `GET /rest/api/1.0/users?filter=` |
 | Inline comment anchor | `inline:{path,from,to}` | `anchor:{path,line,lineType,fileType}` |
-| Comment reaction | Not available (no reaction API) | 7.7+: `PUT` / `DELETE /rest/comment-likes/latest/.../pull-requests/{id}/comments/{commentId}/reactions/{emoticon}`; before 7.7 only `thumbsup`, as `POST` / `DELETE .../comments/{commentId}/likes` |
+| Comment reaction | Not available (no reaction API) | 7.7+: `PUT` / `DELETE /rest/comment-likes/latest/.../pull-requests/{id}/comments/{commentId}/reactions/{emoticon}`; before 7.7 only `thumbsup`, as `POST` / `DELETE .../comments/{commentId}/likes`. Read from each comment's `properties.reactions` (`[{emoticon:{shortcut,url}, users}]`, no count field); `properties.likedBy` mirrors the thumbsup users on 7.7+ and is read only when there are no reactions |
 | Ping | `GET /2.0/user` | `GET /rest/api/1.0/application-properties` |
 
 **Pagination**: Cloud is cursor-based (the `next` field is an absolute
@@ -126,7 +126,8 @@ PullRequest { ID, Ref, Title, Description, State, Author, Source, Destination,
               MergeCommit, CreatedAt, UpdatedAt, ClosedAt }
 InlineAnchor{ Path, Line, From, To }
 Comment     { ID, Content, Author, Inline, ParentID, PRID, CommitID,
-              URL, CreatedAt, UpdatedAt }
+              URL, CreatedAt, UpdatedAt, Resolved, Task, Reactions[] }
+CommentReaction { Emoji, Count, Users[] }       // DC properties.reactions
 Activity    { Kind, Actor, When, PullRequest, Comment, Approved, State, System }
 Diffstat    { Path, OldPath, Status, LinesAdded, LinesRemoved, Binary }
 Thread      { File, Anchor, Comments[] }              // inline threads grouped by file

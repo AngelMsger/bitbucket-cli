@@ -211,6 +211,18 @@ type Comment struct {
 	// completing such a task is the same transition as ResolvePRComment. (Cloud
 	// tasks live on a separate endpoint and are not surfaced yet.)
 	Task bool `json:"task,omitempty"`
+	// Reactions are the comment's emoji reactions, one entry per emoji (Data
+	// Center; on servers before 7.7 a like reads as thumbsup). Bitbucket Cloud
+	// has no reactions, so the field is absent there.
+	Reactions []CommentReaction `json:"reactions,omitempty"`
+}
+
+// CommentReaction is one emoji on a comment and the users who reacted with
+// it. Emoji is the short name that `comment react --emoji` takes.
+type CommentReaction struct {
+	Emoji string `json:"emoji"`
+	Count int    `json:"count"`
+	Users []User `json:"users"`
 }
 
 // Reaction is the caller's emoji reaction on a PR comment, as just added or

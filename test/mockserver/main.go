@@ -257,6 +257,16 @@ func routes() http.Handler {
 				map[string]any{"id": 100, "action": "COMMENTED", "user": user(), "createdDate": 1, "comment": map[string]any{
 					"id": 9001, "text": "Looks good", "author": user(), "createdDate": 1, "version": 0,
 					"state": "OPEN", "severity": "NORMAL",
+					// Data Center 7.7+ reactions; likedBy mirrors the thumbsup
+					// users and must not be counted a second time.
+					"properties": map[string]any{
+						"repositoryId": 1,
+						"reactions": []any{
+							map[string]any{"emoticon": map[string]any{"shortcut": "thumbsup"}, "users": []any{user()}},
+							map[string]any{"emoticon": map[string]any{"shortcut": "white_check_mark"}, "users": []any{user()}},
+						},
+						"likedBy": map[string]any{"total": 1, "likers": []any{user()}},
+					},
 					// DC nests replies under the root comment rather than emitting
 					// them as separate activity entries.
 					"comments": []any{
