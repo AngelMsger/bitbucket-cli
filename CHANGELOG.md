@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [0.28.0] - 2026-11-04
+
+### Skill
+
+- Advance the companion Skill to `0.19.0`: comment reactions (adding and
+  reading them), the write-outcome rule's recovery steps, and the read-only
+  wording.
+
 ### Added
 
 - `comment react <comment-id> --pr <ref> --emoji <name>` adds a native emoji
@@ -23,7 +31,6 @@
   `comment react --emoji` takes. A like reads as `thumbsup`, and someone who
   both liked and reacted `thumbsup` counts once. Bitbucket Cloud has no
   reactions.
-- Update the companion Skill to `0.19.0` for comment reactions.
 - `apiclient.Reader` and `apiclient.Writer`, the read and write halves of
   `apiclient.Client`, for library callers. `Client` keeps exactly the same
   methods and signatures.
@@ -98,10 +105,8 @@
   longer counts it as a terminal, so `auth login` and `config init --pretty`
   refuse to prompt instead of reading an empty answer. Terminal checks and
   prompts use agent-cli-kit's `terminal` package.
-
 - Mask passwords embedded in the server URL in `--verbose` request logs, with
   agent-cli-kit v0.6.0's transport.
-
 - `--verbose` now logs each request to the server (method, URL and status) on
   stderr, for every command as well as `doctor`, the login check and flavor
   detection. The flag was accepted but logged nothing, although the error
@@ -1129,7 +1134,8 @@ PR-centric MVP supporting Bitbucket Cloud (REST 2.0) and Data Center (REST
 subtrees; layered configuration with keychain-backed auth; structured error
 model; and an embedded companion Skill.
 
-[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.27.1...HEAD
+[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.28.0...HEAD
+[0.28.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.27.1...v0.28.0
 [0.27.1]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.27.0...v0.27.1
 [0.27.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.26.0...v0.27.0
 [0.26.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.25.1...v0.26.0
