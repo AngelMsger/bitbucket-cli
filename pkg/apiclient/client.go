@@ -260,7 +260,9 @@ func (c *apiClient) doJSON(ctx context.Context, method, path string, query url.V
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode >= 400 {
+	// Only a 2xx acknowledges a request: an unfollowed redirect is not success,
+	// and for a write it leaves the outcome unknown.
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return c.httpError(resp)
 	}
 	if out == nil {
@@ -271,7 +273,12 @@ func (c *apiClient) doJSON(ctx context.Context, method, path string, query url.V
 	if len(bytes.TrimSpace(rawResp)) == 0 {
 		return nil
 	}
-	return decodeJSON(rawResp, out)
+	// A decode error keeps the response status, so a write the server
+	// acknowledged (2xx) reports that it succeeded.
+	if err := decodeJSON(rawResp, out); err != nil {
+		return cerrors.AsCLIError(err).WithHTTPStatus(resp.StatusCode)
+	}
+	return nil
 }
 
 func (c *apiClient) absEndpoint(path string, query url.Values) string {

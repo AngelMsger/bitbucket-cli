@@ -40,6 +40,11 @@ func (c *apiClient) ReactPRComment(ctx context.Context, req ReactPRCommentReq) (
 		return nil, err
 	}
 	out := &Reaction{CommentID: req.ID, PRID: req.PRID, Emoji: call.emoji, Removed: req.Remove}
+	// The one write outside the write-outcome rule (doWriteJSON): a reaction
+	// or like is the caller's own, so sending the same change again leaves the
+	// same state and cannot duplicate anything, and no read shows reactions
+	// yet for the rule to point at. A failure keeps its transport
+	// classification.
 	if call.method != http.MethodPut {
 		// DELETE, and the legacy like POST, answer 204 with no body.
 		if err := c.doJSON(ctx, call.method, call.path, nil, nil, nil); err != nil {

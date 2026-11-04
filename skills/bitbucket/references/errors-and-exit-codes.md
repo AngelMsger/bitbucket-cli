@@ -26,13 +26,24 @@ The process exit code matches the category:
 | 4    | `auth`         | 401 from Bitbucket. The server rejected the resolved credential.                 |
 | 5    | `permission`   | 403 from Bitbucket, **or** `READONLY_BLOCKED` from local read-only mode.         |
 | 6    | `not_found`    | 404 — the workspace, repo, PR, branch or commit does not exist for this user.    |
-| 7    | `rate_limit`   | 429 — back off; `retryable=true`.                                                |
-| 8    | `network`      | DNS/TLS/socket failure; `retryable=true`.                                        |
-| 9    | `server`       | 5xx from Bitbucket; `retryable=true`.                                            |
+| 7    | `rate_limit`   | 429 — back off; `retryable=true` for a read (a write: see below).                |
+| 8    | `network`      | DNS/TLS/socket failure; `retryable=true` for a read (a write: see below).        |
+| 9    | `server`       | 5xx from Bitbucket; `retryable=true` for a read (a write: see below).            |
 | 10   | `parse`        | The response body did not match the expected shape — likely a client bug.       |
 | 11   | `conflict`     | HTTP 409 or incompatible current state; read it before deciding whether to retry. |
 
 ## Common recovery flows
+
+- **"Write outcome is unknown for …"** → a write failed after it may have
+  reached Bitbucket (network error, 429, 5xx, an unexpected redirect). It is
+  `retryable=false`: do not repeat it. Run the read in `next_steps` (for
+  example `pr get`, `comment list --pr`, `branch get`), follow pagination if
+  needed, and repeat the write only if the read shows it did not happen.
+  `WRITE_SUCCEEDED_RESPONSE_INVALID` and `WRITE_SUCCEEDED_READ_FAILED` mean
+  the write happened but its result could not be shown; read it, never redo it.
+- **`BATCH_PARTIAL_FAILURE`** (`pr approve|decline`, `comment delete` with
+  several items) → the items marked `ok` on stdout were applied, so never rerun
+  the whole batch. Retry only failed items whose own error is retryable.
 
 - **`CREDENTIAL_STORE_INACCESSIBLE` / `CREDENTIAL_NOT_VISIBLE_OR_MISSING`** →
   inspect the optional `recovery` object. When it says

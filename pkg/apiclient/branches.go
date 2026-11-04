@@ -97,14 +97,14 @@ func (c *apiClient) CreateBranch(ctx context.Context, req CreateBranchReq) (*Bra
 	method, path, payload := c.buildCreateBranch(req)
 	if c.flavor == FlavorCloud {
 		var raw cloudBranch
-		if err := c.doJSON(ctx, method, path, nil, payload, &raw); err != nil {
+		if err := c.doWriteJSON(ctx, method, path, nil, payload, &raw, branchWriteTarget(req.Repo, req.Name)); err != nil {
 			return nil, err
 		}
 		b := mapCloudBranch(raw, "")
 		return &b, nil
 	}
 	var raw dcBranch
-	if err := c.doJSON(ctx, method, path, nil, payload, &raw); err != nil {
+	if err := c.doWriteJSON(ctx, method, path, nil, payload, &raw, branchWriteTarget(req.Repo, req.Name)); err != nil {
 		return nil, err
 	}
 	b := mapDCBranch(raw)
@@ -137,7 +137,7 @@ func (c *apiClient) DeleteBranch(ctx context.Context, req DeleteBranchReq) error
 		return err
 	}
 	method, path := c.buildDeleteBranch(req)
-	return c.doJSON(ctx, method, path, nil, nil, nil)
+	return c.doWriteJSON(ctx, method, path, nil, nil, nil, branchWriteTarget(req.Repo, req.Name))
 }
 
 func (c *apiClient) buildDeleteBranch(req DeleteBranchReq) (method, path string) {

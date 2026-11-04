@@ -29,6 +29,16 @@
   to the client without a blocking override fails to compile instead of
   passing through read-only mode. CLI behavior, output and errors are
   unchanged.
+- `READONLY_BLOCKED` uses the family's wording from agent-cli-kit. The hint
+  says nothing was sent and that read-only mode is the user's setting, naming
+  `BITBUCKET_CLI_READ_ONLY` and `defaults.read_only`. The next steps are
+  `--dry-run` (for `pr fetch|checkout --exec`, re-running without `--exec`)
+  and, only for a write the user authorized, `--allow-writes`; they no longer
+  suggest unsetting the variable or editing the config. Code, category and
+  exit code are unchanged.
+- `pkg/errors` re-exports agent-cli-kit's `WriteTarget`, `FromWrite`,
+  `WriteSucceeded`, `MissingWriteIdentity`, `ShellArg`, `ReadOnlyBlocked` and
+  their codes.
 
 ### Known gaps
 
@@ -37,6 +47,24 @@
   server's HTTP 400. `comment list` does not show reactions yet either.
 
 ### Fixed
+
+- A write that fails after it may have reached Bitbucket (network error, 429,
+  5xx, unexpected redirect) no longer reports `retryable: true`. It says
+  "Write outcome is unknown for …", keeps its code, category and status, and
+  names the read that shows the result (`pr get`, `comment list --pr`,
+  `branch get`, `repo get`), following agent-cli-kit's shared write rule. A 2xx
+  response that cannot be decoded reports `WRITE_SUCCEEDED_RESPONSE_INVALID`,
+  and Cloud's `comment resolve` reports `WRITE_SUCCEEDED_READ_FAILED` when only
+  the read-back fails. `comment react` keeps its transport classification:
+  repeating a reaction leaves the same state, and no command reads reactions
+  yet.
+- `BATCH_PARTIAL_FAILURE` (several items to `pr approve|decline` or
+  `comment delete`) is no longer retryable: the items marked `ok` were applied,
+  and its hint says to retry only failed items whose own error allows it.
+- A command started with stdin on `/dev/null` (cron, CI, agent runners) no
+  longer counts it as a terminal, so `auth login` and `config init --pretty`
+  refuse to prompt instead of reading an empty answer. Terminal checks and
+  prompts use agent-cli-kit's `terminal` package.
 
 - Mask passwords embedded in the server URL in `--verbose` request logs, with
   agent-cli-kit v0.6.0's transport.

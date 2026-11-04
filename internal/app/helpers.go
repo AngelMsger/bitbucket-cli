@@ -122,13 +122,6 @@ func collectPage[T any](fetch apiclient.FetchPage[T], cursor string, all bool) (
 	return page.Items, pageInfo{Next: page.Next, HasMore: page.Next != ""}, nil
 }
 
-// confirm reads "yes"/"y" from stdin to confirm a destructive action when
-// --yes was not passed. It returns true on confirmation.
-func confirm(prompt string) bool {
-	// In auto / scripted contexts we never block on stdin; require --yes.
-	return false
-}
-
 // emitDryRun resolves a write request into the HTTP request it would send and
 // emits that plan instead of performing the write. It is the shared entry
 // point for every command's `--dry-run` branch.

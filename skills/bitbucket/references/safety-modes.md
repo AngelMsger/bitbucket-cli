@@ -53,9 +53,8 @@ Blocked operations return a structured error:
     "code": "READONLY_BLOCKED",
     "message": "operation \"MergePR\" blocked: read-only mode is enabled",
     "next_steps": [
-      "Add --allow-writes to the command line",
-      "unset BITBUCKET_CLI_READ_ONLY",
-      "Set defaults.read_only=false in ~/.angelmsger/bitbucket/config.yaml"
+      "Add --dry-run to preview the request without sending it",
+      "Only if the user authorized this write, re-run with --allow-writes"
     ]
   }
 }

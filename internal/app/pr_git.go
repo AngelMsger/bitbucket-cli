@@ -226,14 +226,14 @@ func runOrPrintGit(s *appState, cmds []gitCmd, execIt bool, extras map[string]an
 		})
 	}
 	if s.readOnly() {
-		return cerrors.New(cerrors.CategoryPermission, "READONLY_BLOCKED",
-			"--exec blocked: read-only mode is enabled").
-			WithHint("Drop --exec to just print the git command, or re-run with --allow-writes.").
-			WithNextSteps(
-				"Re-run without --exec (the command will be printed but not run)",
-				"Add --allow-writes to permit this invocation",
-				"unset BITBUCKET_CLI_READ_ONLY",
-			)
+		// The same switches as the API client's write guard (apiclient.NewReadOnly);
+		// printing the commands instead of running them is this command's preview.
+		e := cerrors.ReadOnlyBlocked("--exec", cerrors.ReadOnlyMode{
+			Env:        "BITBUCKET_CLI_READ_ONLY",
+			ConfigFile: "~/.angelmsger/bitbucket/config.yaml",
+		})
+		e.NextSteps = append([]string{"Re-run without --exec to print the git commands without running them"}, e.NextSteps...)
+		return e
 	}
 	if err := ensureGitWorktree(); err != nil {
 		return err
