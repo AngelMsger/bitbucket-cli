@@ -178,6 +178,18 @@ func TestRedirectedWriteIsAnUnknownOutcome(t *testing.T) {
 	}
 }
 
+// A read's 3xx is not a redirected write: it keeps its own code, as in 0.28.0.
+func TestReadRedirectStatusKeepsItsCode(t *testing.T) {
+	c := newWriteTestClient(t, FlavorDataCenter, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotModified)
+	}))
+	_, err := c.GetBranch(context.Background(), writeTestRepo, "feature")
+	ce := cerrors.AsCLIError(err)
+	if ce == nil || ce.Code != "HTTP_"+http.StatusText(http.StatusNotModified) || ce.HTTPStatus != http.StatusNotModified {
+		t.Fatalf("got %+v; want the read's own 304 code", ce)
+	}
+}
+
 // A branch is not found only once every substring match has been read. The
 // read after an uncertain branch create or delete is branch get, which used
 // to give up after the first 50 matches.
