@@ -442,9 +442,8 @@ server supplies no usable message, the CLI does not invent a cause.
 Writes follow the family's write-outcome rule from agent-cli-kit
 (`errors.FromWrite`). Every write goes through `doWriteJSON` with a write target
 (`pkg/apiclient/write_targets.go`): what it changes and a bounded read-only
-command that shows it. The exception is a comment reaction: it is the
-caller's own, so repeating it leaves the same state, and no command reads
-reactions yet. A definite refusal (usage, config, auth, permission, not found,
+command that shows it; for a comment reaction that read is `comment list`,
+which shows each comment's reactions. A definite refusal (usage, config, auth, permission, not found,
 conflict) is returned unchanged. Any other failure, including a network error,
 429, 5xx, a non-2xx redirect or an internal error, becomes "Write outcome is
 unknown for …" with `retryable=false`, the original code, category and HTTP

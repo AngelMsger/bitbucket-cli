@@ -40,20 +40,16 @@ func (c *apiClient) ReactPRComment(ctx context.Context, req ReactPRCommentReq) (
 		return nil, err
 	}
 	out := &Reaction{CommentID: req.ID, PRID: req.PRID, Emoji: call.emoji, Removed: req.Remove}
-	// The one write outside the write-outcome rule (doWriteJSON): a reaction
-	// or like is the caller's own, so sending the same change again leaves the
-	// same state and cannot duplicate anything, and no read shows reactions
-	// yet for the rule to point at. A failure keeps its transport
-	// classification.
+	target := reactionWriteTarget(req.Repo, req.PRID, req.ID, call.emoji)
 	if call.method != http.MethodPut {
 		// DELETE, and the legacy like POST, answer 204 with no body.
-		if err := c.doJSON(ctx, call.method, call.path, nil, nil, nil); err != nil {
+		if err := c.doWriteJSON(ctx, call.method, call.path, nil, nil, nil, target); err != nil {
 			return nil, withReactionHint(err, req, call)
 		}
 		return out, nil
 	}
 	var raw dcUserReaction
-	if err := c.doJSON(ctx, call.method, call.path, nil, nil, &raw); err != nil {
+	if err := c.doWriteJSON(ctx, call.method, call.path, nil, nil, &raw, target); err != nil {
 		return nil, withReactionHint(err, req, call)
 	}
 	if raw.Emoticon.Shortcut != "" {
@@ -92,7 +88,7 @@ func (c *apiClient) buildReactPRComment(ctx context.Context, req ReactPRCommentR
 	base := c.prCommentLikesPath(req.Repo, req.PRID, req.ID)
 	if sup.Level == SupportEmulated {
 		if emoji != likeEmoticon {
-			ref := fmt.Sprintf("%s/%s/%d", req.Repo.Workspace, req.Repo.Slug, req.PRID)
+			ref := prName(req.Repo, req.PRID)
 			return reactionCall{}, cerrors.Newf(cerrors.CategoryUsage, "REACTION_EMOJI_UNSUPPORTED",
 				"Bitbucket Data Center %s accepts only the %s reaction (a like); other emoji need %s or later",
 				version, likeEmoticon, c.supportFor(CapCommentReactions).Since).
@@ -126,7 +122,7 @@ func withReactionHint(err error, req ReactPRCommentReq, call reactionCall) error
 	if strings.HasSuffix(call.path, "/likes") {
 		hint = "Check the comment ID. Servers before 7.7 do not let you like your own comment."
 	}
-	ref := fmt.Sprintf("%s/%s/%d", req.Repo.Workspace, req.Repo.Slug, req.PRID)
+	ref := prName(req.Repo, req.PRID)
 	return ce.WithHint(hint).
 		WithNextSteps(fmt.Sprintf("bitbucket-cli comment list --pr %s   # confirm the comment ID", ref))
 }

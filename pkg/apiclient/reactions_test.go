@@ -230,6 +230,51 @@ func TestCommentReactionRefusalKeepsServerMessage(t *testing.T) {
 	}
 }
 
+// A reaction that fails after it was sent may have been applied, so it follows
+// the write rule like every other write: not retryable, and pointing at the
+// comment listing, which shows each comment's reactions.
+func TestCommentReactionFailureIsUnknownOutcome(t *testing.T) {
+	for _, tc := range []struct {
+		version string
+		remove  bool
+		method  string
+	}{
+		{"8.19.0", false, http.MethodPut},
+		{"8.19.0", true, http.MethodDelete},
+		{"7.6.3", false, http.MethodPost},
+	} {
+		t.Run(tc.method+"/"+tc.version, func(t *testing.T) {
+			var sent string
+			c := newWriteTestClient(t, FlavorDataCenter, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method == http.MethodGet {
+					w.Header().Set("Content-Type", "application/json")
+					_, _ = fmt.Fprintf(w, `{"version":%q}`, tc.version)
+					return
+				}
+				sent = r.Method
+				w.WriteHeader(http.StatusServiceUnavailable)
+			}))
+			repo := RepoRef{Workspace: "PROJ", Slug: "repo"}
+			_, err := c.ReactPRComment(context.Background(), ReactPRCommentReq{
+				Repo: repo, PRID: 7, ID: 42, Emoji: "thumbsup", Remove: tc.remove})
+			if sent != tc.method {
+				t.Fatalf("sent %q, want %s", sent, tc.method)
+			}
+			ce := cerrors.AsCLIError(err)
+			target := reactionWriteTarget(repo, 7, 42, "thumbsup")
+			if ce == nil || ce.Retryable || ce.HTTPStatus != http.StatusServiceUnavailable {
+				t.Fatalf("error = %+v, want a non-retryable 503", ce)
+			}
+			if !strings.HasPrefix(ce.Message, "Write outcome is unknown for "+target.Description) {
+				t.Fatalf("message %q does not name the reaction", ce.Message)
+			}
+			if len(ce.NextSteps) == 0 || ce.NextSteps[0] != target.ReadSteps[0] {
+				t.Fatalf("next steps %q, want the comment listing %q", ce.NextSteps, target.ReadSteps)
+			}
+		})
+	}
+}
+
 // dcReactionProps is the properties block a Data Center 7.17 server returned
 // for a reacted comment (names replaced): likedBy mirrors the thumbsup users.
 const dcReactionProps = `{
