@@ -360,6 +360,16 @@ type dcUser struct {
 	Type         string `json:"type"`
 }
 
+// dcUserReaction is the comment-likes plugin's RestUserReaction, returned
+// when a reaction is added on Data Center 7.7 and later.
+type dcUserReaction struct {
+	Emoticon struct {
+		Shortcut string `json:"shortcut"`
+		Value    string `json:"value"`
+	} `json:"emoticon"`
+	User *dcUser `json:"user"`
+}
+
 func mapDCUser(u dcUser) User {
 	return User{
 		Name:        u.Name,

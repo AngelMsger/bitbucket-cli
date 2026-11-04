@@ -358,6 +358,20 @@ assert_contains  "pr merge --dry-run"        '"method": "POST"' \
                                              "${CLI[@]}" pr merge PROJ/demo/1 --dry-run
 assert_contains  "comment add --dry-run"     '"method": "POST"' \
                                              "${CLI[@]}" comment add --pr PROJ/demo/1 --content "x" --dry-run
+assert_contains  "comment react --dry-run (DC 7.7+ reaction)" 'comment-likes/latest/projects/PROJ/repos/demo/pull-requests/1/comments/101/reactions/thumbsup' \
+                                             "${CLI[@]}" comment react 101 --pr PROJ/demo/1 --emoji thumbsup --dry-run
+assert_contains  "comment react adds a reaction" '"emoji": "thumbsup"' \
+                                             "${CLI[@]}" comment react 101 --pr PROJ/demo/1 --emoji :thumbsup:
+assert_contains  "comment react --remove"    '"removed": true' \
+                                             "${CLI[@]}" comment react 101 --pr PROJ/demo/1 --emoji heart --remove
+assert_exit      "comment react emoji character -> 2" 2 \
+                                             "${CLI[@]}" comment react 101 --pr PROJ/demo/1 --emoji "👍"
+assert_err_contains "comment react emoji character code" "REACTION_BAD_EMOJI" \
+                                             "${CLI[@]}" comment react 101 --pr PROJ/demo/1 --emoji "👍"
+assert_err_contains "comment react unknown emoticon keeps server reason" "No emoticon found" \
+                                             "${CLI[@]}" comment react 101 --pr PROJ/demo/1 --emoji laugh
+assert_err_contains "comment react refusal points at comment list" "comment list --pr PROJ/demo/1" \
+                                             "${CLI[@]}" comment react 101 --pr PROJ/demo/1 --emoji laugh
 assert_contains  "branch create --dry-run"   '"method"'        \
                                              "${CLI[@]}" branch create feat-x --repo PROJ/demo --from-ref main --dry-run
 assert_contains  "branch delete --dry-run"   '"method": "DELETE"' \
@@ -404,6 +418,10 @@ assert_err_contains "read-only blocks comment resolve" "READONLY_BLOCKED" \
                                                      "${RO_ENV[@]}" "${CLI[@]}" comment resolve --pr PROJ/demo/1 101
 assert_err_contains "read-only blocks comment delete" "READONLY_BLOCKED" \
                                                      "${RO_ENV[@]}" "${CLI[@]}" comment delete --pr PROJ/demo/1 101 --yes
+assert_err_contains "read-only blocks comment react" "READONLY_BLOCKED" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" comment react 101 --pr PROJ/demo/1 --emoji thumbsup
+assert_contains     "read-only comment react dry-run previews" '"method": "PUT"' \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" comment react 101 --pr PROJ/demo/1 --emoji thumbsup --dry-run
 assert_err_contains "read-only blocks branch create" "READONLY_BLOCKED" \
                                                      "${RO_ENV[@]}" "${CLI[@]}" branch create feat-x --repo PROJ/demo --from-ref main
 assert_err_contains "read-only blocks branch delete" "READONLY_BLOCKED" \

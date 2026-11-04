@@ -167,7 +167,7 @@ written to the config file.
 | `repo list` / `get` / `clone-url` / `create` / `fork` / `delete` | manage repositories; `fork` supports `--into`, `--name`, and `--dry-run` |
 | `branch list` / `get` / `create` / `delete` | manage branches in a repository |
 | `commit get` / `list` / `compare` | query commits; walk history; compare two refs |
-| `comment list` / `add` / `update` / `delete` | PR comments (`--inline path:line` for review comments) |
+| `comment list` / `add` / `update` / `resolve` / `react` / `delete` | PR comments (`--inline path:line` for review comments, `react --emoji thumbsup` for reactions) |
 | `whoami` | print the user the credentials authenticate as |
 | `skill install` / `skill uninstall` | deploy or remove the embedded companion Skill (Claude Code, Codex, Cursor, Agents, Gemini, GitHub Copilot, OpenCode, Continue, Windsurf, Grok Build, Pi, Kilo Code, Roo Code) |
 | `config get-contexts` / `use-context` / `delete-context` | manage multiple named servers |

@@ -4,7 +4,7 @@
 //
 // The mock covers the Data Center (REST 1.0) endpoints the e2e flow touches:
 // application-properties probe, repos, pull requests (list / get / diff /
-// commits / activities / comments / approve), branches, commits, plus a
+// commits / activities / comments / reactions / approve), branches, commits, plus a
 // `/releases/latest` route for the update check. When MOCK_WRITE_LOG names a
 // file, every write request is appended to it.
 package main
@@ -290,6 +290,22 @@ func routes() http.Handler {
 			"id": 9100, "text": "added", "author": user(), "createdDate": 1, "version": 0,
 		})
 	})
+	// Comment reactions (Data Center 7.7+ comment-likes plugin). The mock's
+	// application-properties reports 8.19.0, so the CLI uses this endpoint.
+	reactionKey := "/rest/comment-likes/latest/projects/{key}/repos/{slug}/pull-requests/{id}/comments/{cid}/reactions/{emoticon}"
+	mux.HandleFunc("PUT "+reactionKey, func(w http.ResponseWriter, r *http.Request) {
+		emoticon := r.PathValue("emoticon")
+		value := map[string]string{"thumbsup": "\U0001F44D", "heart": "\u2764\ufe0f"}[emoticon]
+		if value == "" {
+			http.Error(w, `{"errors":[{"message":"No emoticon found for '`+emoticon+`'"}]}`, http.StatusBadRequest)
+			return
+		}
+		writeJSON(w, map[string]any{
+			"emoticon": map[string]any{"shortcut": emoticon, "value": value},
+			"user":     user(),
+		})
+	})
+	mux.HandleFunc("DELETE "+reactionKey, func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) })
 	mux.HandleFunc("POST "+prKey+"/{id}/approve", func(w http.ResponseWriter, r *http.Request) {
 		if r.PathValue("id") == "409" {
 			http.Error(w, `{"errors":[{"message":"The pull request is not open."}]}`, http.StatusConflict)

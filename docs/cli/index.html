@@ -47,6 +47,7 @@
       <a href="#bitbucket-cli-comment-add">bitbucket-cli comment add</a>
       <a href="#bitbucket-cli-comment-delete">bitbucket-cli comment delete</a>
       <a href="#bitbucket-cli-comment-list">bitbucket-cli comment list</a>
+      <a href="#bitbucket-cli-comment-react">bitbucket-cli comment react</a>
       <a href="#bitbucket-cli-comment-resolve">bitbucket-cli comment resolve</a>
       <a href="#bitbucket-cli-comment-update">bitbucket-cli comment update</a>
       </div>
@@ -406,6 +407,31 @@ or a single &#39;-&#39; to read newline-separated IDs from stdin. --yes (or
         </tbody>
       </table>
 
+    </section>
+
+    <section class="cmd" id="bitbucket-cli-comment-react">
+      <h2>bitbucket-cli comment react</h2>
+      <p class="short">Add (or remove) an emoji reaction on a comment</p>
+      <pre>bitbucket-cli comment react &lt;comment-id&gt; [flags]</pre>
+      <p class="long">React to a PR comment with a native emoji reaction instead of a reply.
+--emoji takes the emoticon&#39;s short name (thumbsup, heart, laughing), not
+the emoji character; --remove takes your reaction back.
+
+Data Center 7.7 and later accept any emoticon the server knows. Older
+servers only have a like, so thumbsup is sent as a like and other emoji
+are rejected. Bitbucket Cloud has no reaction API.</p>
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>preview the HTTP request without sending it</td></tr>
+        <tr><td><code>--emoji</code></td><td></td><td>emoticon short name, e.g. thumbsup, heart, laughing</td></tr>
+        <tr><td><code>--pr</code></td><td></td><td>&lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt; or PR URL</td></tr>
+        <tr><td><code>--remove</code></td><td><code>false</code></td><td>remove your reaction instead of adding it</td></tr>
+        </tbody>
+      </table>
+      <h3>Examples</h3><pre>  bitbucket-cli comment react 42 --pr PROJ/repo/7 --emoji thumbsup
+  bitbucket-cli comment react 42 --pr PROJ/repo/7 --emoji heart --remove</pre>
     </section>
 
     <section class="cmd" id="bitbucket-cli-comment-resolve">

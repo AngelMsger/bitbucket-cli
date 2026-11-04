@@ -35,6 +35,20 @@ func TestCapabilityMatrixComplete(t *testing.T) {
 			if s.Level != SupportNative && strings.TrimSpace(s.Reason) == "" {
 				t.Errorf("capability %q on %q is %q but has no reason", cap, f, s.Level)
 			}
+			if s.Since != "" && !parseServerVersion(s.Since).known {
+				t.Errorf("capability %q on %q has an unparseable Since %q", cap, f, s.Since)
+			}
+			if s.Before != nil && s.Since == "" {
+				t.Errorf("capability %q on %q has Before without Since", cap, f)
+			}
+			if b := s.Before; b != nil {
+				if b.Since != "" || b.Before != nil {
+					t.Errorf("capability %q on %q nests a version floor inside Before", cap, f)
+				}
+				if b.Level != SupportNative && strings.TrimSpace(b.Reason) == "" {
+					t.Errorf("capability %q on %q before %s is %q but has no reason", cap, f, s.Since, b.Level)
+				}
+			}
 		}
 	}
 }

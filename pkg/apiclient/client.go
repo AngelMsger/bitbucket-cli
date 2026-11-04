@@ -104,6 +104,7 @@ type Writer interface {
 	UpdatePRComment(ctx context.Context, req UpdatePRCommentReq) (*Comment, error)
 	DeletePRComment(ctx context.Context, req DeletePRCommentReq) error
 	ResolvePRComment(ctx context.Context, req ResolvePRCommentReq) (*Comment, error)
+	ReactPRComment(ctx context.Context, req ReactPRCommentReq) (*Reaction, error)
 
 	CreateBranch(ctx context.Context, req CreateBranchReq) (*Branch, error)
 	DeleteBranch(ctx context.Context, req DeleteBranchReq) error

@@ -1,0 +1,231 @@
+package apiclient
+
+import (
+	"context"
+	"fmt"
+	"net/http"
+	"strings"
+	"testing"
+
+	cerrors "github.com/angelmsger/bitbucket-cli/pkg/errors"
+)
+
+func TestParseServerVersion(t *testing.T) {
+	floor := parseServerVersion("7.7")
+	cases := []struct {
+		raw          string
+		known, atMin bool
+	}{
+		{"8.19.3", true, true},
+		{"7.7.0", true, true},
+		{"7.7", true, true},
+		{"10.0.1", true, true},
+		{"9.4.0-rc1", true, true},
+		{"7.6.12", true, false},
+		{"7.6", true, false},
+		{"7", true, false},
+		{"6.10.17", true, false},
+		{"", false, false},
+		{"unknown", false, false},
+	}
+	for _, tc := range cases {
+		v := parseServerVersion(tc.raw)
+		if v.known != tc.known {
+			t.Errorf("parseServerVersion(%q).known = %t, want %t", tc.raw, v.known, tc.known)
+		}
+		if tc.known && v.atLeast(floor) != tc.atMin {
+			t.Errorf("%q atLeast 7.7 = %t, want %t", tc.raw, v.atLeast(floor), tc.atMin)
+		}
+	}
+}
+
+func TestSupportAtVersion(t *testing.T) {
+	row := Support{Level: SupportNative, Since: "7.7",
+		Before: &Support{Level: SupportEmulated, Reason: "like only"}}
+	if got := row.at(parseServerVersion("8.0.0")).Level; got != SupportNative {
+		t.Errorf("8.0.0 level = %s, want native", got)
+	}
+	if got := row.at(parseServerVersion("7.6.3")).Level; got != SupportEmulated {
+		t.Errorf("7.6.3 level = %s, want emulated", got)
+	}
+	if got := row.at(parseServerVersion("")).Level; got != SupportNative {
+		t.Errorf("unknown version level = %s, want native (treated as current)", got)
+	}
+	noFallback := Support{Level: SupportNative, Since: "8.9"}
+	if got := noFallback.at(parseServerVersion("8.5.0")); got.Supported() || got.Reason == "" {
+		t.Errorf("below Since without Before = %+v, want unsupported with a reason", got)
+	}
+}
+
+// reactionServer answers application-properties with version and records
+// every other request. It replies to PUT with a RestUserReaction body and to
+// everything else with 204, like the comment-likes plugin.
+func reactionServer(t *testing.T, version string, writes *[]string) http.Handler {
+	t.Helper()
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.Method == http.MethodGet && r.URL.Path == "/rest/api/1.0/application-properties" {
+			_, _ = fmt.Fprintf(w, `{"version":%q}`, version)
+			return
+		}
+		if r.Method == http.MethodGet {
+			t.Errorf("unexpected read: %s", r.URL.RequestURI())
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		*writes = append(*writes, r.Method+" "+r.URL.RequestURI())
+		if r.Method == http.MethodPut {
+			_, _ = w.Write([]byte(`{"emoticon":{"shortcut":"heart","value":"❤️","url":"https://bb.example/heart.png"},` +
+				`"user":{"name":"alice","slug":"alice","displayName":"Alice"}}`))
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+}
+
+// Each server version must preview the request it executes, and the preview
+// must send no write, including under the read-only wrapper.
+func TestCommentReactionsMatchRegistry(t *testing.T) {
+	const base = "/rest/comment-likes/latest/projects/PROJ/repos/repo/pull-requests/7/comments/42"
+	cases := []struct {
+		version, emoji string
+		remove         bool
+		want           string
+	}{
+		{"8.19.0", "heart", false, "PUT " + base + "/reactions/heart"},
+		{"8.19.0", ":heart:", true, "DELETE " + base + "/reactions/heart"},
+		{"7.7.0", "thumbsup", false, "PUT " + base + "/reactions/thumbsup"},
+		{"", "heart", false, "PUT " + base + "/reactions/heart"},
+		{"7.6.3", "thumbsup", false, "POST " + base + "/likes"},
+		{"7.6.3", "thumbsup", true, "DELETE " + base + "/likes"},
+	}
+	for _, tc := range cases {
+		t.Run(fmt.Sprintf("%s/%s/remove=%t", tc.version, tc.emoji, tc.remove), func(t *testing.T) {
+			var writes []string
+			c := newWriteTestClient(t, FlavorDataCenter, reactionServer(t, tc.version, &writes))
+			req := ReactPRCommentReq{Repo: RepoRef{Workspace: "PROJ", Slug: "repo"}, PRID: 7, ID: 42,
+				Emoji: tc.emoji, Remove: tc.remove}
+			plan, err := NewReadOnly(c).DescribeWrite(context.Background(), req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(writes) != 0 {
+				t.Fatalf("preview sent writes: %v", writes)
+			}
+			if got := plan.Method + " " + strings.TrimPrefix(plan.URL, c.BaseURL()); got != tc.want {
+				t.Fatalf("preview = %s, want %s", got, tc.want)
+			}
+			if plan.Payload != nil {
+				t.Fatalf("preview payload = %#v, want none", plan.Payload)
+			}
+			r, err := c.ReactPRComment(context.Background(), req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(writes) != 1 || writes[0] != tc.want {
+				t.Fatalf("live writes = %v, want [%s]", writes, tc.want)
+			}
+			if r.CommentID != 42 || r.PRID != 7 || r.Removed != tc.remove {
+				t.Fatalf("result = %+v", r)
+			}
+		})
+	}
+}
+
+func TestCommentReactionAddMapsServerReaction(t *testing.T) {
+	var writes []string
+	c := newWriteTestClient(t, FlavorDataCenter, reactionServer(t, "8.19.0", &writes))
+	r, err := c.ReactPRComment(context.Background(), ReactPRCommentReq{
+		Repo: RepoRef{Workspace: "PROJ", Slug: "repo"}, PRID: 7, ID: 42, Emoji: "heart"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.Emoji != "heart" || r.Value != "❤️" || r.User == nil || r.User.Name != "alice" {
+		t.Fatalf("reaction = %+v (user %+v)", r, r.User)
+	}
+}
+
+// Before 7.7 only a like exists: other emoji fail before any write and say
+// which version would accept them.
+func TestCommentReactionOldServerRejectsOtherEmoji(t *testing.T) {
+	var writes []string
+	c := newWriteTestClient(t, FlavorDataCenter, reactionServer(t, "7.6.3", &writes))
+	req := ReactPRCommentReq{Repo: RepoRef{Workspace: "PROJ", Slug: "repo"}, PRID: 7, ID: 42, Emoji: "heart"}
+	for name, call := range map[string]func() error{
+		"preview": func() error { _, err := c.DescribeWrite(context.Background(), req); return err },
+		"live":    func() error { _, err := c.ReactPRComment(context.Background(), req); return err },
+	} {
+		ce := cerrors.AsCLIError(call())
+		if ce == nil || ce.Code != "REACTION_EMOJI_UNSUPPORTED" || ce.Category != cerrors.CategoryUsage {
+			t.Fatalf("%s: error = %+v, want REACTION_EMOJI_UNSUPPORTED", name, ce)
+		}
+		if !strings.Contains(ce.Message, "7.6.3") || !strings.Contains(ce.Message, "7.7") {
+			t.Errorf("%s: message %q should name the server and the needed version", name, ce.Message)
+		}
+		if !strings.Contains(strings.Join(ce.NextSteps, " "), "--emoji thumbsup") {
+			t.Errorf("%s: next_steps %v should offer thumbsup", name, ce.NextSteps)
+		}
+	}
+	if len(writes) != 0 {
+		t.Fatalf("writes = %v, want none", writes)
+	}
+}
+
+// Cloud has no reaction API, so it is refused from the registry without a
+// request; offlineClient would fail on dial if one were sent.
+func TestCommentReactionCloudUnsupported(t *testing.T) {
+	if capabilitySupportFor(CapCommentReactions, FlavorCloud).Supported() {
+		t.Fatal("registry marks Cloud reactions supported")
+	}
+	req := ReactPRCommentReq{Repo: RepoRef{Workspace: "ws", Slug: "repo"}, PRID: 7, ID: 42, Emoji: "thumbsup"}
+	c := offlineClient(FlavorCloud)
+	_, err := c.DescribeWrite(context.Background(), req)
+	if ce := cerrors.AsCLIError(err); ce == nil || ce.Code != "REACTION_UNSUPPORTED" {
+		t.Fatalf("preview error = %v, want REACTION_UNSUPPORTED", err)
+	}
+	_, err = c.ReactPRComment(context.Background(), req)
+	if ce := cerrors.AsCLIError(err); ce == nil || ce.Code != "REACTION_UNSUPPORTED" {
+		t.Fatalf("live error = %v, want REACTION_UNSUPPORTED", err)
+	}
+}
+
+func TestCommentReactionRejectsEmojiCharacters(t *testing.T) {
+	for _, emoji := range []string{"", "  ", "\U0001F44D", "thumbs up", "::"} {
+		_, err := offlineClient(FlavorDataCenter).DescribeWrite(context.Background(),
+			ReactPRCommentReq{Repo: RepoRef{Workspace: "PROJ", Slug: "repo"}, PRID: 7, ID: 42, Emoji: emoji})
+		if ce := cerrors.AsCLIError(err); ce == nil || ce.Code != "REACTION_BAD_EMOJI" {
+			t.Errorf("emoji %q: error = %v, want REACTION_BAD_EMOJI", emoji, err)
+		}
+	}
+}
+
+// A refused reaction keeps the server's reason, category and status, and
+// gains guidance that points at the comment listing.
+func TestCommentReactionRefusalKeepsServerMessage(t *testing.T) {
+	for _, tc := range []struct{ version, emoji, hint string }{
+		{"8.19.0", "laugh", "short name"},
+		{"7.6.3", "thumbsup", "own comment"},
+	} {
+		c := newWriteTestClient(t, FlavorDataCenter, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			if r.Method == http.MethodGet {
+				_, _ = fmt.Fprintf(w, `{"version":%q}`, tc.version)
+				return
+			}
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"errors":[{"message":"server says no"}]}`))
+		}))
+		_, err := c.ReactPRComment(context.Background(), ReactPRCommentReq{
+			Repo: RepoRef{Workspace: "PROJ", Slug: "repo"}, PRID: 7, ID: 42, Emoji: tc.emoji})
+		ce := cerrors.AsCLIError(err)
+		if ce == nil || ce.HTTPStatus != http.StatusBadRequest || !strings.Contains(ce.Message, "server says no") {
+			t.Fatalf("%s: error = %+v, want the server's 400 message", tc.version, ce)
+		}
+		if !strings.Contains(ce.Hint, tc.hint) {
+			t.Errorf("%s: hint %q should mention %q", tc.version, ce.Hint, tc.hint)
+		}
+		if !strings.Contains(strings.Join(ce.NextSteps, " "), "comment list --pr PROJ/repo/7") {
+			t.Errorf("%s: next_steps %v should point at comment list", tc.version, ce.NextSteps)
+		}
+	}
+}

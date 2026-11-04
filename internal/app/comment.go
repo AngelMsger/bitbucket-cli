@@ -17,7 +17,8 @@ func newCommentCmd(s *appState) *cobra.Command {
 		Short: "Read and write pull-request comments",
 	}
 	cmd.AddCommand(newCommentListCmd(s), newCommentAddCmd(s),
-		newCommentUpdateCmd(s), newCommentDeleteCmd(s), newCommentResolveCmd(s))
+		newCommentUpdateCmd(s), newCommentDeleteCmd(s), newCommentResolveCmd(s),
+		newCommentReactCmd(s))
 	return cmd
 }
 
@@ -261,6 +262,56 @@ func newCommentResolveCmd(s *appState) *cobra.Command {
 	cmd.Flags().BoolVar(&unresolve, "unresolve", false, "reopen the thread instead of resolving it")
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "preview the HTTP request without sending it")
 	_ = cmd.MarkFlagRequired("pr")
+	return cmd
+}
+
+func newCommentReactCmd(s *appState) *cobra.Command {
+	var prArg, emoji string
+	var remove, dryRun bool
+	cmd := &cobra.Command{
+		Use:   "react <comment-id>",
+		Short: "Add (or remove) an emoji reaction on a comment",
+		Long: "React to a PR comment with a native emoji reaction instead of a reply.\n" +
+			"--emoji takes the emoticon's short name (thumbsup, heart, laughing), not\n" +
+			"the emoji character; --remove takes your reaction back.\n\n" +
+			"Data Center 7.7 and later accept any emoticon the server knows. Older\n" +
+			"servers only have a like, so thumbsup is sent as a like and other emoji\n" +
+			"are rejected. Bitbucket Cloud has no reaction API.",
+		Example: "  bitbucket-cli comment react 42 --pr PROJ/repo/7 --emoji thumbsup\n" +
+			"  bitbucket-cli comment react 42 --pr PROJ/repo/7 --emoji heart --remove",
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ref, prID, err := resolvePRRef(prArg, apiclient.RepoRef{})
+			if err != nil {
+				return err
+			}
+			id, perr := strconv.Atoi(args[0])
+			if perr != nil {
+				return cerrors.Wrap(perr, cerrors.CategoryUsage, "BAD_ID", "comment ID must be numeric")
+			}
+			ctx, cancel := cmdContext(s)
+			defer cancel()
+			client, err := s.newClient(ctx)
+			if err != nil {
+				return err
+			}
+			req := apiclient.ReactPRCommentReq{Repo: ref, PRID: prID, ID: id, Emoji: emoji, Remove: remove}
+			if dryRun {
+				return emitDryRun(s, client, ctx, req)
+			}
+			r, err := client.ReactPRComment(ctx, req)
+			if err != nil {
+				return err
+			}
+			return s.emit(r)
+		},
+	}
+	cmd.Flags().StringVar(&prArg, "pr", "", "<workspace>/<repo>/<id> or PR URL")
+	cmd.Flags().StringVar(&emoji, "emoji", "", "emoticon short name, e.g. thumbsup, heart, laughing")
+	cmd.Flags().BoolVar(&remove, "remove", false, "remove your reaction instead of adding it")
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "preview the HTTP request without sending it")
+	_ = cmd.MarkFlagRequired("pr")
+	_ = cmd.MarkFlagRequired("emoji")
 	return cmd
 }
 

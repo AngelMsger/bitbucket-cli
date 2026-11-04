@@ -474,6 +474,12 @@ func (c *apiClient) DescribeWrite(ctx context.Context, op any) (WriteRequestPlan
 			return WriteRequestPlan{}, err
 		}
 		return WriteRequestPlan{Method: m, URL: c.baseURL + p, Payload: body}, nil
+	case ReactPRCommentReq:
+		call, err := c.buildReactPRComment(ctx, v)
+		if err != nil {
+			return WriteRequestPlan{}, err
+		}
+		return WriteRequestPlan{Method: call.method, URL: c.baseURL + call.path}, nil
 	case DeleteRepoReq:
 		if err := checkRepoRef(v.Repo); err != nil {
 			return WriteRequestPlan{}, err
