@@ -2,6 +2,8 @@ package apiclient
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 	"testing"
@@ -102,5 +104,70 @@ func TestCloudResolveReadBackFailureKeepsTheWrite(t *testing.T) {
 	if ce.Code != cerrors.CodeWriteSucceededReadFailed || ce.Retryable ||
 		!strings.HasPrefix(ce.Message, "Write succeeded for comment 9 on pull request PROJ/repo/7") {
 		t.Fatalf("got %s retryable=%v %q; want %s", ce.Code, ce.Retryable, ce.Message, cerrors.CodeWriteSucceededReadFailed)
+	}
+}
+
+// A merge that succeeded must never read as retryable because its source-branch
+// cleanup failed. The cleanup keeps its own outcome: a refused delete kept the
+// branch, a failed one leaves it unknown, and both name the branch read.
+func TestMergeBranchCleanupKeepsTheDeleteOutcome(t *testing.T) {
+	for name, tc := range map[string]struct {
+		status   int
+		code     string
+		category cerrors.Category
+	}{
+		"refused": {http.StatusForbidden, "PR_MERGED_BRANCH_KEPT", cerrors.CategoryPermission},
+		"unknown": {http.StatusServiceUnavailable, "PR_MERGED_BRANCH_DELETE_UNKNOWN", cerrors.CategoryServer},
+	} {
+		t.Run(name, func(t *testing.T) {
+			fromRef := map[string]any{
+				"displayId":  "feature",
+				"repository": map[string]any{"slug": "repo", "project": map[string]any{"key": "FORK"}},
+			}
+			c := newWriteTestClient(t, FlavorDataCenter, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				switch r.Method {
+				case http.MethodGet:
+					_ = json.NewEncoder(w).Encode(map[string]any{"id": 3, "version": 2, "fromRef": fromRef})
+				case http.MethodPost:
+					_ = json.NewEncoder(w).Encode(map[string]any{"id": 3, "version": 3, "state": "MERGED", "fromRef": fromRef})
+				default:
+					w.WriteHeader(tc.status)
+				}
+			}))
+			pr, err := c.MergePR(context.Background(), MergePRReq{Repo: writeTestRepo, ID: 3, CloseSourceBranch: true})
+			ce := cerrors.AsCLIError(err)
+			if pr == nil || ce.Code != tc.code || ce.Category != tc.category || ce.HTTPStatus != tc.status || ce.Retryable {
+				t.Fatalf("got pr=%v %s/%s status %d retryable=%v; want the merged PR and a non-retryable %s %s",
+					pr != nil, ce.Code, ce.Category, ce.HTTPStatus, ce.Retryable, tc.category, tc.code)
+			}
+			if !strings.HasPrefix(ce.Message, "Write succeeded for pull request PROJ/repo/3") ||
+				len(ce.NextSteps) == 0 || ce.NextSteps[0] != "bitbucket-cli branch get 'feature' --repo 'FORK/repo'" {
+				t.Fatalf("message %q, next steps %q; want the merge reported done and the branch read", ce.Message, ce.NextSteps)
+			}
+		})
+	}
+}
+
+// A redirect after a write is followed with a GET, so the final 200 answers
+// that GET (here a login page) and says nothing about the write. Before this
+// rule an approve that landed on a login page read as approved.
+func TestRedirectedWriteIsAnUnknownOutcome(t *testing.T) {
+	c := newWriteTestClient(t, FlavorDataCenter, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/login" {
+			w.Header().Set("Content-Type", "text/html")
+			_, _ = w.Write([]byte("<html>sign in</html>"))
+			return
+		}
+		http.Redirect(w, r, "/login", http.StatusFound)
+	}))
+	err := c.ApprovePR(context.Background(), ApprovePRReq{Repo: writeTestRepo, ID: 7, Approve: true})
+	ce := cerrors.AsCLIError(err)
+	if err == nil || ce.Retryable || !strings.HasPrefix(ce.Message, "Write outcome is unknown for your review on pull request") {
+		t.Fatalf("got %v; want an unknown write outcome", err)
+	}
+	var cause *cerrors.CLIError
+	if !errors.As(errors.Unwrap(ce), &cause) || cause.Code != "HTTP_REDIRECTED" {
+		t.Fatalf("cause %+v; want HTTP_REDIRECTED", cause)
 	}
 }

@@ -323,11 +323,34 @@ func (c *apiClient) MergePR(ctx context.Context, req MergePRReq) (*PullRequest, 
 	// live in a fork, so resolve the repository from the PR's own fromRef.
 	if req.CloseSourceBranch {
 		if derr := c.dcDeleteSourceBranch(ctx, raw); derr != nil {
-			return pr, cerrors.Wrap(derr, cerrors.CategoryServer, "PR_MERGED_BRANCH_KEPT",
-				"PR merged, but deleting the source branch failed")
+			return pr, mergedBranchCleanupError(derr, req, raw)
 		}
 	}
 	return pr, nil
+}
+
+// mergedBranchCleanupError reports a merge that succeeded whose source-branch
+// delete did not. The merge must not be repeated, so the error is the kit's
+// WriteSucceeded with the branch read as next steps, and it keeps the delete's
+// own category and status. A delete that was refused or never sent kept the
+// branch (PR_MERGED_BRANCH_KEPT); any other failure leaves the branch's state
+// unknown (PR_MERGED_BRANCH_DELETE_UNKNOWN).
+func mergedBranchCleanupError(derr error, req MergePRReq, pr dcPR) error {
+	src := pr.FromRef
+	branch := branchWriteTarget(RepoRef{Workspace: src.Repository.Project.Key, Slug: src.Repository.Slug}, src.DisplayID)
+	target := cerrors.WriteTarget{Description: "pull request " + prName(req.Repo, req.ID), ReadSteps: branch.ReadSteps}
+	ce := cerrors.AsCLIError(derr)
+	switch ce.Category {
+	case cerrors.CategoryUsage, cerrors.CategoryConfig, cerrors.CategoryAuth,
+		cerrors.CategoryPermission, cerrors.CategoryNotFound, cerrors.CategoryConflict:
+		return cerrors.WriteSucceeded(derr, "PR_MERGED_BRANCH_KEPT", "deleting its source branch failed", target)
+	}
+	if ce.Code == "PR_NO_SOURCE_REF" {
+		target.ReadSteps = []string{"bitbucket-cli pr get " + cerrors.ShellArg(prName(req.Repo, req.ID))}
+		return cerrors.WriteSucceeded(derr, "PR_MERGED_BRANCH_KEPT", "its source branch could not be resolved, so it was kept", target)
+	}
+	return cerrors.WriteSucceeded(derr, "PR_MERGED_BRANCH_DELETE_UNKNOWN",
+		"whether deleting its source branch worked is unknown", target)
 }
 
 // dcDeleteSourceBranch removes the source branch of a just-merged DC PR, reading

@@ -118,6 +118,9 @@ permission failures, use [PR permissions and recovery](pr-permissions.md).
   Run with `--dry-run` first to preview the request body. Add
   `--close-source-branch` to delete the source branch on merge — native on
   Cloud, emulated on Data Center via a follow-up branch delete after the merge.
+  If only that delete fails, the PR is merged: `PR_MERGED_BRANCH_KEPT` means
+  the branch is still there, `PR_MERGED_BRANCH_DELETE_UNKNOWN` that it may or
+  may not be. Never merge again; run the `branch get` in `next_steps`.
 
 ## Creating
 

@@ -344,7 +344,7 @@ func newCommentDeleteCmd(s *appState) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return runBatch(s, items, func(arg string) (any, error) {
+			return runBatch(s, items, dryRun, func(arg string) (any, error) {
 				id, perr := strconv.Atoi(arg)
 				if perr != nil {
 					return nil, cerrors.Wrap(perr, cerrors.CategoryUsage, "BAD_ID", "comment ID must be numeric")

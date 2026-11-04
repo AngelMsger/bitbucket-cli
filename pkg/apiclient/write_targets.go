@@ -49,8 +49,10 @@ func forkWriteTarget(req ForkRepoReq) cerrors.WriteTarget {
 func createPRWriteTarget(req CreatePRReq) cerrors.WriteTarget {
 	return cerrors.WriteTarget{
 		Description: fmt.Sprintf("new pull request from %s in %s", req.Source, repoName(req.Repo)),
+		// --state ALL: the new PR may already be merged or declined by the
+		// time it is looked for.
 		ReadSteps: []string{"bitbucket-cli pr list --repo " + cerrors.ShellArg(repoName(req.Repo)) +
-			" --source " + cerrors.ShellArg(req.Source) + " --limit 25"},
+			" --source " + cerrors.ShellArg(req.Source) + " --state ALL --limit 25"},
 	}
 }
 

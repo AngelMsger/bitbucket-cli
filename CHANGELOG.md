@@ -60,7 +60,26 @@
   yet.
 - `BATCH_PARTIAL_FAILURE` (several items to `pr approve|decline` or
   `comment delete`) is no longer retryable: the items marked `ok` were applied,
-  and its hint says to retry only failed items whose own error allows it.
+  and its hint says to retry only failed items whose own error allows it. Its
+  next step now points at each item's own `next_steps` instead of "retry". With
+  `--dry-run` it says nothing was sent, instead of claiming the items were
+  applied.
+- A write that Bitbucket answered with a redirect (a login page or single
+  sign-on proxy, or `http` to `https`) is an unknown outcome caused by
+  `HTTP_REDIRECTED`. The HTTP client follows the redirect with a GET, and the
+  page it landed on used to confirm the write: `pr approve` read as approved.
+- `pr merge --close-source-branch` on Data Center, when the merge worked but
+  the branch delete did not, says the PR was merged ("Write succeeded for pull
+  request …") with `retryable: false` and a `branch get` as next step. The
+  delete's own category and status are kept. A refused delete is still
+  `PR_MERGED_BRANCH_KEPT`; a delete with an unknown outcome (network error,
+  5xx) is the new `PR_MERGED_BRANCH_DELETE_UNKNOWN`. Before, every delete
+  failure read as a retryable server error that kept the branch.
+- The read suggested after an uncertain `pr create` lists PRs in every state
+  (`--state ALL`), so a PR merged or declined in the meantime still shows.
+- `config init`'s plain prompts read through agent-cli-kit's `terminal`
+  package: an answer cut short by a failed read (not the end of input) is an
+  error, not an answer, so a broken stdin can no longer confirm a save.
 - A command started with stdin on `/dev/null` (cron, CI, agent runners) no
   longer counts it as a terminal, so `auth login` and `config init --pretty`
   refuse to prompt instead of reading an empty answer. Terminal checks and

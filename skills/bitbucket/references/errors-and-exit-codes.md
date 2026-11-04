@@ -35,7 +35,8 @@ The process exit code matches the category:
 ## Common recovery flows
 
 - **"Write outcome is unknown for …"** → a write failed after it may have
-  reached Bitbucket (network error, 429, 5xx, an unexpected redirect). It is
+  reached Bitbucket (network error, 429, 5xx, a redirect, which usually means
+  a login page or single sign-on proxy: cause `HTTP_REDIRECTED`). It is
   `retryable=false`: do not repeat it. Run the read in `next_steps` (for
   example `pr get`, `comment list --pr`, `branch get`), follow pagination if
   needed, and repeat the write only if the read shows it did not happen.
@@ -43,7 +44,8 @@ The process exit code matches the category:
   the write happened but its result could not be shown; read it, never redo it.
 - **`BATCH_PARTIAL_FAILURE`** (`pr approve|decline`, `comment delete` with
   several items) → the items marked `ok` on stdout were applied, so never rerun
-  the whole batch. Retry only failed items whose own error is retryable.
+  the whole batch. Retry only failed items whose own error is retryable. With
+  `--dry-run` nothing was sent; fix the failed items and preview again.
 
 - **`CREDENTIAL_STORE_INACCESSIBLE` / `CREDENTIAL_NOT_VISIBLE_OR_MISSING`** →
   inspect the optional `recovery` object. When it says
