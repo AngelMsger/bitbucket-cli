@@ -323,12 +323,12 @@ func TestMapDCReactions(t *testing.T) {
 		t.Errorf("eyes plus a like = %+v, want the like kept as thumbsup", onlyEyes)
 	}
 
-	// One user with fewer fields in one list is still one user.
-	alias := mapDCReactions([]byte(`{
-	  "reactions": [{"emoticon": {"shortcut": "thumbsup"}, "users": [{"id": 5, "slug": "alice"}]}],
-	  "likedBy": {"total": 1, "likers": [{"id": 5}, {"name": "bob", "slug": "bob"}, {"name": "bob"}]}}`))
-	if len(alias) != 1 || alias[0].Count != 2 || len(alias[0].Users) != 2 || alias[0].Users[1].Slug != "bob" {
-		t.Errorf("aliases = %+v, want thumbsup from alice and bob", alias)
+	// A user is matched by ID first, whatever other fields an entry carries.
+	byID := mapDCReactions([]byte(`{
+	  "reactions": [{"emoticon": {"shortcut": "thumbsup"}, "users": [{"id": 5, "slug": "alice", "name": "alice"}]}],
+	  "likedBy": {"total": 1, "likers": [{"id": 5, "name": "alice"}, {"id": 6, "slug": "bob"}]}}`))
+	if len(byID) != 1 || byID[0].Count != 2 || len(byID[0].Users) != 2 || byID[0].Users[1].Slug != "bob" {
+		t.Errorf("by ID = %+v, want thumbsup from alice and bob", byID)
 	}
 
 	// Each user counts once, and a null user is no one.

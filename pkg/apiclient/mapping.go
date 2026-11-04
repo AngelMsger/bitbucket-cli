@@ -652,40 +652,32 @@ type reactionTally struct {
 	total int // a count the server reports, which can exceed the users listed
 }
 
-// add records each user once. A user can appear with fewer fields in one list
-// than another, so two entries are the same user when any of ID, slug or name
-// match; null and nameless entries are skipped.
+// add records each user once; null and nameless entries are skipped.
 func (t *reactionTally) add(users []*dcUser) {
 	for _, u := range users {
-		keys := dcUserKeys(u)
-		known := false
-		for _, k := range keys {
-			known = known || t.seen[k]
-			t.seen[k] = true
-		}
-		if len(keys) > 0 && !known {
+		if key := dcUserKey(u); key != "" && !t.seen[key] {
+			t.seen[key] = true
 			t.users = append(t.users, mapDCUser(*u))
 		}
 	}
 }
 
-// dcUserKeys lists the identities a user entry carries; none means the entry
-// names no one.
-func dcUserKeys(u *dcUser) []string {
-	if u == nil {
-		return nil
+// dcUserKey identifies a user across reaction lists by its stable ID, or by
+// slug or name when the entry has no ID; "" means the entry names no one.
+// Data Center sends the full user (ID, slug and name) in every list, so one
+// key per entry is enough and the result does not depend on list order.
+func dcUserKey(u *dcUser) string {
+	switch {
+	case u == nil:
+		return ""
+	case u.ID != 0:
+		return "id:" + strconv.Itoa(u.ID)
+	case u.Slug != "":
+		return "slug:" + u.Slug
+	case u.Name != "":
+		return "name:" + u.Name
 	}
-	var keys []string
-	if u.ID != 0 {
-		keys = append(keys, "id:"+strconv.Itoa(u.ID))
-	}
-	if u.Slug != "" {
-		keys = append(keys, "slug:"+u.Slug)
-	}
-	if u.Name != "" {
-		keys = append(keys, "name:"+u.Name)
-	}
-	return keys
+	return ""
 }
 
 // mapDCReactions reads a comment's reactions from its raw properties: one
