@@ -12,6 +12,12 @@
   redirect is gone. Every redirected write keeps the code `HTTP_REDIRECTED`,
   with the redirect's status in `http_status`, and its hint says what a
   redirect usually means.
+- A library caller that passes its own HTTP client in `Config.Transport` (one
+  that follows redirects by Go's policy, or builds responses without the
+  request) gets the same answer for a redirected write as the CLI: an unknown
+  outcome with `HTTP_REDIRECTED` and the redirect's status, never a login page
+  read as approved. This is agent-cli-kit v0.8.0, which answers a write with
+  its first response whatever client sends it.
 
 ## [0.28.0] - 2026-11-04
 
