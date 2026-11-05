@@ -4,6 +4,13 @@
 
 ### Fixed
 
+- `pkg/transport`, for a library caller that passes its own HTTP client
+  (`Options.Doer`): a read with a body (a `RetryMethods` verb, or a request
+  marked with agent-cli-kit's `transport.AsRead`) that the client turned into
+  a GET on a 301, 302 or 303 is answered by that redirect, not by the GET's
+  page, and a transient failure of that page no longer retries the read. This
+  is agent-cli-kit v0.8.1. The CLI's own client never follows such a redirect,
+  so the CLI's behavior is unchanged.
 - A write that Bitbucket answers with a 307 or 308 redirect is an unknown
   outcome, like a 301, 302 or 303 since 0.28.0. The HTTP client used to send
   the write again to the new location, so a POST could reach a login page and
