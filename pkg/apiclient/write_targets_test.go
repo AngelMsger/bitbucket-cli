@@ -3,11 +3,14 @@ package apiclient
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
 	cerrors "github.com/angelmsger/bitbucket-cli/pkg/errors"
+	"github.com/angelmsger/bitbucket-cli/pkg/transport"
 )
 
 var writeTestRepo = RepoRef{Workspace: "PROJ", Slug: "repo"}
@@ -240,5 +243,36 @@ func TestCloudPRListFiltersBranches(t *testing.T) {
 	}
 	if q != `source.branch.name="feature" AND destination.branch.name="main"` {
 		t.Fatalf("q = %q", q)
+	}
+}
+
+type doerFunc func(*http.Request) (*http.Response, error)
+
+func (f doerFunc) Do(req *http.Request) (*http.Response, error) { return f(req) }
+
+// A library caller can pass its own HTTP client in Config.Transport: one that
+// follows redirects by Go's policy, or one that builds responses without
+// Request. A write's redirect is still an unknown outcome under the code
+// 0.28.0 gave it, HTTP_REDIRECTED, never the login page's 200.
+func TestCallerClientRedirectedWriteIsAnUnknownOutcome(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/login" {
+			_, _ = w.Write([]byte("<html>sign in</html>"))
+			return
+		}
+		http.Redirect(w, r, "/login", http.StatusFound)
+	}))
+	t.Cleanup(srv.Close)
+	synthetic := doerFunc(func(*http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: http.StatusFound, Header: http.Header{"Location": {"/login"}},
+			Body: io.NopCloser(strings.NewReader(""))}, nil
+	})
+	for name, doer := range map[string]transport.Doer{"following client": &http.Client{}, "response without Request": synthetic} {
+		c := New(Config{Flavor: FlavorDataCenter, BaseURL: srv.URL, Transport: transport.New(transport.Options{Doer: doer})})
+		ce := cerrors.AsCLIError(c.ApprovePR(context.Background(), ApprovePRReq{Repo: writeTestRepo, ID: 7, Approve: true}))
+		if ce == nil || ce.Code != "HTTP_REDIRECTED" || ce.Retryable || ce.HTTPStatus != http.StatusFound ||
+			!strings.HasPrefix(ce.Message, "Write outcome is unknown") {
+			t.Fatalf("%s: got %+v; want an unknown outcome with HTTP_REDIRECTED and the 302", name, ce)
+		}
 	}
 }
