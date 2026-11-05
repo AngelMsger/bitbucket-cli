@@ -28,7 +28,7 @@ The process exit code matches the category:
 | 6    | `not_found`    | 404 — the workspace, repo, PR, branch or commit does not exist for this user.    |
 | 7    | `rate_limit`   | 429 — back off; `retryable=true` for a read (a write: see below).                |
 | 8    | `network`      | DNS/TLS/socket failure; `retryable=true` for a read (a write: see below).        |
-| 9    | `server`       | 5xx from Bitbucket; `retryable=true` for a read (a write: see below).            |
+| 9    | `server`       | 5xx from Bitbucket; `retryable=true` for a read (a write: see below). A 3xx `http_status` is a redirect the CLI does not follow: `retryable=false`; the hint names where it points; check `--base-url` with `doctor`. |
 | 10   | `parse`        | The response body did not match the expected shape — likely a client bug.       |
 | 11   | `conflict`     | HTTP 409 or incompatible current state; read it before deciding whether to retry. |
 

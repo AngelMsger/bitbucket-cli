@@ -194,7 +194,7 @@ func (c *apiClient) getResponseHeader(ctx context.Context, path, header string, 
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode >= 400 {
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return "", c.httpError(resp)
 	}
 	_, _ = io.Copy(io.Discard, resp.Body)
@@ -221,7 +221,7 @@ func (c *apiClient) getDiffBody(ctx context.Context, path string, query url.Valu
 			fmt.Sprintf("request to %s failed", endpoint))
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode >= 400 {
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return "", "", c.httpError(resp)
 	}
 	raw, _ := io.ReadAll(resp.Body)
@@ -329,8 +329,20 @@ func (c *apiClient) httpError(resp *http.Response) error {
 		// A read's 3xx (a 304, say) keeps its own code, as in 0.28.0.
 		code = "HTTP_REDIRECTED"
 	}
-	return cerrors.New(cat, code, msg).WithHTTPStatus(resp.StatusCode)
+	e := cerrors.New(cat, code, msg).WithHTTPStatus(resp.StatusCode)
+	if resp.StatusCode >= 300 && resp.StatusCode < 400 {
+		// The kit's transport returns a redirect it does not follow: a
+		// write's, a 304, or the tenth hop of a read. The kit's redirect rule
+		// reports it; for a write, the write rule then replaces its hint with
+		// its own.
+		loc, _ := resp.Location()
+		e = e.WithRedirect(loc, redirectGuide)
+	}
+	return e
 }
+
+// redirectGuide is what a redirect's error tells the user to check.
+var redirectGuide = cerrors.RedirectGuide{Setting: "--base-url", Steps: []string{"bitbucket-cli doctor"}}
 
 // sentAWrite reports whether req, the request a response answered, is a
 // write. Every read is a GET (an empty method is one too).
