@@ -7,8 +7,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 
+	"github.com/angelmsger/agent-cli-kit/doctor"
 	cerrors "github.com/angelmsger/bitbucket-cli/pkg/errors"
 	"github.com/angelmsger/bitbucket-cli/pkg/transport"
 )
@@ -182,14 +184,78 @@ func TestRedirectedWriteIsAnUnknownOutcome(t *testing.T) {
 }
 
 // A read's 3xx is not a redirected write: it keeps its own code, as in 0.28.0.
+// It is not retryable (0.28.0 said "retry later"): the same request gets the
+// same answer.
 func TestReadRedirectStatusKeepsItsCode(t *testing.T) {
 	c := newWriteTestClient(t, FlavorDataCenter, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotModified)
 	}))
 	_, err := c.GetBranch(context.Background(), writeTestRepo, "feature")
 	ce := cerrors.AsCLIError(err)
-	if ce == nil || ce.Code != "HTTP_"+http.StatusText(http.StatusNotModified) || ce.HTTPStatus != http.StatusNotModified {
-		t.Fatalf("got %+v; want the read's own 304 code", ce)
+	if ce == nil || ce.Code != "HTTP_"+http.StatusText(http.StatusNotModified) || ce.HTTPStatus != http.StatusNotModified ||
+		ce.Retryable || !strings.Contains(ce.Hint, "HTTP 304 and no redirect target") {
+		t.Fatalf("got %+v; want the read's own 304 code, not retryable", ce)
+	}
+}
+
+// A file, diff or identity read that gets a 3xx back (a 304, or the tenth
+// hop of a loop) is an error, not an empty file, diff or user. 0.28.0 took
+// any status below 400 as the answer.
+func TestRawReadRedirectIsAnError(t *testing.T) {
+	reads := map[string]func(Client) error{
+		"file get": func(c Client) error {
+			_, err := c.GetFile(context.Background(), FileGetOpts{Repo: writeTestRepo, Ref: "main", Path: "README.md"})
+			return err
+		},
+		"pr diff": func(c Client) error {
+			_, err := c.GetPRDiff(context.Background(), writeTestRepo, 7)
+			return err
+		},
+	}
+	for name, read := range reads {
+		for _, status := range []int{http.StatusNotModified, http.StatusFound} {
+			c := newWriteTestClient(t, FlavorDataCenter, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if status == http.StatusFound {
+					http.Redirect(w, r, r.URL.Path, status)
+					return
+				}
+				w.WriteHeader(status)
+			}))
+			ce := cerrors.AsCLIError(read(c))
+			if ce == nil || ce.HTTPStatus != status || ce.Retryable {
+				t.Fatalf("%s %d: got %+v; want the %d as an error, not retryable", name, status, ce, status)
+			}
+		}
+	}
+}
+
+// A read that loops through redirects ends at the tenth hop, which is
+// reported with the kit's redirect rule: its own code (HTTP_Found), not
+// retryable, a hint naming --base-url and doctor first. 0.28.0 reported
+// NETWORK (exit 8, retryable). doctor reports it as redirected.
+func TestReadRedirectLoopIsReportedNotRetried(t *testing.T) {
+	var sent atomic.Int64
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		sent.Add(1)
+		http.Redirect(w, r, r.URL.Path, http.StatusFound)
+	}))
+	t.Cleanup(srv.Close)
+	c := New(Config{Flavor: FlavorDataCenter, BaseURL: srv.URL, Transport: transport.New(transport.Options{MaxRetries: 2})})
+	_, err := c.Ping(context.Background())
+	ce := cerrors.AsCLIError(err)
+	if ce == nil || ce.Code != "HTTP_Found" || ce.HTTPStatus != http.StatusFound || ce.Retryable ||
+		!strings.Contains(ce.Hint, "check --base-url first") ||
+		len(ce.NextSteps) == 0 || ce.NextSteps[0] != "bitbucket-cli doctor" {
+		t.Fatalf("got %+v; want HTTP_Found 302, not retryable", ce)
+	}
+	if got := sent.Load(); got != 10 {
+		t.Fatalf("requests = %d, want 10 (no retry)", got)
+	}
+	if got := doctor.Status(err); got != doctor.StatusRedirected {
+		t.Fatalf("doctor.Status = %q, want redirected", got)
+	}
+	if got := doctor.Detail(err); !strings.Contains(got, "Bitbucket returned HTTP 302. The server redirected the request to ") {
+		t.Fatalf("doctor.Detail = %q", got)
 	}
 }
 

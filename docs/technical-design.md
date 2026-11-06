@@ -452,7 +452,14 @@ redirect only for a GET or HEAD, so a write's 3xx reaches `doJSON` as is and
 becomes an unknown outcome with that status, under the code 0.28.0 gave a
 redirected write, `HTTP_REDIRECTED`. Following it would answer a
 different request: a GET to the redirect's target (often a login page) after
-a 301, 302 or 303, or the write sent again after a 307 or 308. A 2xx response that cannot be decoded reports
+a 301, 302 or 303, or the write sent again after a 307 or 308. Every 3xx
+that comes back (a write's, a 304, or a read's tenth hop) is built with the
+kit's redirect rule (`CLIError.WithRedirect`): not retryable, with a hint
+naming where it points (scheme and host) and `--base-url`; the write rule
+then puts its own hint on a write. Every request path treats only a 2xx as
+an answer, the raw file, diff and identity reads included, and `doctor`
+reports a redirected check as `redirected` (agent-cli-kit's `doctor`
+package). A 2xx response that cannot be decoded reports
 `WRITE_SUCCEEDED_RESPONSE_INVALID`, and Cloud's resolve, which reads the
 comment back, reports `WRITE_SUCCEEDED_READ_FAILED` when only that read fails.
 Data Center's `pr merge --close-source-branch` deletes the branch after the

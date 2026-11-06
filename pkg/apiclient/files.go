@@ -231,7 +231,7 @@ func (c *apiClient) getRaw(ctx context.Context, endpoint string, query url.Value
 		return nil, cerrors.Wrap(err, cerrors.CategoryNetwork, "NETWORK", "request to "+full+" failed")
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode >= 400 {
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, c.httpError(resp)
 	}
 	return io.ReadAll(resp.Body)

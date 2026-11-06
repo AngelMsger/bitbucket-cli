@@ -39,6 +39,11 @@ bitbucket-cli whoami          # confirms the active identity
 bitbucket-cli workspace list  # discover the workspaces (Cloud) / projects (DC) you can see
 ```
 
+A `doctor` check whose `status` is `redirected` reached a server that
+redirected it (usually a login page, a single sign-on proxy, or an `http`
+URL that should use https): its `detail` names where it points; fix
+`--base-url` rather than the credentials.
+
 The `slug` field of each workspace entry is what every other command's
 `--workspace` flag (and `BITBUCKET_DEFAULT_WORKSPACE`) accepts.
 
