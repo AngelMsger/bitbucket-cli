@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.29.0] - 2026-11-10
+
 ### Changed
 
 - A redirect the client does not follow is reported with agent-cli-kit
@@ -1186,7 +1188,8 @@ PR-centric MVP supporting Bitbucket Cloud (REST 2.0) and Data Center (REST
 subtrees; layered configuration with keychain-backed auth; structured error
 model; and an embedded companion Skill.
 
-[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.28.0...HEAD
+[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.29.0...HEAD
+[0.29.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.28.0...v0.29.0
 [0.28.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.27.1...v0.28.0
 [0.27.1]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.27.0...v0.27.1
 [0.27.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.26.0...v0.27.0
