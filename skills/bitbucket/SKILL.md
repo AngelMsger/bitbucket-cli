@@ -1,6 +1,6 @@
 ---
 name: bitbucket
-version: 0.19.1
+version: 0.20.0
 description: "Work with Bitbucket Cloud and Data Center / Server: browse repositories and source, create or update pull requests, review diffs, address review feedback, and manage comments or PR state. Use for Bitbucket repository or PR URLs, code review, inline findings, review threads, approvals, merges, and CLI dry-run or read-only workflows."
 metadata:
   requires:
@@ -32,8 +32,7 @@ bitbucket-cli doctor                     # verify connectivity + auth
 bitbucket-cli whoami
 ```
 
-See `references/getting-started.md` for auth schemes, env vars, and config
-contexts. `--pretty` is human-only (TUI, colorized JSON) and errors without a
+Auth, environment and contexts: `references/getting-started.md`. `--pretty` is human-only (TUI, colorized JSON) and errors without a
 TTY; agents never pass it.
 
 ## Core workflows
@@ -141,6 +140,7 @@ bitbucket-cli repo create <slug>             # create a repository
 bitbucket-cli repo fork <repo-ref>           # fork (--into / --name)
 bitbucket-cli repo delete <repo-ref>         # delete a repository (irreversible; needs --yes)
 bitbucket-cli repo clone-url <repo-ref>      # HTTPS or SSH clone URL
+bitbucket-cli git -- <git-args>
 bitbucket-cli branch list <repo-ref>         # branches (also: get, create, delete — delete needs --yes)
 bitbucket-cli tag list <repo-ref>            # tags (also: get)
 bitbucket-cli commit list <repo-ref>         # commits (also: get <hash>, compare)
@@ -154,7 +154,9 @@ bitbucket-cli doctor                         # diagnose setup + connectivity
 bitbucket-cli skill install|status|path|show|uninstall   # manage the companion Skill
 ```
 
-Every write above accepts `--dry-run`; see `references/safety-modes.md`.
+Writes accept `--dry-run`; see `references/safety-modes.md`.
+
+[Git authentication](references/git-transport.md).
 
 ## Agent-facing conventions
 

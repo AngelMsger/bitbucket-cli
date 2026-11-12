@@ -136,6 +136,12 @@ bitbucket-cli pr approve myws/myrepo/42
 bitbucket-cli pr merge   myws/myrepo/42 --strategy squash --yes
 ```
 
+To clone with an existing Bitbucket login, including an SSH URL on a machine
+without SSH keys, use `bitbucket-cli git -- clone <clone-url>`. Later use
+`bitbucket-cli git -- -C <directory> fetch upstream` (or your remote name).
+The companion resolves the HTTPS endpoint and supplies authentication only to
+Git's child environment. See [Git authentication](docs/installation.md#git-authentication).
+
 ## Configuration
 
 Settings resolve in precedence order (highest first): CLI flags → environment
@@ -164,6 +170,7 @@ written to the config file.
 | `pr approve` / `unapprove` / `request-changes` | review verdicts; Data Center withdrawal requires Needs Work and preserves approvals |
 | `pr fetch` / `pr checkout` | print the equivalent `git` commands; `--exec` runs them in your current checkout |
 | `file list` / `tree` / `get` | browse and read source at any ref; `--range L1:L2` slices a line range |
+| `git -- <arguments>` | clone, fetch, ls-remote and push over HTTPS with the existing CLI login; SSH keys are optional |
 | `repo list` / `get` / `clone-url` / `create` / `fork` / `delete` | manage repositories; `fork` supports `--into`, `--name`, and `--dry-run` |
 | `branch list` / `get` / `create` / `delete` | manage branches in a repository |
 | `commit get` / `list` / `compare` | query commits; walk history; compare two refs |

@@ -74,6 +74,12 @@ is published at <https://angelmsger.github.io/bitbucket-cli/cli/>.
 | [`bitbucket-cli file list`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-file-list) | List entries under a repository path at a ref |
 | [`bitbucket-cli file tree`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-file-tree) | Recursively list files under a path at a ref |
 
+## git
+
+| Command | Description |
+| --- | --- |
+| [`bitbucket-cli git`](https://angelmsger.github.io/bitbucket-cli/cli/#bitbucket-cli-git) | Run Git over HTTPS using the existing Bitbucket login |
+
 ## pr
 
 | Command | Description |

@@ -723,3 +723,29 @@ proposal cannot substitute for checking the rule or an accepted exception.
 Before publication, description and acceptance-context changes are reconsidered
 even when source and destination commits are unchanged. This is an agent workflow
 contract, not automatic loading of other Skills by the CLI.
+
+## Git credential bridge
+
+`internal/gittransport` accepts one explicit clone/fetch/ls-remote/push target,
+reads raw named-remote configuration and preserves the caller's Git arguments.
+`internal/app/git.go` matches the target to a configured service before credential
+access, resolves its repository through the API, validates the advertised HTTPS
+endpoint against the complete deployment and delegates execution. Automatic
+context matching uses persisted credentials only; explicit flags and account
+selection do not fall through to another identity. The CLI's credential resolver
+and store remain the sole source of secrets.
+
+Git receives repository-scoped authorization and an exact source-URL rewrite via
+`GIT_CONFIG_COUNT` entries in its process environment. Nothing is installed in
+Git's global or repository configuration. Redirects, credential helpers, askpass
+and trace output are disabled during authenticated execution; line-buffered output
+redacts token/header values across writes. Git exit statuses bypass the CLI error
+category mapping, while pre-execution errors retain the normal structured model.
+The read-only gate covers matched Bitbucket operations except ls-remote; unmatched
+fallback retains ordinary Git behavior. Dry-run performs only API reads. Local and unrelated remotes retain normal Git with explicit fallback.
+
+`go test ./internal/gittransport ./internal/app` exercises real HTTPS smart-Git
+clone and fetch with SSH disabled. Set `FX_GIT_TEST_ENTRY` to a built fx `bin/fx.js`
+when running those tests to also exercise manifest init, business checkout cloning
+and subsequent fx sync against the same TLS fixture. These checks do not establish
+live-server or native Windows acceptance.
