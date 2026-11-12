@@ -81,6 +81,10 @@
       <a href="#bitbucket-cli-file-tree">bitbucket-cli file tree</a>
       </div>
     <div class="side-group">
+      <div class="side-title">git</div>
+      <a href="#bitbucket-cli-git">bitbucket-cli git</a>
+      </div>
+    <div class="side-group">
       <div class="side-title">pr</div>
       <a href="#bitbucket-cli-pr">bitbucket-cli pr</a>
       <a href="#bitbucket-cli-pr-activity">bitbucket-cli pr activity</a>
@@ -712,6 +716,30 @@ a single command with the global --use-context flag instead.</p>
         </tbody>
       </table>
 
+    </section>
+
+    <section class="cmd" id="bitbucket-cli-git">
+      <h2>bitbucket-cli git</h2>
+      <p class="short">Run Git over HTTPS using the existing Bitbucket login</p>
+      <pre>bitbucket-cli git [--fallback] [--dry-run] -- &lt;git arguments&gt; [flags]</pre>
+      <p class="long">Authenticate clone, fetch, ls-remote or push with the selected Bitbucket login.
+SSH URLs are translated to the repository&#39;s advertised HTTPS URL for this call only.
+No token or URL rewrite is saved in Git configuration. Git output and exit status are preserved.
+Pass Git&#39;s arguments after --. Recursive submodules and multiple remotes are not supported.
+Git -c accepts only core.quotepath and protocol.version.
+Without an explicit context, an unambiguous matching stored service may be selected.
+--fallback uses ordinary Git only for unmatched URLs or an absent credential; rejected credentials remain errors.</p>
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>resolve and print the public transport plan without executing Git</td></tr>
+        <tr><td><code>--fallback</code></td><td><code>false</code></td><td>use ordinary Git when no matching service or credential is configured</td></tr>
+        </tbody>
+      </table>
+      <h3>Examples</h3><pre>  bitbucket-cli git -- clone ssh://git@git.example.com/TEAM/repo.git
+  bitbucket-cli git -- -C repo fetch upstream
+  bitbucket-cli git -- ls-remote https://git.example.com/scm/TEAM/repo.git</pre>
     </section>
 
     <section class="cmd" id="bitbucket-cli-pr">

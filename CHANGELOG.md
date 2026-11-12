@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+## [0.30.0] — 2026-11-12
+
+### Added
+
+- `git -- <arguments>` authenticates clone, fetch, ls-remote and push using the
+  existing CLI login. SSH remotes use the advertised HTTPS endpoint for the
+  invocation; tokens, rewrites and headers are never persisted in Git config.
+  Data Center uses PAT Bearer or configured Basic authentication; Cloud uses
+  the appropriate static Git token username. Explicit contexts stay pinned,
+  ambiguous service matches fail, and rejected credentials never silently fall
+  back. Git streams and exit codes are preserved; `--dry-run` and read-only
+  posture protect local and remote writes.
+
 ## [0.29.0] - 2026-11-10
 
 ### Changed
@@ -1188,7 +1201,8 @@ PR-centric MVP supporting Bitbucket Cloud (REST 2.0) and Data Center (REST
 subtrees; layered configuration with keychain-backed auth; structured error
 model; and an embedded companion Skill.
 
-[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.29.0...HEAD
+[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.30.0...HEAD
+[0.30.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.29.0...v0.30.0
 [0.29.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.28.0...v0.29.0
 [0.28.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.27.1...v0.28.0
 [0.27.1]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.27.0...v0.27.1

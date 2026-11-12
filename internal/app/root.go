@@ -60,6 +60,9 @@ func Execute() int {
 	// command that actually ran so the skip list still applies. Best-effort and
 	// bounded — it never affects the exit code.
 	maybeNotifyUpdate(state, cmd)
+	if result, ok := err.(*gitExit); ok {
+		return result.code
+	}
 	if err != nil {
 		// cobra flag/usage errors are not CLIErrors; classify them as usage.
 		ce := cerrors.AsCLIError(err)
@@ -165,6 +168,7 @@ func newRootCmdWithState() (*cobra.Command, *appState) {
 
 	root.AddCommand(
 		newRepoCmd(state),
+		newGitCmd(state),
 		newWorkspaceCmd(state),
 		newPRCmd(state),
 		newFileCmd(state),

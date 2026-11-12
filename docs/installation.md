@@ -433,3 +433,49 @@ shows that a stored login could apply.
 Equivalent service URL overrides preserve the persisted native credential lookup
 key without redirecting requests or copying secrets. Logout removes that same
 entry. A different complete deployment URL cannot use the retained lookup key.
+
+
+## Git authentication
+
+An existing API login can also authenticate Git; no SSH key is required when the
+server permits HTTPS Git and the token has repository read permission. Push still
+requires repository write permission. Verify that your installed companion
+provides `bitbucket-cli git --help`.
+
+```sh
+bitbucket-cli git -- ls-remote ssh://git@git.example.com/TEAM/repo.git
+bitbucket-cli git -- clone --origin upstream ssh://git@git.example.com/TEAM/repo.git
+bitbucket-cli git -- -C repo fetch upstream
+```
+
+The first command verifies actual Git reading. The original remote URL remains
+in the checkout: each companion invocation resolves the repository's advertised
+HTTPS clone URL and applies a temporary rewrite. Ordinary `git fetch` does not
+use this bridge; use the companion or an fx version that integrates it.
+
+Data Center PATs use Bearer authentication, including tokens without a username;
+configured Basic credentials also work. Cloud API tokens use the static
+`x-bitbucket-api-token-auth` Git username, while access tokens use `x-token-auth`.
+The REST API identity is unchanged. Tokens remain in the companion's native
+store or existing credential environment, and enter only the Git child process.
+There are no token-bearing URLs, argv, helper scripts or persisted Git headers.
+Tracing and interactive credential fallback are disabled on this authenticated
+path. HTTPS redirects and cross-service advertised clone URLs are refused.
+
+`--use-context` pins the account. Without an explicit selector, the current
+matching service is preferred; otherwise a unique matching stored identity can
+be used, without borrowing another service's environment token. Resolve an
+ambiguity with `config get-contexts` and `--use-context`.
+
+`--dry-run` resolves a public plan without running Git. For matched Bitbucket
+services, read-only posture blocks
+clone, fetch and push, including their local side effects; `ls-remote` remains a
+read. Git arguments follow `--`; one explicit remote is required, and recursive
+submodules and multi-remote operations are unsupported. Git `-c` accepts only
+`core.quotepath` and `protocol.version`. `--fallback` permits
+ordinary Git for an unmatched URL or missing credential, but never after a
+rejected token or permission denial. Setup errors use the CLI error envelope;
+once Git starts, its streams and exit status are preserved.
+
+Protocol references: [Data Center HTTP access tokens](https://confluence.atlassian.com/bitbucketserver101/http-access-tokens-1721010667.html)
+and [Cloud API tokens](https://support.atlassian.com/bitbucket-cloud/docs/using-api-tokens/).

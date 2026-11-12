@@ -38,7 +38,7 @@ var releaseChecker = update.Checker{Repo: "angelmsger/bitbucket-cli", EndpointEn
 // update notice: doctor reports updates itself; the rest are setup/meta
 // commands where the notice would be noise.
 var updateNoticeSkip = map[string]bool{
-	"doctor": true, "version": true, "config": true, "auth": true,
+	"git": true, "doctor": true, "version": true, "config": true, "auth": true,
 	"skill": true, "completion": true, "help": true,
 	"__complete": true, "__completeNoDesc": true,
 }
