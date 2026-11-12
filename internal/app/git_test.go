@@ -32,7 +32,7 @@ func TestGitCLIChild(t *testing.T) {
 			break
 		}
 	}
-	constants.Version = "0.29.0"
+	constants.Version = "0.30.0"
 	os.Exit(Execute())
 }
 
