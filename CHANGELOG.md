@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+## [0.30.1] — 2026-11-18
+
+### Skill
+
+- Skill `0.20.1` restores a quoted AI attribution sentence with a linked
+  `bitbucket-cli` name for PR descriptions. Comments use the short linked
+  `[AI]` prefix. Description bodies default to one short paragraph when the
+  user and repository leave the format open.
+
 ## [0.30.0] — 2026-11-12
 
 ### Added
@@ -1201,7 +1210,8 @@ PR-centric MVP supporting Bitbucket Cloud (REST 2.0) and Data Center (REST
 subtrees; layered configuration with keychain-backed auth; structured error
 model; and an embedded companion Skill.
 
-[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.30.0...HEAD
+[Unreleased]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.30.1...HEAD
+[0.30.1]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.30.0...v0.30.1
 [0.30.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.29.0...v0.30.0
 [0.29.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.28.0...v0.29.0
 [0.28.0]: https://github.com/AngelMsger/bitbucket-cli/compare/v0.27.1...v0.28.0

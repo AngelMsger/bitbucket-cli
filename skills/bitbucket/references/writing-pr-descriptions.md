@@ -7,7 +7,10 @@ known context; do not invent motivation or benefits.
 
 ## Default shape
 
-After applying the [shared attribution rule](../SKILL.md#ai-attribution-agent-writes), use:
+Start an agent-written description with the
+[PR attribution line](../SKILL.md#ai-attribution-agent-writes). For the body,
+follow the user's requested content, format, and length, then the repository's
+template. Where those leave the choice open, aim for one short paragraph.
 
 1. **A short opening paragraph.** In one to three sentences, state the concrete
    problem or need and the resulting behavior. A separate "Summary" heading is
@@ -135,7 +138,7 @@ language.
 ### Small fix
 
 ```markdown
-[[AI]](https://angelmsger.github.io/bitbucket-cli/)
+> [AI] This PR was created with AI assistance via [bitbucket-cli](https://angelmsger.github.io/bitbucket-cli/).
 
 Repository names containing spaces produced broken browser links. Encode the
 repository path so those links open the intended repository.
