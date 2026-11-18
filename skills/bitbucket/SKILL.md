@@ -1,6 +1,6 @@
 ---
 name: bitbucket
-version: 0.20.0
+version: 0.20.1
 description: "Work with Bitbucket Cloud and Data Center / Server: browse repositories and source, create or update pull requests, review diffs, address review feedback, and manage comments or PR state. Use for Bitbucket repository or PR URLs, code review, inline findings, review threads, approvals, merges, and CLI dry-run or read-only workflows."
 metadata:
   requires:
@@ -40,11 +40,10 @@ TTY; agents never pass it.
 - **Create a PR or update its description** — settle the target first: repo from
   the git remote, source from the current branch, `pr list --source <branch>` to
   catch an existing PR (a hit makes this an update, not a create), branch pushed.
-  Read the diffstat before the diff. Then draft per
-  [Writing PR descriptions](references/writing-pr-descriptions.md) — lead with the
-  problem and resulting behavior, add review guidance only where it helps, and add
-  a compact change outline only when the shape is hard to see from the diff. Keep
-  routine check results out of the description. Full sequence:
+  Read the diffstat before the diff. Follow the user's body requirements, then
+  the repository template. For a concise default, see
+  [Writing PR descriptions](references/writing-pr-descriptions.md). Apply the
+  [description attribution](#ai-attribution-agent-writes). Full sequence:
   [Creating](references/pr-workflows.md#creating),
   [Updating descriptions](references/pr-workflows.md#updating-descriptions).
 - **Review a PR** — follow the checklist in
@@ -176,7 +175,7 @@ Writes accept `--dry-run`; see `references/safety-modes.md`.
   either select the containing object for normal jq access or read the flat key
   as `.["repository.workspace"]`. Inspect `.items[0]` before composing a
   longer pipeline.
-- **Skill handshake — set `BITBUCKET_CLI_SKILL=0.20.0`.** Once you have loaded
+- **Skill handshake — set `BITBUCKET_CLI_SKILL=0.20.1`.** Once you have loaded
   this Skill, export that exact value in the environment used to run the CLI.
   The CLI compares it with the embedded Skill version and emits a structured
   stderr notice when the Skill is missing, old, or uses the legacy unversioned
@@ -213,16 +212,20 @@ authorization. Do not resolve human threads or push fixes without authorization.
 
 ## AI attribution (agent writes)
 
-Use `[[AI]](https://angelmsger.github.io/bitbucket-cli/)` for agent-written PR
-descriptions and comments (general, inline, and replies). Keep the ASCII label
-and URL: doubled brackets render a clickable `[AI]`; `[AI](url)` hides the
-brackets. Never substitute an emoji.
+**PR descriptions.** Start every agent-written description with this blockquote
+and a blank line before the body. Use the sentence in the description's language.
+Keep the literal `[AI]` and the linked tool name.
 
-Prefix comments with the marker; put it on a separate first line in PR
-descriptions. Replace existing attribution instead of stacking it. Follow user
-and repository language rules. Post human-written or rewritten text verbatim
-**without** a marker; approving an agent draft does not change authorship.
-The CLI does not add attribution automatically.
+```markdown
+> [AI] 本 PR 由 AI 通过 [bitbucket-cli](https://angelmsger.github.io/bitbucket-cli/) 协助创建。
+```
+
+**Comments** (general, inline, replies). Start with
+`[[AI]](https://angelmsger.github.io/bitbucket-cli/)`, a space, then the comment.
+
+On edits, replace existing attribution once. Post human-written or human-rewritten
+text verbatim without adding attribution. Approving an agent draft preserves its
+attribution. The agent supplies these prefixes.
 
 ## Configuration & credentials (agents)
 
