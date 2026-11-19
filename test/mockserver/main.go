@@ -274,6 +274,10 @@ func routes() http.Handler {
 							"id": 9011, "text": "Thanks for the review", "author": user(),
 							"createdDate": 2, "version": 0, "state": "OPEN", "severity": "NORMAL",
 						},
+						map[string]any{
+							"id": 9012, "text": "[[AI]](https://example.com) Summarized feedback", "author": user(),
+							"createdDate": 3, "version": 0, "state": "OPEN", "severity": "NORMAL",
+						},
 					},
 				}},
 				// Inline comments: DC carries the anchor on the activity
@@ -290,9 +294,14 @@ func routes() http.Handler {
 						"id": 9003, "text": "Please rename this", "author": user(), "createdDate": 4, "version": 0,
 						"state": "OPEN", "severity": "BLOCKER",
 					}},
+				map[string]any{"id": 104, "action": "COMMENTED", "user": botUser("ci-bot"), "createdDate": 5,
+					"comment": map[string]any{
+						"id": 9004, "text": "Automated check passed", "author": botUser("ci-bot"), "createdDate": 5, "version": 0,
+						"state": "RESOLVED", "severity": "NORMAL",
+					}},
 				map[string]any{"id": 101, "action": "APPROVED", "user": user(), "createdDate": 2},
 			},
-			"size": 2, "limit": 25, "start": 0, "isLastPage": true,
+			"size": 6, "limit": 25, "start": 0, "isLastPage": true,
 		})
 	})
 	mux.HandleFunc("POST "+prKey+"/{id}/comments", func(w http.ResponseWriter, _ *http.Request) {
@@ -466,9 +475,12 @@ func routes() http.Handler {
 
 	// v0.2.1: cross-repo PR inbox.
 	mux.HandleFunc("GET /rest/api/1.0/dashboard/pull-requests", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("X-AUSERNAME", "alice")
+		approvedPR := pr(8, "Already approved PR", "OPEN")
+		approvedPR["reviewers"] = []any{map[string]any{"user": user(), "role": "REVIEWER", "approved": true, "status": "APPROVED"}}
 		writeJSON(w, map[string]any{
-			"values":     []any{pr(7, "Wire payment retry", "OPEN")},
-			"size":       1,
+			"values":     []any{pr(7, "Wire payment retry", "OPEN"), approvedPR},
+			"size":       2,
 			"limit":      25,
 			"start":      0,
 			"isLastPage": true,
@@ -556,6 +568,12 @@ func namedUser(name string) map[string]any {
 		"slug":         name,
 		"type":         "NORMAL",
 	}
+}
+
+func botUser(name string) map[string]any {
+	u := namedUser(name)
+	u["type"] = "SERVICE"
+	return u
 }
 
 // xsrfGuard mimics Data Center's XSRF check: a POST that declares no

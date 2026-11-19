@@ -28,10 +28,10 @@ Use `--dry-run` before any destructive command (`pr merge`, `pr decline`,
 `comment delete`, `branch delete`, `repo delete`) when you want to verify
 exactly which URL and payload would be sent.
 
-Available on: `pr create`, `pr update`, `pr approve`, `pr unapprove`,
-`pr request-changes`, `pr decline`, `pr merge`, `comment add`,
-`comment update`, `comment delete`, `branch create`, `branch delete`,
-`repo create`, `repo fork`, `repo delete`.
+Available on: `pr create`, `pr update`, `pr review`, `pr approve`,
+`pr unapprove`, `pr request-changes`, `pr decline`, `pr merge`, `comment add`,
+`comment update`, `comment resolve`, `comment react`, `comment delete`,
+`branch create`, `branch delete`, `repo create`, `repo fork`, `repo delete`.
 
 ## Read-only mode — lock the session
 
@@ -64,21 +64,23 @@ Exit code: 5 (`permission`).
 
 ### Per-call override: `--allow-writes`
 
-When you genuinely need to write under a read-only posture, add the
-root-level `--allow-writes` flag:
+`--allow-writes` is a **root-level flag** — place it before the subcommand:
 
 ```bash
-BITBUCKET_CLI_READ_ONLY=1 bitbucket-cli --allow-writes pr approve myws/myrepo/42
+bitbucket-cli --allow-writes pr approve myws/myrepo/42
+bitbucket-cli --allow-writes pr review myws/myrepo/42 --verdict approve --input review.json
 ```
 
-This is the only way to flip the posture for one invocation without
-changing config or env.
+Use it **only** when local read-only config (`defaults.read_only: true`) is
+active **and** the current write is explicitly authorized by the user or active
+workflow. Never prepend `--allow-writes` unconditionally, and never pass it when
+`BITBUCKET_CLI_READ_ONLY=1` or the user's request expresses explicit read-only /
+report-only intent.
 
-Use the override only within the user's authorization. It changes the local
-CLI posture, not the server's token or account permissions. A read-only PAT
-and a read-only task are different: browser recovery may help an authorized
-action blocked by a PAT, but must preserve an explicit read-only task. See
-[PR permissions and recovery](pr-permissions.md).
+It changes only the local CLI posture, not the server's token or account
+permissions. A read-only PAT and a read-only task are different: browser
+recovery may help an authorized action blocked by a PAT, but must preserve an
+explicit read-only task. See [PR permissions and recovery](pr-permissions.md).
 
 ### What read-only does NOT block
 

@@ -112,9 +112,10 @@ different responses:
   finding PR-wide; do not automatically turn it into a general comment. Apply
   the publication rules above before choosing another destination.
 
-Before posting several inline comments, you can validate every anchor first by adding
-`--dry-run` to each `comment add` — it resolves the anchor against the diff without
-sending, so a bad or unsupported anchor surfaces before you post anything.
+Before posting several inline comments, validate every anchor together with
+`bitbucket-cli pr review <ref> --input <file|-> --dry-run` (or `--dry-run` on
+each `comment add`) — it resolves every anchor against the diff without sending,
+so a bad or unsupported anchor surfaces before any write occurs.
 
 **Commenting on a removed/deleted line** — that line has no new-file number, so anchor
 it on the old (left) side with `--side old` and the **old**-gutter number:
@@ -159,9 +160,10 @@ IDs from stdin). With more than one it prints an `{items, has_more}` aggregate
 with a per-comment `ok`/`error`, deletes every one even if some fail, and exits
 non-zero on any failure. `--yes` / `--dry-run` cover the whole batch.
 
-## Resolution & task status
+## Resolution, task & authorship metadata
 
-Each listed comment carries two triage signals:
+Each listed comment (`comment list` and `pr threads`) carries triage and
+authorship signals projectable via `--fields`:
 
 - `resolved` — `true` when the comment's thread has been marked resolved.
   Cloud derives it from the comment's `resolution` object; Data Center from
@@ -169,13 +171,19 @@ Each listed comment carries two triage signals:
 - `task` — `true` for an actionable review task (Data Center `severity ==
   "BLOCKER"`). Cloud tasks live on a separate endpoint and are not surfaced yet,
   so `task` is currently DC-only.
+- `is_self` — `true` when the comment's author matches the authenticated user
+  (omitted when identity cannot be resolved).
+- `is_ai_attributed` — `true` when the body contains the standard `[[AI]](...)`
+  attribution marker.
+- `author_kind` — `human`, `bot`, or `unknown` derived from the platform's
+  `author.type` metadata (never guessed from display names).
 
 Filter to just the comments that still need attention:
 
 ```sh
 bitbucket-cli comment list --pr myws/myrepo/42 --unresolved   # drop resolved threads
 bitbucket-cli comment list --pr myws/myrepo/42 --tasks        # only actionable tasks
-bitbucket-cli comment list --pr myws/myrepo/42 --fields id,resolved,task,inline.path
+bitbucket-cli comment list --pr myws/myrepo/42 --fields id,resolved,task,is_self,is_ai_attributed,author_kind
 ```
 
 The same `--unresolved` flag exists on `pr threads` and is the recommended entry

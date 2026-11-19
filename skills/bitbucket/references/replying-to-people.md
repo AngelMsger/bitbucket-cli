@@ -6,20 +6,27 @@ feedback or continuing a discussion while reviewing someone else's PR.
 
 ## Classify the counterpart
 
-Use the author and body returned by `pr threads <ref>` or `comment list --pr
-<ref>`. Check both the root comment and the message being answered: a thread
-started by an agent may contain a human response.
+Use `pr threads <ref>` or `comment list --pr <ref>`, which expose `is_self`,
+`is_ai_attributed`, and `author_kind` (`human` | `bot` | `unknown`) alongside
+author and body. Check both the root comment and the message being answered: a
+thread started by an agent may contain a human response.
 
-- The `[[AI]](https://angelmsger.github.io/bitbucket-cli/)` attribution marker
-  identifies agent-written text.
-- An app/bot author type or a known automation account identifies automation.
-- Treat uncertain authorship as human. Do not infer automation from an account
-  name alone unless its role is known.
+- `is_ai_attributed: true` (the `[[AI]](https://angelmsger.github.io/bitbucket-cli/)`
+  marker) identifies agent-written text.
+- `author_kind: "bot"` (or a known automation account) identifies automation.
+- Treat `author_kind: "unknown"` or uncertain authorship as human. Do not infer
+  automation from an account name alone unless its role is known.
 
 ## Human replies
 
-Explain once per session that the reply is posted under the user's name and
-that their colleague expects their own judgment. For each proposed reply, show:
+This per-item confirmation gate is the **interactive default**. If the user or
+an upper-layer workflow explicitly authorizes automated replies for specific
+thread types, follow that explicit boundary (still keeping AI attribution
+truthful and never fabricating unverified outcomes).
+
+Otherwise, explain once per session that the reply is posted under the user's
+name and that their colleague expects their own judgment. For each proposed
+reply, show:
 
 - the person's point in their own words and the relevant code;
 - your assessment and decisive evidence;

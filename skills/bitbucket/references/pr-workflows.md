@@ -6,9 +6,12 @@ The `pr` and `comment` subtrees cover the entire PR lifecycle.
 
 When the user pastes a PR URL or names `<workspace>/<repo>/<id>`:
 
-1. **Merge readiness first** — `bitbucket-cli pr status <ref>` returns the
-   aggregated view: mergeable + conflicts + reviewer states + CI build
-   status. Often this alone answers "why is this PR not going in?".
+1. **Merge readiness and incremental pruning first** — `bitbucket-cli pr status <ref>`
+   returns mergeable + conflicts + reviewer states + CI builds + `my_review`
+   (`vote`, `voted_at`, `latest_commit_at`, `updated_after_my_vote`,
+   `unresolved_thread_count`). Accepts multiple refs or `-` from stdin. Combine
+   with `pr inbox --my-vote unvoted` (each inbox item also exposes `my_vote`,
+   `source.commit`, and `updated_at`) to prune already-reviewed PRs without N+1 calls.
 2. **Diffstat (per-file metadata) next** — `bitbucket-cli pr files <ref>`
    returns one row per changed file with `path / status / added / removed`,
    sorted by churn. **Diffstat-first** is the right default for large PRs —
@@ -16,17 +19,16 @@ When the user pastes a PR URL or names `<workspace>/<repo>/<id>`:
 3. **Per-file diff** — `bitbucket-cli pr diff <ref> --path <path>` returns
    just one file's unified patch. The full `pr diff <ref>` (no `--path`) is
    still available when you really want the whole patch.
-4. **Local fetch** — `bitbucket-cli pr fetch <ref>` (or `pr checkout`) prints
-   the equivalent `git` commands; `--exec` runs them in your current checkout.
-   It fetches the PR source ref (→ `refs/remotes/<remote>/pr/<id>`) **and the PR's
-   base branch**, picks the remote (`upstream` over `origin` when both exist), and
-   prints a ready-to-run `review_diff` that diffs against the merge-base. Before
-   `--exec`, verify the checkout's repo, branch, HEAD, and dirty state; the CLI
-   does not verify that the selected remote belongs to the PR repo. Fetching the
-   authoritative refs is the cheapest way to review many large files locally
-   against the correct base. See `reviewing-locally.md` › "Local checkout".
-5. **Commits / activity** — `pr commits` / `pr activity` enumerate the
-   contained commits and the timeline (approvals, comments, state changes).
+4. **Local fetch** — `bitbucket-cli pr fetch <ref>` (or `pr checkout`) inspects
+   `git remote -v`, verifies normalized remote URLs against the PR's destination
+   and source repositories (auto-selecting a matching `upstream` over `origin`,
+   or failing with `GIT_REMOTE_MISMATCH`; `--force-remote` overrides mirrors),
+   and prints (or `--exec`s) the `git` commands plus a merge-base `review_diff`.
+   See `reviewing-locally.md` › "Local checkout".
+5. **Commits / activity / threads** — `pr commits` / `pr activity` / `pr threads`
+   enumerate commits, timeline, and grouped review threads. `pr get`, `pr status`,
+   and `pr threads` all accept multiple refs or `-` from stdin with bounded
+   concurrency and `{items, has_more}` partial-failure reporting.
 
 The PR record itself comes from `pr get <ref> --scope summary|full` (`full`
 adds the description and reviewer detail); `--scope diff|commits|activity`
@@ -100,6 +102,13 @@ and [publication rules](reviewing-locally.md#decide-what-to-publish) before chan
 PR state. An authorized approval needs no companion comment. For
 permission failures, use [PR permissions and recovery](pr-permissions.md).
 
+- Composite review: `bitbucket-cli pr review <ref> --verdict <approve|request-changes|comment-only> --expected-source-commit <sha> --input <file|->`
+  (`--dry-run` previews all planned requests). Phase 1 checks `source.commit`
+  (`PR_HEAD_MOVED` on mismatch) and resolves every inline anchor before sending
+  any write. Phase 2 posts comments sequentially, then casts the verdict only
+  if all comments succeed; a mid-flight failure prints `posted_comments`,
+  `failed_item`, and `vote_applied` on stdout and exits with
+  `REVIEW_PARTIAL_FAILURE` for idempotent recovery.
 - Approve: `bitbucket-cli pr approve <ref>`
 - Withdraw: `bitbucket-cli pr unapprove <ref>`
 - Request changes: `bitbucket-cli pr request-changes <ref>` (aliases:

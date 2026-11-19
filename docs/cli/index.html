@@ -101,6 +101,7 @@
       <a href="#bitbucket-cli-pr-list">bitbucket-cli pr list</a>
       <a href="#bitbucket-cli-pr-merge">bitbucket-cli pr merge</a>
       <a href="#bitbucket-cli-pr-request-changes">bitbucket-cli pr request-changes</a>
+      <a href="#bitbucket-cli-pr-review">bitbucket-cli pr review</a>
       <a href="#bitbucket-cli-pr-status">bitbucket-cli pr status</a>
       <a href="#bitbucket-cli-pr-threads">bitbucket-cli pr threads</a>
       <a href="#bitbucket-cli-pr-unapprove">bitbucket-cli pr unapprove</a>
@@ -810,7 +811,8 @@ and the exit code is non-zero if any approval failed.</p>
         <tr><td><code>--base</code></td><td></td><td>base branch to fetch (default: the PR&#39;s destination branch, looked up via the API)</td></tr>
         <tr><td><code>--branch</code></td><td><code>pr/%d</code></td><td>local branch name format; %d is replaced with the PR id</td></tr>
         <tr><td><code>--exec</code></td><td><code>false</code></td><td>actually run the git commands in the current working directory</td></tr>
-        <tr><td><code>--remote</code></td><td></td><td>git remote to fetch from (default: upstream if present, else origin)</td></tr>
+        <tr><td><code>--force-remote</code></td><td><code>false</code></td><td>bypass repository remote URL identity verification (for mirrors or custom remotes)</td></tr>
+        <tr><td><code>--remote</code></td><td></td><td>git remote to fetch from (default: auto-select remote matching PR repository, preferring upstream then origin)</td></tr>
         </tbody>
       </table>
 
@@ -908,7 +910,8 @@ sets the optional decline comment.</p>
         <tbody>
         <tr><td><code>--base</code></td><td></td><td>base branch to fetch (default: the PR&#39;s destination branch, looked up via the API)</td></tr>
         <tr><td><code>--exec</code></td><td><code>false</code></td><td>actually run `git fetch` in the current working directory</td></tr>
-        <tr><td><code>--remote</code></td><td></td><td>git remote to fetch from (default: upstream if present, else origin)</td></tr>
+        <tr><td><code>--force-remote</code></td><td><code>false</code></td><td>bypass repository remote URL identity verification (for mirrors or custom remotes)</td></tr>
+        <tr><td><code>--remote</code></td><td></td><td>git remote to fetch from (default: auto-select remote matching PR repository, preferring upstream then origin)</td></tr>
         </tbody>
       </table>
 
@@ -925,9 +928,12 @@ sets the optional decline comment.</p>
 
     <section class="cmd" id="bitbucket-cli-pr-get">
       <h2>bitbucket-cli pr get</h2>
-      <p class="short">Show a pull request</p>
-      <pre>bitbucket-cli pr get &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt; | &lt;url&gt; [flags]</pre>
-
+      <p class="short">Show one or more pull requests</p>
+      <pre>bitbucket-cli pr get &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt;... [flags]</pre>
+      <p class="long">Show one or more pull requests. Pass several PR references or a single &#39;-&#39;
+to read newline-separated references from stdin. With more than one
+reference, output is a {items, has_more} aggregate with per-PR ok / result /
+error entries; `--scope diff` is only available for a single PR.</p>
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -935,7 +941,9 @@ sets the optional decline comment.</p>
         <tr><td><code>--scope</code></td><td><code>summary</code></td><td>summary | full | diff | commits | activity</td></tr>
         </tbody>
       </table>
-
+      <h3>Examples</h3><pre>  bitbucket-cli pr get myws/myrepo/7
+  bitbucket-cli pr get myws/myrepo/7 myws/myrepo/8
+  bitbucket-cli pr inbox --fields ref | jq -r &#39;.items[].ref&#39; | bitbucket-cli pr get -</pre>
     </section>
 
     <section class="cmd" id="bitbucket-cli-pr-inbox">
@@ -948,7 +956,11 @@ repository.
 Data Center uses the dashboard endpoint — a single call covers every project.
 Bitbucket Cloud has no global reviewer index, so --role reviewer, participant,
 or any require --workspace; --role author works globally via the user&#39;s
-`/pullrequests/&lt;uuid&gt;` endpoint.</p>
+`/pullrequests/&lt;uuid&gt;` endpoint.
+
+Each returned item includes `my_vote` (unvoted | approved | needs_work |
+changes_requested) when the platform list payload includes participant status,
+allowing `--my-vote` filtering without extra per-PR API calls.</p>
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -957,6 +969,7 @@ or any require --workspace; --role author works globally via the user&#39;s
         <tr><td><code>--closed-since</code></td><td></td><td>only PRs closed within this duration, such as 24h or 7d (Data Center only)</td></tr>
         <tr><td><code>--cursor</code></td><td></td><td>start from this pagination cursor (the &#39;next&#39; of a prior page)</td></tr>
         <tr><td><code>--limit</code></td><td><code>0</code></td><td>page size (default from config)</td></tr>
+        <tr><td><code>--my-vote</code></td><td></td><td>filter by my current vote: unvoted | approved | needs_work | changes_requested</td></tr>
         <tr><td><code>--role</code></td><td><code>reviewer</code></td><td>reviewer | author | participant | any</td></tr>
         <tr><td><code>--state</code></td><td><code>OPEN</code></td><td>OPEN | MERGED | DECLINED | ALL</td></tr>
         <tr><td><code>--workspace</code></td><td></td><td>Cloud workspace to scope reviewer / participant queries to (ignored on Data Center)</td></tr>
@@ -1033,20 +1046,64 @@ The PR author cannot vote on their own PR.</p>
 
     </section>
 
+    <section class="cmd" id="bitbucket-cli-pr-review">
+      <h2>bitbucket-cli pr review</h2>
+      <p class="short">Validate and submit a composite review (comments &#43; optional verdict)</p>
+      <pre>bitbucket-cli pr review &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt; [flags]</pre>
+      <p class="long">Submit zero or more comments and an optional verdict in two phases.
+
+Phase 1 validates everything before sending any write request: checks
+`--expected-source-commit` against the remote PR head (returning
+PR_HEAD_MOVED on mismatch), fetches the diff once, and resolves every
+inline comment anchor. Any validation error aborts with zero remote writes.
+
+Phase 2 posts each comment sequentially and applies the verdict only after
+every comment succeeds. If a mid-flight write fails, the partial result
+(posted_comments, failed_item, vote_applied) is emitted on stdout before
+returning REVIEW_PARTIAL_FAILURE so recovery can be idempotent.
+
+Pass `--input &lt;file&gt;` or `--input -` (stdin) with either a JSON/YAML object
+(`{verdict, expected_source_commit, comments: [...]}`) or a bare array of
+comment objects (`{content, path?, line?, side?, reply_to?}`). Explicit CLI
+flags override fields in `--input`.</p>
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>validate anchors and preview all HTTP requests without sending writes</td></tr>
+        <tr><td><code>--expected-source-commit</code></td><td></td><td>abort with PR_HEAD_MOVED if the remote PR source commit does not match this SHA</td></tr>
+        <tr><td><code>--input</code></td><td></td><td>JSON or YAML file describing comments (and optional verdict/expected_source_commit); use &#39;-&#39; for stdin</td></tr>
+        <tr><td><code>--verdict</code></td><td></td><td>approve | request-changes | comment-only</td></tr>
+        </tbody>
+      </table>
+      <h3>Examples</h3><pre>  bitbucket-cli pr review myws/myrepo/7 --verdict approve --expected-source-commit abc1234 --dry-run
+  bitbucket-cli pr review myws/myrepo/7 --verdict request-changes --expected-source-commit abc1234 --input review.json
+  bitbucket-cli pr review myws/myrepo/7 --input - &lt;&lt;&#39;EOF&#39;
+  [{&#34;path&#34;:&#34;src/main.go&#34;,&#34;line&#34;:42,&#34;content&#34;:&#34;Nil dereference here.&#34;}]
+  EOF</pre>
+    </section>
+
     <section class="cmd" id="bitbucket-cli-pr-status">
       <h2>bitbucket-cli pr status</h2>
-      <p class="short">Show merge readiness: mergeable, conflicts, reviewers, CI builds</p>
-      <pre>bitbucket-cli pr status &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt;</pre>
+      <p class="short">Show merge readiness: mergeable, conflicts, reviewers, CI builds, my_review</p>
+      <pre>bitbucket-cli pr status &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt;...</pre>
+      <p class="long">Show merge readiness and incremental review summary for one or more PRs.
+Pass several PR references or a single &#39;-&#39; to read newline-separated
+references from stdin. With more than one reference, output is a
+{items, has_more} aggregate with per-PR ok / result / error entries.</p>
 
-
-
+      <h3>Examples</h3><pre>  bitbucket-cli pr status myws/myrepo/7
+  bitbucket-cli pr inbox --fields ref | jq -r &#39;.items[].ref&#39; | bitbucket-cli pr status -</pre>
     </section>
 
     <section class="cmd" id="bitbucket-cli-pr-threads">
       <h2>bitbucket-cli pr threads</h2>
       <p class="short">List PR review threads grouped by file and anchor</p>
-      <pre>bitbucket-cli pr threads &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt; [flags]</pre>
-
+      <pre>bitbucket-cli pr threads &lt;workspace&gt;/&lt;repo&gt;/&lt;id&gt;... [flags]</pre>
+      <p class="long">List PR review threads grouped by file and anchor. Pass several PR references
+or a single &#39;-&#39; to read newline-separated references from stdin. With more
+than one reference, output is a {items, has_more} aggregate with per-PR
+ok / result / error entries and a non-zero exit code if any lookup failed.</p>
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -1055,7 +1112,9 @@ The PR author cannot vote on their own PR.</p>
         <tr><td><code>--unresolved</code></td><td><code>false</code></td><td>only threads that are not resolved</td></tr>
         </tbody>
       </table>
-
+      <h3>Examples</h3><pre>  bitbucket-cli pr threads myws/myrepo/7 --unresolved
+  bitbucket-cli pr threads myws/myrepo/7 myws/myrepo/8 --unresolved
+  bitbucket-cli pr inbox --fields ref | jq -r &#39;.items[].ref&#39; | bitbucket-cli pr threads - --unresolved</pre>
     </section>
 
     <section class="cmd" id="bitbucket-cli-pr-unapprove">

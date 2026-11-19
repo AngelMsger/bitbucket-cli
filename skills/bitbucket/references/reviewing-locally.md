@@ -5,22 +5,37 @@ problems. Combine this workflow with repository/team guidance; local architectur
 and conventions belong there. **A review need not produce a comment or vote.**
 Author-side feedback: [Responding to review comments](responding-to-review-comments.md).
 
+## Workflow precedence
+
+- **Invariants (never override):** honor explicit read-only intent
+  (`BITBUCKET_CLI_READ_ONLY=1` or read-only/report-only request); refresh
+  `source.commit`, votes, and threads before any write-back; diff against the
+  real `merge-base`; validate inline anchors and keep AI attribution truthful;
+  reconcile state on HTTP 403/409/timeout or uncertain writes.
+- **Default policies (explicitly overridable by user or upper-layer workflow):**
+  report-only when no write scope is authorized; interactive per-item
+  human-reply confirmation; collaboration hold on another human's `Needs Work`
+  (an upper workflow may withhold a vote instead); no duplicate confirmation on
+  existing comments (an upper workflow may require confirming adopted blockers).
+
 ## Checklist
 
 1. **Scope and authorization.** Reuse the supplied PR URL or
-   `<workspace>/<repo>/<id>`; without one, run a bounded `pr inbox` (Cloud
-   reviewer discovery needs `--workspace`). Record separately whether the request
+   `<workspace>/<repo>/<id>`; without one, run a bounded `pr inbox` (use
+   `--my-vote unvoted` to prune already-voted PRs; Cloud reviewer discovery
+   needs `--workspace`). Record separately whether the user or active workflow
    authorizes analysis, comments, approval, or Needs Work: "review" alone
    authorizes a report, and "approve if ready" does not authorize Needs Work.
    Reuse existing authorization instead of asking again.
 2. **Read context with the cheapest reads.** `pr get <ref> --scope full`
-   (description, `source` / `destination` branches and commits, reviewers);
-   `pr status <ref>` (reviewer states, conflicts, CI); `pr files <ref>` to budget
-   paths and churn; `pr diff <ref>`, or `pr diff <ref> --path <path>` for a
-   large change; `pr threads <ref>` for the full discussion, resolved threads
-   included (`--comment <id>` for one thread). Read applicable project instructions
-   and representative neighboring implementations.
-   CI status does not establish correctness or prevent independent review.
+   (description, `source`/`destination` branches and commits, reviewers);
+   `pr status <ref>` (reviewer states, conflicts, CI, and `my_review` — vote,
+   `voted_at`, `updated_after_my_vote`, `unresolved_thread_count` — also accepts
+   batch refs or `-`); `pr files <ref>` to budget paths and churn; `pr diff <ref>`
+   (or `--path <path>`); `pr threads <ref>` for the full discussion, resolved
+   threads included (`--comment <id>` for one thread; batch refs supported).
+   Read applicable project instructions and neighboring implementations. CI
+   status does not establish correctness or prevent independent review.
 3. **Pin revisions.** Record `source.commit` and `destination.commit`, and
    review the change relative to their merge-base, never a stale local default
    branch. Use a [local checkout](#local-checkout)
@@ -40,26 +55,25 @@ Author-side feedback: [Responding to review comments](responding-to-review-comme
 
 Reuse matching clones; record root, remotes, branch, HEAD, staged and untracked changes.
 
-- **Match the repository and remote.** Verify the complete host/repository
-  identity, including the canonical destination and a fork source; a matching
-  directory or branch name is not evidence. `pr fetch` checks only that `cwd` is
-  a Git worktree and defaults to `upstream` before `origin` without checking its
-  URL, so pass the verified remote explicitly and never fetch into an unrelated
-  checkout.
+- **Verified remote selection.** `pr fetch` and `pr checkout` inspect
+  `git remote -v` and match normalized URLs against the PR's destination (and
+  source) repository, auto-selecting a matching `upstream` over `origin` and
+  refusing mismatched checkouts with `GIT_REMOTE_MISMATCH`. Pass `--remote`
+  (plus `--force-remote` only for intentional mirrors) when overriding.
 - **Fetch without switching.** Preview, then fetch when local writes are allowed:
 
   ```sh
-  bitbucket-cli pr fetch <ref> --remote <remote> --fields source_ref,base_ref
-  bitbucket-cli pr fetch <ref> --remote <remote> --exec
+  bitbucket-cli pr fetch <ref> --fields remote,source_ref,base_ref
+  bitbucket-cli pr fetch <ref> --exec
   ```
 
   Resolve `source_ref` and `base_ref` to commit IDs and compare both with
-  refreshed PR metadata; an old `pr/<id>` branch or the `base_commit` field
-  does not prove what the fetch obtained.
+  refreshed PR metadata; an old `pr/<id>` branch or `base_commit` alone does not
+  prove what the fetch obtained.
 - **Preserve the user's workspace.** Reuse an existing tree only when it is
-  clean, at the verified source commit, and the intended checks will not disturb
-  user work; otherwise create a detached worktree at that commit. Do not stash,
-  reset, clean, force checkout, or move the user's branch. `pr checkout --exec`
+  clean, at the verified source commit, and checks will not disturb user work;
+  otherwise create a detached worktree at that commit. Do not stash, reset,
+  clean, force checkout, or move the user's branch. `pr checkout --exec`
   switches branches; reserve it for an explicitly authorized checkout.
 - **Honor read-only posture.** It also blocks `pr fetch/checkout --exec`. An
   explicit no-local-write scope rules out worktrees and Git bypasses; use the
@@ -198,13 +212,14 @@ Apply in order, within the action scope:
 | No verified blocker or active human hold, but coverage, revision identity, or a material question remains open | **No vote yet.** Continue bounded investigation or report the precise gap. Uncertainty is neither approval nor a technical Needs Work finding. |
 | Sufficient current evidence supports acceptance; no blocker or active human hold remains | **Approve.** Other approvals corroborate but are not required. Minor, genuinely non-blocking suggestions may remain. |
 
-The collaboration hold is a policy of this workflow, not proof of a defect: it
-follows a currently active human vote, never an old event, an unresolved
-comment, or an unverified automated verdict, and it is re-evaluated when the
-human updates the vote. Keep it distinct from technical findings in the user
-report. Approve for demonstrated acceptability, not perfection; another reviewer
-cannot waive a real defect or fill an unreviewed area by voting, and unresolved
-CI failures relevant to acceptance can prevent confidence.
+The collaboration hold is a default policy of this workflow (overridable by an
+upper workflow, e.g. to withhold a vote as human disagreement), not proof of a
+defect: it follows a currently active human vote, never an old event, an
+unresolved comment, or an unverified automated verdict, and it is re-evaluated
+when the human updates the vote. Keep it distinct from technical findings in the
+user report. Approve for demonstrated acceptability, not perfection; another
+reviewer cannot waive a real defect or fill an unreviewed area by voting, and
+unresolved CI failures relevant to acceptance can prevent confidence.
 
 ## Decide what to publish
 
@@ -216,7 +231,7 @@ at the most useful anchor and mention the other locations there.
 | Situation | Action |
 | --- | --- |
 | New verified issue with a reasonable code anchor | One inline comment at the relevant line. |
-| Existing issue, no new evidence | No comment and no repeat in a summary. A justified Needs Work vote may still be appropriate. |
+| Existing issue, no new evidence | Default: no duplicate comment (upper workflows may explicitly require confirming adopted blockers). A justified Needs Work vote may still apply. |
 | Existing issue, new evidence | Reply in the original thread, subject to the human-reply gate; do not duplicate it. |
 | New verified issue with no reasonable anchor | One concise PR-level finding naming the affected locations. |
 | User explicitly requests a summary on the PR | Publish it, distinguishing findings, coverage limits, and any collaboration hold. |
@@ -242,18 +257,20 @@ without repeating unaffected review. A dry run locks nothing.
 
 For replies, classify authorship and apply the
 [human-reply gate](replying-to-people.md), including a human reply inside an
-agent-started thread; new evidence does not waive it. Keep AI attribution on
-agent-written text and use [Commenting](commenting.md) for syntax.
+agent-started thread. Keep AI attribution on agent-written text and use
+[Commenting](commenting.md) for syntax.
 
-Preview authorized writes with `--dry-run`, respect [read-only mode](safety-modes.md),
-execute once, and verify state. Do not repeat a current vote.
-Approval, request-changes, unapproval, decline, thread resolution, and merge
-are separate actions, approval needs no companion comment, and decline is never
-a substitute for Needs Work ([vote commands](pr-workflows.md#reviewing)). For
+For multi-comment reviews plus a verdict, prefer
+`pr review <ref> --expected-source-commit <sha> --verdict <verdict> --input <file|->`
+(preview with `--dry-run`): it verifies the head commit and every inline anchor
+before sending any write, aborting with `PR_HEAD_MOVED` or an anchor error on
+zero remote side effects. Otherwise preview writes with `--dry-run`, respect
+[read-only mode](safety-modes.md), execute once, and verify state. Do not repeat
+a current vote; approval needs no companion comment, and decline is never a
+substitute for Needs Work ([vote commands](pr-workflows.md#reviewing)). For
 failures or uncertain writes, use [PR permissions and recovery](pr-permissions.md)
-and reconcile state before any retry or tool switch. Batch approvals only after
-each target independently passes review and authorization; inspect each result
-after a partial failure.
+and reconcile state before retrying. Batch approvals only after each target
+independently passes review and authorization.
 
 ## Report to the user
 

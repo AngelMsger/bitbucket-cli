@@ -5,6 +5,22 @@ large for a single pass. Every rule in [Reviewing a pull request](reviewing-loca
 still applies to each PR: separate findings, coverage record, verdict, and
 publication decision per PR.
 
+## Prune and batch-read first
+
+When starting from an inbox, filter with `pr inbox --my-vote unvoted` (or inspect
+`my_vote`, `source.commit`, and `updated_at`) and pipe candidate refs into batch
+reads instead of looping per PR:
+
+```sh
+bitbucket-cli pr inbox --role reviewer --fields ref \
+  | jq -r '.items[].ref' \
+  | bitbucket-cli pr status - --format json
+```
+
+Use each item's `my_review` (`vote`, `voted_at`, `updated_after_my_vote`,
+`unresolved_thread_count`) to skip unchanged already-reviewed PRs, and batch
+`pr get -` or `pr threads -` for the remaining targets.
+
 ## Group by verified dependencies
 
 Group PRs only by evidence: stacked source/target branches, shared commits, a
