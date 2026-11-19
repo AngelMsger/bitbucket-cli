@@ -165,25 +165,26 @@ func ClassifyAuthorKind(u User) string {
 	}
 }
 
-// IsAIAttributedText reports whether content contains a standard AI attribution
-// link marker such as `[[AI]](https://...)`.
+// IsAIAttributedText reports whether content begins with a standard leading AI
+// attribution link marker such as `[[AI]](https://...)`. Matching only at the
+// start of the trimmed comment prevents human replies that quote or mention
+// `[[AI]](...)` inside blockquotes, backticks, or prose from being misclassified.
 func IsAIAttributedText(content string) bool {
-	rest := content
-	for {
-		idx := strings.Index(strings.ToLower(rest), "[[ai]](")
-		if idx < 0 {
-			return false
-		}
-		after := rest[idx+len("[[ai]]("):]
-		closeIdx := strings.IndexByte(after, ')')
-		if closeIdx > 0 {
-			return true
-		}
-		if closeIdx < 0 {
-			return false
-		}
-		rest = after[closeIdx+1:]
+	s := strings.TrimSpace(content)
+	const prefix = "[[ai]]("
+	if len(s) <= len(prefix) || !strings.EqualFold(s[:len(prefix)], prefix) {
+		return false
 	}
+	after := s[len(prefix):]
+	closeIdx := strings.IndexByte(after, ')')
+	if closeIdx <= 0 {
+		return false
+	}
+	target := after[:closeIdx]
+	if strings.ContainsAny(target, " \t\r\n") {
+		return false
+	}
+	return true
 }
 
 // EnrichCommentsWithSelf stamps the read-only IsSelf field on every comment in

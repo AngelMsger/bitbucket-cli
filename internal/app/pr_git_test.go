@@ -68,8 +68,100 @@ func TestSelectVerifiedRemoteForkAutoSelectsDestination(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if name != "upstream" || u != "ssh://git@bb.corp.internal:7999/PROJ/demo.git" {
-		t.Fatalf("got (%q, %q), want upstream destination remote", name, u)
+	if name != "upstream" || u != "ssh://bb.corp.internal:7999/PROJ/demo.git" {
+		t.Fatalf("got (%q, %q), want upstream sanitized destination remote", name, u)
+	}
+}
+
+func TestSelectVerifiedRemoteRejectsSourceOnlyFork(t *testing.T) {
+	remotes := []gitRemote{
+		{Name: "origin", URL: "git@bb.corp.internal:~alice/demo.git"},
+	}
+	dest := apiclient.RepoRef{Workspace: "PROJ", Slug: "demo"}
+	src := apiclient.RepoRef{Workspace: "~alice", Slug: "demo"}
+
+	for _, explicit := range []string{"", "origin"} {
+		_, _, err := selectVerifiedRemote(explicit, false, remotes, true, dest, src, "https://bb.corp.internal", false)
+		if err == nil {
+			t.Fatalf("explicit=%q: expected GIT_REMOTE_MISMATCH for source-only fork", explicit)
+		}
+		ce := cerrors.AsCLIError(err)
+		if ce.Code != "GIT_REMOTE_MISMATCH" || ce.Category != cerrors.CategoryUsage {
+			t.Fatalf("explicit=%q: got %s/%s", explicit, ce.Category, ce.Code)
+		}
+		if !strings.Contains(ce.Hint, "destination repository PROJ/demo") {
+			t.Errorf("explicit=%q: hint should explain destination repository requirement: %q", explicit, ce.Hint)
+		}
+	}
+}
+
+func TestSelectVerifiedRemoteRedactsCredentialsInOutputAndErrors(t *testing.T) {
+	dest := apiclient.RepoRef{Workspace: "PROJ", Slug: "demo"}
+
+	// Success path: returned remoteURL must not leak embedded userinfo or query tokens.
+	goodRemotes := []gitRemote{
+		{Name: "origin", URL: "https://alice:top-secret-token@bb.corp.internal/scm/PROJ/demo.git?token=leak"},
+	}
+	name, u, err := selectVerifiedRemote("", false, goodRemotes, true, dest, apiclient.RepoRef{}, "https://bb.corp.internal", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if name != "origin" || u != "https://bb.corp.internal/scm/PROJ/demo.git" {
+		t.Fatalf("got (%q, %q), want sanitized URL", name, u)
+	}
+	if strings.Contains(u, "top-secret-token") || strings.Contains(u, "leak") {
+		t.Fatalf("remote_url leaked credentials: %q", u)
+	}
+
+	// Mismatch error path: neither message nor hint may leak credentials from any remote.
+	badRemotes := []gitRemote{
+		{Name: "origin", URL: "https://bob:secret-origin@bb.corp.internal/scm/OTHER/repo.git?api_key=1"},
+		{Name: "backup", URL: "https://token-backup@mirror.internal/scm/OTHER/repo.git"},
+	}
+	_, _, err = selectVerifiedRemote("origin", false, badRemotes, true, dest, apiclient.RepoRef{}, "https://bb.corp.internal", false)
+	if err == nil {
+		t.Fatal("expected GIT_REMOTE_MISMATCH")
+	}
+	ce := cerrors.AsCLIError(err)
+	combined := ce.Message + " " + ce.Hint
+	for _, secret := range []string{"secret-origin", "api_key", "token-backup"} {
+		if strings.Contains(combined, secret) {
+			t.Errorf("error leaked %q: %s", secret, combined)
+		}
+	}
+}
+
+func TestSelectVerifiedRemoteRejectsPortContextAndSSHAlias(t *testing.T) {
+	dest := apiclient.RepoRef{Workspace: "PROJ", Slug: "demo"}
+
+	cases := []struct {
+		name    string
+		remote  string
+		baseURL string
+	}{
+		{
+			name:    "different DC context path",
+			remote:  "https://bb.corp.internal/dc2/scm/PROJ/demo.git",
+			baseURL: "https://bb.corp.internal/dc1",
+		},
+		{
+			name:    "different HTTPS port",
+			remote:  "https://bb.corp.internal:9443/scm/PROJ/demo.git",
+			baseURL: "https://bb.corp.internal:8443",
+		},
+		{
+			name:    "unverified SSH alias",
+			remote:  "git@bb-alias:PROJ/demo.git",
+			baseURL: "https://bb.corp.internal",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, _, err := selectVerifiedRemote("", false, []gitRemote{{Name: "origin", URL: tc.remote}}, true, dest, apiclient.RepoRef{}, tc.baseURL, false)
+			if err == nil || cerrors.AsCLIError(err).Code != "GIT_REMOTE_MISMATCH" {
+				t.Fatalf("expected GIT_REMOTE_MISMATCH, got %v", err)
+			}
+		})
 	}
 }
 

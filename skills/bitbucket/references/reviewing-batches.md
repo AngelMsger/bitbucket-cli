@@ -7,9 +7,11 @@ publication decision per PR.
 
 ## Prune and batch-read first
 
-When starting from an inbox, filter with `pr inbox --my-vote unvoted` (or inspect
-`my_vote`, `source.commit`, and `updated_at`) and pipe candidate refs into batch
-reads instead of looping per PR:
+For incremental review, list open inbox PRs **including** previously voted PRs
+(reserve `pr inbox --my-vote unvoted` for explicit first-review-only runs, or
+you will miss fixes pushed after a prior Needs Work vote). Inspect `my_vote`,
+`source.commit`, and `updated_at`, and pipe candidate refs into batch reads
+instead of looping per PR:
 
 ```sh
 bitbucket-cli pr inbox --role reviewer --fields ref \
@@ -18,7 +20,8 @@ bitbucket-cli pr inbox --role reviewer --fields ref \
 ```
 
 Use each item's `my_review` (`vote`, `voted_at`, `updated_after_my_vote`,
-`unresolved_thread_count`) to skip unchanged already-reviewed PRs, and batch
+`unresolved_thread_count`) to skip PRs only when `updated_after_my_vote` is
+explicitly `false` (treat omitted/unknown as needing inspection), and batch
 `pr get -` or `pr threads -` for the remaining targets.
 
 ## Group by verified dependencies

@@ -104,14 +104,17 @@ func safePart(part string) bool {
 
 // RemoteRepo is the normalized repository identity parsed from a git remote URL.
 type RemoteRepo struct {
-	Scheme    string
-	Host      string
-	Workspace string
-	Slug      string
+	Scheme      string
+	Host        string
+	Port        string
+	ContextPath string
+	Workspace   string
+	Slug        string
 }
 
-// ParseRemoteRepo extracts the normalized host, workspace/project, and repo
-// slug from common Bitbucket Cloud and Data Center git remote URLs:
+// ParseRemoteRepo extracts the normalized scheme, host, port, optional Data
+// Center HTTP context path, workspace/project, and repo slug from common
+// Bitbucket Cloud and Data Center git remote URLs:
 //   - SCP-style SSH: git@host:ws/repo.git, git@host:scm/PROJ/repo.git, git@host:~user/repo.git
 //   - Explicit SSH:  ssh://git@host:7999/PROJ/repo.git, ssh://git@host/scm/PROJ/repo.git
 //   - HTTPS / HTTP:  https://host/ws/repo.git, https://host[/ctx]/scm/PROJ/repo.git,
@@ -130,41 +133,68 @@ func ParseRemoteRepo(raw string) (RemoteRepo, bool) {
 	if scheme != "ssh" && scheme != "https" && scheme != "http" {
 		return RemoteRepo{}, false
 	}
-	ws, slug, ok := parseBitbucketRepoPath(u.Path)
+	ctxPath, ws, slug, ok := parseBitbucketRepoPath(u.Path)
 	if !ok {
 		return RemoteRepo{}, false
 	}
 	return RemoteRepo{
-		Scheme:    scheme,
-		Host:      strings.ToLower(u.Hostname()),
-		Workspace: ws,
-		Slug:      slug,
+		Scheme:      scheme,
+		Host:        strings.ToLower(u.Hostname()),
+		Port:        u.Port(),
+		ContextPath: ctxPath,
+		Workspace:   ws,
+		Slug:        slug,
 	}, true
 }
 
-// MatchesHost reports whether r belongs to the same Bitbucket deployment host
-// as baseURL. Short SSH config aliases without dots (e.g. `git@bb:PROJ/demo`)
-// are allowed because SSH host aliases cannot be resolved without parsing
-// `~/.ssh/config`.
-func (r RemoteRepo) MatchesHost(baseURL string, cloud bool) bool {
+// MatchesDeployment reports whether r belongs to the same Bitbucket deployment
+// as baseURL. Hostnames must match strictly (mapping Cloud `api.bitbucket.org`
+// to `bitbucket.org`), with no unverified SSH host-alias bypass. For HTTP(S)
+// remotes, the effective port and Data Center context path must also match so
+// distinct installations sharing a hostname are never conflated.
+func (r RemoteRepo) MatchesDeployment(baseURL string, cloud bool) bool {
 	if strings.TrimSpace(baseURL) == "" {
 		return true
 	}
 	b, err := url.Parse(baseURL)
 	if err != nil || b.Hostname() == "" {
+		return false
+	}
+	expectedHost := strings.ToLower(b.Hostname())
+	if cloud && expectedHost == "api.bitbucket.org" {
+		expectedHost = "bitbucket.org"
+	}
+	if !strings.EqualFold(r.Host, expectedHost) {
+		return false
+	}
+	expectedCtx := ""
+	if !cloud {
+		expectedCtx = strings.Trim(b.Path, "/")
+	}
+	switch r.Scheme {
+	case "http", "https":
+		if effectiveHTTPPort(r.Scheme, r.Port) != effectiveHTTPPort(strings.ToLower(b.Scheme), b.Port()) {
+			return false
+		}
+		return strings.Trim(r.ContextPath, "/") == expectedCtx
+	case "ssh":
+		if r.ContextPath != "" && strings.Trim(r.ContextPath, "/") != expectedCtx {
+			return false
+		}
 		return true
+	default:
+		return false
 	}
-	expected := strings.ToLower(b.Hostname())
-	if cloud && expected == "api.bitbucket.org" {
-		expected = "bitbucket.org"
+}
+
+func effectiveHTTPPort(scheme, port string) string {
+	if port != "" {
+		return port
 	}
-	if strings.EqualFold(r.Host, expected) {
-		return true
+	if scheme == "http" {
+		return "80"
 	}
-	if r.Scheme == "ssh" && !strings.Contains(r.Host, ".") {
-		return true
-	}
-	return false
+	return "443"
 }
 
 // MatchesRepo reports whether r identifies the given workspace/project and slug
@@ -174,6 +204,55 @@ func (r RemoteRepo) MatchesRepo(workspace, slug string) bool {
 		return false
 	}
 	return strings.EqualFold(r.Workspace, workspace) && strings.EqualFold(r.Slug, slug)
+}
+
+// SanitizeRemoteURL removes embedded credentials (userinfo / tokens), query
+// parameters, and fragments before a git remote URL is printed to stdout or
+// included in diagnostics.
+func SanitizeRemoteURL(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+	if strings.Contains(raw, "://") {
+		u, err := url.Parse(raw)
+		if err != nil || u.Host == "" {
+			return "<redacted-remote-url>"
+		}
+		u.User = nil
+		u.RawQuery = ""
+		u.Fragment = ""
+		return u.String()
+	}
+	// SCP-style SSH remote: [user[:pass]@]host:path
+	// Locate the last '@' before the first '/' (if any), then split host:path at
+	// the first ':' after that '@' so user:password@host:path is redacted too.
+	prefix := raw
+	if slash := strings.IndexByte(raw, '/'); slash >= 0 {
+		prefix = raw[:slash]
+	}
+	if at := strings.LastIndexByte(prefix, '@'); at >= 0 {
+		if colon := strings.IndexByte(raw[at+1:], ':'); colon >= 0 {
+			user := raw[:at]
+			host := raw[at+1 : at+1+colon]
+			cleanPath := raw[at+1+colon+1:]
+			if host == "" {
+				return "<redacted-remote-url>"
+			}
+			if idx := strings.IndexAny(cleanPath, "?#"); idx >= 0 {
+				cleanPath = cleanPath[:idx]
+			}
+			if user == "git" {
+				return "git@" + host + ":" + cleanPath
+			}
+			return host + ":" + cleanPath
+		}
+	}
+	// Local filesystem path or opaque remote without credentials.
+	if idx := strings.IndexAny(raw, "?#"); idx >= 0 {
+		raw = raw[:idx]
+	}
+	return raw
 }
 
 func parseRemoteURLPermissive(raw string) (*url.URL, error) {
@@ -194,10 +273,10 @@ func parseRemoteURLPermissive(raw string) (*url.URL, error) {
 	return u, nil
 }
 
-func parseBitbucketRepoPath(path string) (workspace, slug string, ok bool) {
+func parseBitbucketRepoPath(path string) (contextPath, workspace, slug string, ok bool) {
 	trimmed := strings.Trim(path, "/")
 	if trimmed == "" {
-		return "", "", false
+		return "", "", "", false
 	}
 	parts := strings.Split(trimmed, "/")
 
@@ -208,9 +287,9 @@ func parseBitbucketRepoPath(path string) (workspace, slug string, ok bool) {
 		if strings.EqualFold(parts[i], "projects") && strings.EqualFold(parts[i+2], "repos") {
 			ws, sl := parts[i+1], strings.TrimSuffix(parts[i+3], ".git")
 			if safePart(ws) && safePart(sl) {
-				return ws, sl, true
+				return strings.Join(parts[:i], "/"), ws, sl, true
 			}
-			return "", "", false
+			return "", "", "", false
 		}
 		if strings.EqualFold(parts[i], "users") && strings.EqualFold(parts[i+2], "repos") {
 			u, sl := parts[i+1], strings.TrimSuffix(parts[i+3], ".git")
@@ -218,9 +297,9 @@ func parseBitbucketRepoPath(path string) (workspace, slug string, ok bool) {
 				if !strings.HasPrefix(u, "~") {
 					u = "~" + u
 				}
-				return u, sl, true
+				return strings.Join(parts[:i], "/"), u, sl, true
 			}
-			return "", "", false
+			return "", "", "", false
 		}
 	}
 
@@ -229,9 +308,9 @@ func parseBitbucketRepoPath(path string) (workspace, slug string, ok bool) {
 		if strings.EqualFold(parts[i], "scm") && i+3 == len(parts) {
 			ws, sl := parts[i+1], strings.TrimSuffix(parts[i+2], ".git")
 			if safePart(ws) && safePart(sl) {
-				return ws, sl, true
+				return strings.Join(parts[:i], "/"), ws, sl, true
 			}
-			return "", "", false
+			return "", "", "", false
 		}
 	}
 
@@ -239,8 +318,8 @@ func parseBitbucketRepoPath(path string) (workspace, slug string, ok bool) {
 	if len(parts) == 2 {
 		ws, sl := parts[0], strings.TrimSuffix(parts[1], ".git")
 		if safePart(ws) && safePart(sl) {
-			return ws, sl, true
+			return "", ws, sl, true
 		}
 	}
-	return "", "", false
+	return "", "", "", false
 }

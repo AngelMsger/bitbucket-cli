@@ -51,9 +51,9 @@ func newPRFetchCmd(s *appState) *cobra.Command {
 		},
 	}
 	cmd.Flags().BoolVar(&execIt, "exec", false, "actually run `git fetch` in the current working directory")
-	cmd.Flags().StringVar(&remote, "remote", "", "git remote to fetch from (default: auto-select remote matching PR repository, preferring upstream then origin)")
+	cmd.Flags().StringVar(&remote, "remote", "", "git remote to fetch from (default: auto-select remote matching PR destination repository, preferring upstream then origin)")
 	cmd.Flags().StringVar(&base, "base", "", "base branch to fetch (default: the PR's destination branch, looked up via the API)")
-	cmd.Flags().BoolVar(&forceRemote, "force-remote", false, "bypass repository remote URL identity verification (for mirrors or custom remotes)")
+	cmd.Flags().BoolVar(&forceRemote, "force-remote", false, "bypass repository remote URL deployment verification (for mirrors or SSH config aliases)")
 	return cmd
 }
 
@@ -100,11 +100,11 @@ func newPRCheckoutCmd(s *appState) *cobra.Command {
 		},
 	}
 	cmd.Flags().BoolVar(&execIt, "exec", false, "actually run the git commands in the current working directory")
-	cmd.Flags().StringVar(&remote, "remote", "", "git remote to fetch from (default: auto-select remote matching PR repository, preferring upstream then origin)")
+	cmd.Flags().StringVar(&remote, "remote", "", "git remote to fetch from (default: auto-select remote matching PR destination repository, preferring upstream then origin)")
 	cmd.Flags().StringVar(&base, "base", "", "base branch to fetch (default: the PR's destination branch, looked up via the API)")
 	cmd.Flags().StringVar(&branchFmt, "branch", "pr/%d",
 		"local branch name format; %d is replaced with the PR id")
-	cmd.Flags().BoolVar(&forceRemote, "force-remote", false, "bypass repository remote URL identity verification (for mirrors or custom remotes)")
+	cmd.Flags().BoolVar(&forceRemote, "force-remote", false, "bypass repository remote URL deployment verification (for mirrors or SSH config aliases)")
 	return cmd
 }
 
@@ -129,14 +129,17 @@ type prGitMeta struct {
 
 // resolvePRGitMeta determines the PR's destination/source repository identities
 // and base branch/commit. An explicit --base skips the API call (keeping the
-// command usable offline) while still verifying the destination RepoRef from the
-// PR reference.
+// command usable offline) while still verifying the destination RepoRef and
+// Bitbucket Cloud host detection from the configured base URL.
 func resolvePRGitMeta(s *appState, ref apiclient.RepoRef, id int, baseOverride string) (prGitMeta, error) {
+	flavor := apiclient.Flavor(s.cfg().Flavor)
+	isCloud := flavor == apiclient.FlavorCloud ||
+		((flavor == "" || flavor == apiclient.FlavorAuto) && apiclient.IsCloudHost(s.cfg().BaseURL))
 	meta := prGitMeta{
 		baseBranch: baseOverride,
 		destRepo:   ref,
 		baseURL:    s.cfg().BaseURL,
-		isCloud:    apiclient.Flavor(s.cfg().Flavor) == apiclient.FlavorCloud,
+		isCloud:    isCloud,
 	}
 	if baseOverride != "" {
 		return meta, nil
@@ -173,18 +176,19 @@ func parseFullRepoName(full string) apiclient.RepoRef {
 }
 
 // selectVerifiedRemote resolves and verifies the local git remote against the
-// PR's destination and source repositories.
+// PR's destination repository (where `refs/pull-requests/<id>/from` and the
+// destination base branch live).
 //
 //   - Outside a git checkout (inRepo == false), print-only mode keeps working
 //     using the explicit remote or "origin" (while --exec still fails in
 //     ensureGitWorktree).
-//   - Inside a git checkout without an explicit --remote, remotes matching
-//     destRepo win (preferring "upstream", then "origin"); if none match
-//     destRepo, remotes matching sourceRepo are considered. If no remote
-//     matches either repository, GIT_REMOTE_MISMATCH is returned unless
-//     forceRemote is set.
+//   - Inside a git checkout without an explicit --remote, only remotes matching
+//     destRepo on the configured Bitbucket deployment qualify (preferring
+//     "upstream", then "origin"). A checkout that only has the source fork
+//     remote is rejected with GIT_REMOTE_MISMATCH so `pr fetch` never fetches
+//     the wrong PR ID or base branch from a fork.
 //   - Inside a git checkout with an explicit --remote, that remote must exist
-//     and match destRepo or sourceRepo unless forceRemote is set.
+//     and match destRepo on the configured deployment unless forceRemote is set.
 func selectVerifiedRemote(
 	explicit string,
 	forceRemote bool,
@@ -213,18 +217,30 @@ func selectVerifiedRemote(
 		if !parsed.MatchesRepo(target.Workspace, target.Slug) {
 			return false
 		}
-		return parsed.MatchesHost(baseURL, cloud)
+		return parsed.MatchesDeployment(baseURL, cloud)
 	}
+	isDistinctFork := sourceRepo.Workspace != "" && sourceRepo.Slug != "" &&
+		(!strings.EqualFold(sourceRepo.Workspace, destRepo.Workspace) ||
+			!strings.EqualFold(sourceRepo.Slug, destRepo.Slug))
 
 	if explicit != "" && explicit != "auto" {
 		for _, r := range remotes {
 			if r.Name == explicit {
-				if forceRemote || matches(r.URL, destRepo) || matches(r.URL, sourceRepo) {
-					return r.Name, r.URL, nil
+				cleanURL := gittransport.SanitizeRemoteURL(r.URL)
+				if forceRemote || matches(r.URL, destRepo) {
+					return r.Name, cleanURL, nil
+				}
+				if isDistinctFork && matches(r.URL, sourceRepo) {
+					return "", "", remoteMismatchError(
+						fmt.Sprintf("git remote %q (%s) points to source fork %s/%s, not PR destination repository %s/%s",
+							r.Name, cleanURL, sourceRepo.Workspace, sourceRepo.Slug, destRepo.Workspace, destRepo.Slug),
+						remotes, destRepo, true,
+					)
 				}
 				return "", "", remoteMismatchError(
-					fmt.Sprintf("git remote %q (%s) does not match PR repository %s", r.Name, r.URL, formatExpectedRepos(destRepo, sourceRepo)),
-					remotes, destRepo, sourceRepo,
+					fmt.Sprintf("git remote %q (%s) does not match PR destination repository %s/%s",
+						r.Name, cleanURL, destRepo.Workspace, destRepo.Slug),
+					remotes, destRepo, false,
 				)
 			}
 		}
@@ -232,27 +248,25 @@ func selectVerifiedRemote(
 			return explicit, "", nil
 		}
 		return "", "", remoteMismatchError(
-			fmt.Sprintf("git remote %q is not configured in this repository (expected %s)", explicit, formatExpectedRepos(destRepo, sourceRepo)),
-			remotes, destRepo, sourceRepo,
+			fmt.Sprintf("git remote %q is not configured in this repository (expected PR destination %s/%s)",
+				explicit, destRepo.Workspace, destRepo.Slug),
+			remotes, destRepo, false,
 		)
 	}
 
-	// Auto-selection: prefer destination repo matches, then source repo matches.
-	var destMatches, srcMatches []gitRemote
+	// Auto-selection: require a destination repository match.
+	var destMatches []gitRemote
+	foundSourceFork := false
 	for _, r := range remotes {
 		if matches(r.URL, destRepo) {
 			destMatches = append(destMatches, r)
-		} else if matches(r.URL, sourceRepo) {
-			srcMatches = append(srcMatches, r)
+		} else if isDistinctFork && matches(r.URL, sourceRepo) {
+			foundSourceFork = true
 		}
 	}
 	if len(destMatches) > 0 {
 		chosen := pickPreferredRemote(destMatches)
-		return chosen.Name, chosen.URL, nil
-	}
-	if len(srcMatches) > 0 {
-		chosen := pickPreferredRemote(srcMatches)
-		return chosen.Name, chosen.URL, nil
+		return chosen.Name, gittransport.SanitizeRemoteURL(chosen.URL), nil
 	}
 	if forceRemote {
 		names := make([]string, 0, len(remotes))
@@ -262,14 +276,15 @@ func selectVerifiedRemote(
 		chosenName := pickRemote("", names)
 		for _, r := range remotes {
 			if r.Name == chosenName {
-				return r.Name, r.URL, nil
+				return r.Name, gittransport.SanitizeRemoteURL(r.URL), nil
 			}
 		}
 		return chosenName, "", nil
 	}
 	return "", "", remoteMismatchError(
-		fmt.Sprintf("no git remote in this repository matches PR repository %s", formatExpectedRepos(destRepo, sourceRepo)),
-		remotes, destRepo, sourceRepo,
+		fmt.Sprintf("no git remote in this repository matches PR destination repository %s/%s",
+			destRepo.Workspace, destRepo.Slug),
+		remotes, destRepo, foundSourceFork,
 	)
 }
 
@@ -284,33 +299,29 @@ func pickPreferredRemote(candidates []gitRemote) gitRemote {
 	return candidates[0]
 }
 
-func formatExpectedRepos(dest, src apiclient.RepoRef) string {
-	d := dest.Workspace + "/" + dest.Slug
-	if src.Workspace != "" && src.Slug != "" &&
-		(!strings.EqualFold(src.Workspace, dest.Workspace) || !strings.EqualFold(src.Slug, dest.Slug)) {
-		return fmt.Sprintf("%s (or source fork %s/%s)", d, src.Workspace, src.Slug)
-	}
-	return d
-}
-
-func remoteMismatchError(msg string, remotes []gitRemote, dest, src apiclient.RepoRef) error {
+func remoteMismatchError(msg string, remotes []gitRemote, dest apiclient.RepoRef, sawSourceFork bool) error {
 	var found []string
 	for _, r := range remotes {
-		found = append(found, fmt.Sprintf("%s=%s", r.Name, r.URL))
+		found = append(found, fmt.Sprintf("%s=%s", r.Name, gittransport.SanitizeRemoteURL(r.URL)))
 	}
 	detected := "(none)"
 	if len(found) > 0 {
 		detected = strings.Join(found, ", ")
 	}
-	hint := fmt.Sprintf("Expected repository %s; current checkout remotes: %s.",
-		formatExpectedRepos(dest, src), detected)
+	destFull := dest.Workspace + "/" + dest.Slug
+	hint := fmt.Sprintf("Expected destination repository %s; current checkout remotes: %s.", destFull, detected)
+	if sawSourceFork {
+		hint = fmt.Sprintf("PR refspecs (`refs/pull-requests/<id>/from`) and the base branch live on destination repository %s, not the source fork. Current checkout remotes: %s.",
+			destFull, detected)
+	}
+	steps := []string{
+		"cd into a local clone of " + destFull + " (or add an upstream remote for " + destFull + ") and retry",
+		"git remote -v   # inspect configured remotes",
+		"Pass --remote <name> --force-remote only for an intentional mirror or SSH config alias",
+	}
 	return cerrors.New(cerrors.CategoryUsage, "GIT_REMOTE_MISMATCH", msg).
 		WithHint(hint).
-		WithNextSteps(
-			"cd into a local clone of "+dest.Workspace+"/"+dest.Slug+" and retry",
-			"git remote -v   # inspect configured remotes",
-			"Pass --remote <name> --force-remote only if fetching from an intentional mirror",
-		)
+		WithNextSteps(steps...)
 }
 
 // pickRemote chooses the git remote to fetch a PR and its base from when
@@ -420,8 +431,8 @@ func reviewExtras(remote, remoteURL string, id int, baseBranch, baseCommit strin
 		"remote":     remote,
 		"source_ref": fmt.Sprintf("refs/remotes/%s/pr/%d", remote, id),
 	}
-	if remoteURL != "" {
-		extras["remote_url"] = remoteURL
+	if clean := gittransport.SanitizeRemoteURL(remoteURL); clean != "" {
+		extras["remote_url"] = clean
 	}
 	if baseBranch != "" {
 		extras["base_branch"] = baseBranch

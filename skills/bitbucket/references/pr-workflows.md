@@ -9,9 +9,11 @@ When the user pastes a PR URL or names `<workspace>/<repo>/<id>`:
 1. **Merge readiness and incremental pruning first** — `bitbucket-cli pr status <ref>`
    returns mergeable + conflicts + reviewer states + CI builds + `my_review`
    (`vote`, `voted_at`, `latest_commit_at`, `updated_after_my_vote`,
-   `unresolved_thread_count`). Accepts multiple refs or `-` from stdin. Combine
-   with `pr inbox --my-vote unvoted` (each inbox item also exposes `my_vote`,
-   `source.commit`, and `updated_at`) to prune already-reviewed PRs without N+1 calls.
+   `unresolved_thread_count`). Accepts multiple refs or `-` from stdin. For
+   incremental review, list open `pr inbox` PRs including previously voted ones
+   (each item exposes `my_vote`, `source.commit`, and `updated_at`) and skip
+   only when `updated_after_my_vote` is explicitly `false`; reserve
+   `--my-vote unvoted` for first-review-only runs.
 2. **Diffstat (per-file metadata) next** — `bitbucket-cli pr files <ref>`
    returns one row per changed file with `path / status / added / removed`,
    sorted by churn. **Diffstat-first** is the right default for large PRs —
@@ -21,10 +23,11 @@ When the user pastes a PR URL or names `<workspace>/<repo>/<id>`:
    still available when you really want the whole patch.
 4. **Local fetch** — `bitbucket-cli pr fetch <ref>` (or `pr checkout`) inspects
    `git remote -v`, verifies normalized remote URLs against the PR's destination
-   and source repositories (auto-selecting a matching `upstream` over `origin`,
-   or failing with `GIT_REMOTE_MISMATCH`; `--force-remote` overrides mirrors),
-   and prints (or `--exec`s) the `git` commands plus a merge-base `review_diff`.
-   See `reviewing-locally.md` › "Local checkout".
+   repository and deployment (preferring `upstream` over `origin`, or failing
+   with `GIT_REMOTE_MISMATCH`; `--force-remote` overrides mirrors or SSH config
+   aliases), and prints (or `--exec`s) the `git` commands plus a merge-base
+   `review_diff`. Displayed remote URLs are credential-redacted. See
+   `reviewing-locally.md` › "Local checkout".
 5. **Commits / activity / threads** — `pr commits` / `pr activity` / `pr threads`
    enumerate commits, timeline, and grouped review threads. `pr get`, `pr status`,
    and `pr threads` all accept multiple refs or `-` from stdin with bounded
@@ -104,11 +107,14 @@ permission failures, use [PR permissions and recovery](pr-permissions.md).
 
 - Composite review: `bitbucket-cli pr review <ref> --verdict <approve|request-changes|comment-only> --expected-source-commit <sha> --input <file|->`
   (`--dry-run` previews all planned requests). Phase 1 checks `source.commit`
-  (`PR_HEAD_MOVED` on mismatch) and resolves every inline anchor before sending
-  any write. Phase 2 posts comments sequentially, then casts the verdict only
-  if all comments succeed; a mid-flight failure prints `posted_comments`,
-  `failed_item`, and `vote_applied` on stdout and exits with
-  `REVIEW_PARTIAL_FAILURE` for idempotent recovery.
+  (`PR_HEAD_MOVED` on mismatch) and resolves every inline anchor (retrying
+  truncated files via per-path diff) before sending any write. Phase 2 posts
+  comments sequentially, rechecks `source.commit` immediately before voting, and
+  casts the verdict only if all comments succeeded and the head has not moved;
+  a mid-flight failure or drift prints `posted_comments`, `failed_item`, and
+  `vote_applied` on stdout and exits with `REVIEW_PARTIAL_FAILURE` for
+  idempotent recovery (Bitbucket REST APIs lack a single atomic comments+vote
+  transaction, so a minimal server-side race window remains).
 - Approve: `bitbucket-cli pr approve <ref>`
 - Withdraw: `bitbucket-cli pr unapprove <ref>`
 - Request changes: `bitbucket-cli pr request-changes <ref>` (aliases:

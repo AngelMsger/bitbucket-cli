@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -79,12 +80,50 @@ func TestParseReviewInput(t *testing.T) {
 			t.Fatalf("want BAD_REVIEW_INPUT, got %v", err)
 		}
 	})
+
+	t.Run("concatenated JSON objects fail loudly", func(t *testing.T) {
+		_, err := parseReviewInput([]byte(`{"verdict":"approve"}{"comments":[{"content":"dropped"}]}`))
+		if err == nil || cerrors.AsCLIError(err).Code != "BAD_REVIEW_INPUT" {
+			t.Fatalf("want BAD_REVIEW_INPUT for concatenated JSON objects, got %v", err)
+		}
+	})
+
+	t.Run("JSON array with trailing content fails loudly", func(t *testing.T) {
+		_, err := parseReviewInput([]byte(`[{"content":"ok"}] {"verdict":"approve"}`))
+		if err == nil || cerrors.AsCLIError(err).Code != "BAD_REVIEW_INPUT" {
+			t.Fatalf("want BAD_REVIEW_INPUT for trailing JSON content, got %v", err)
+		}
+	})
+
+	t.Run("multi-document YAML fails loudly", func(t *testing.T) {
+		raw := "verdict: approve\n---\ncomments:\n  - content: second doc\n"
+		_, err := parseReviewInput([]byte(raw))
+		if err == nil || cerrors.AsCLIError(err).Code != "BAD_REVIEW_INPUT" {
+			t.Fatalf("want BAD_REVIEW_INPUT for multi-document YAML, got %v", err)
+		}
+	})
+
+	t.Run("single YAML document with explicit end marker succeeds", func(t *testing.T) {
+		raw := "---\nverdict: approve\n...\n"
+		doc, err := parseReviewInput([]byte(raw))
+		if err != nil {
+			t.Fatalf("valid single YAML doc failed: %v", err)
+		}
+		if doc.Verdict != "approve" {
+			t.Fatalf("got %+v", doc)
+		}
+	})
 }
 
 // runCommandCapture executes the full root CLI against a fake Bitbucket server,
 // capturing os.Stdout (where output.Emit writes) so CLI wire contracts can be
 // verified end-to-end without leaving the process.
 func runCommandCapture(t *testing.T, readOnly bool, stdin string, baseURL string, extraArgs ...string) (string, error) {
+	t.Helper()
+	return runCommandCaptureWithFlavor(t, readOnly, stdin, baseURL, "datacenter", extraArgs...)
+}
+
+func runCommandCaptureWithFlavor(t *testing.T, readOnly bool, stdin string, baseURL string, flavor string, extraArgs ...string) (string, error) {
 	t.Helper()
 	keyring.MockInit()
 	t.Setenv("BITBUCKET_TOKEN", "test-pat")
@@ -111,13 +150,16 @@ func runCommandCapture(t *testing.T, readOnly bool, stdin string, baseURL string
 	defer func() { os.Stdout = oldStdout }()
 
 	cmd := NewRootCmd()
-	args := append([]string{
+	args := []string{
 		"--config", t.TempDir(),
 		"--base-url", baseURL,
-		"--flavor", "datacenter",
 		"--auth-scheme", "pat",
 		"--format", "json",
-	}, extraArgs...)
+	}
+	if flavor != "" {
+		args = append(args, "--flavor", flavor)
+	}
+	args = append(args, extraArgs...)
 	cmd.SetArgs(args)
 	if stdin != "" {
 		cmd.SetIn(strings.NewReader(stdin))
@@ -251,14 +293,21 @@ func TestBatchReadAndCommentMetadataCLI(t *testing.T) {
 			_, _ = w.Write([]byte(`{"id":1,"title":"PR One","state":"OPEN","fromRef":{"displayId":"a","latestCommit":"1111"},"toRef":{"displayId":"main","latestCommit":"0000"}}`))
 		case "/rest/api/1.0/projects/PROJ/repos/demo/pull-requests/2":
 			_, _ = w.Write([]byte(`{"id":2,"title":"PR Two","state":"OPEN","fromRef":{"displayId":"b","latestCommit":"2222"},"toRef":{"displayId":"main","latestCommit":"0000"}}`))
+		case "/rest/api/1.0/projects/PROJ/repos/demo/pull-requests/1/commits":
+			_, _ = w.Write([]byte(`{"values":[{"id":"c1","message":"first"}],"isLastPage":false,"nextPageStart":1}`))
+		case "/rest/api/1.0/projects/PROJ/repos/demo/pull-requests/2/commits":
+			_, _ = w.Write([]byte(`{"values":[{"id":"c2","message":"only"}],"isLastPage":true}`))
 		case "/rest/api/1.0/projects/PROJ/repos/demo/pull-requests/1/activities":
 			_, _ = w.Write([]byte(`{
 				"values": [
 					{"id":10,"action":"COMMENTED","comment":{"id":51,"text":"[[AI]](https://example.com) Looks good","author":{"name":"alice","slug":"alice","type":"NORMAL"}}},
 					{"id":11,"action":"COMMENTED","comment":{"id":52,"text":"Build green","author":{"name":"ci-bot","slug":"ci-bot","type":"SERVICE"}}}
 				],
-				"isLastPage": true
+				"isLastPage": false,
+				"nextPageStart": 2
 			}`))
+		case "/rest/api/1.0/projects/PROJ/repos/demo/pull-requests/2/activities":
+			_, _ = w.Write([]byte(`{"values":[],"isLastPage":true}`))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 			_, _ = w.Write([]byte(`{"errors":[{"message":"not found"}]}`))
@@ -282,6 +331,44 @@ func TestBatchReadAndCommentMetadataCLI(t *testing.T) {
 		}
 		if len(env.Items) != 3 || !env.Items[0].OK || env.Items[1].OK || !env.Items[2].OK {
 			t.Fatalf("unexpected batch items: %+v", env.Items)
+		}
+	})
+
+	t.Run("pr get batch --scope commits and activity preserve per-PR pagination", func(t *testing.T) {
+		for _, tc := range []struct {
+			scope    string
+			wantNext string
+		}{
+			{scope: "commits", wantNext: "1"},
+			{scope: "activity", wantNext: "2"},
+		} {
+			out, err := runCommandCapture(t, false, "", srv.URL, "pr", "get", "--scope", tc.scope, "PROJ/demo/1", "PROJ/demo/2")
+			if err != nil {
+				t.Fatalf("scope=%s error: %v", tc.scope, err)
+			}
+			var env struct {
+				Items []struct {
+					Ref    string `json:"ref"`
+					OK     bool   `json:"ok"`
+					Result struct {
+						Items   []json.RawMessage `json:"items"`
+						Next    string            `json:"next"`
+						HasMore bool              `json:"has_more"`
+					} `json:"result"`
+				} `json:"items"`
+			}
+			if err := json.Unmarshal([]byte(out), &env); err != nil {
+				t.Fatalf("scope=%s decode: %v\nraw: %s", tc.scope, err, out)
+			}
+			if len(env.Items) != 2 {
+				t.Fatalf("scope=%s len=%d", tc.scope, len(env.Items))
+			}
+			if !env.Items[0].Result.HasMore || env.Items[0].Result.Next != tc.wantNext {
+				t.Errorf("scope=%s PR 1 pagination = %+v, want has_more=true next=%q", tc.scope, env.Items[0].Result, tc.wantNext)
+			}
+			if env.Items[1].Result.HasMore || env.Items[1].Result.Next != "" {
+				t.Errorf("scope=%s PR 2 pagination = %+v, want has_more=false next=\"\"", tc.scope, env.Items[1].Result)
+			}
 		}
 	})
 
@@ -327,4 +414,47 @@ func TestBatchReadAndCommentMetadataCLI(t *testing.T) {
 			t.Fatalf("comment 52 = %+v, want is_self=false is_ai=false kind=bot", c52)
 		}
 	})
+}
+
+func TestPRFetchOfflineBaseCloudAutoFlavorAndRedaction(t *testing.T) {
+	dir := t.TempDir()
+	runGit := func(args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", args...)
+		cmd.Dir = dir
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v failed: %v\n%s", args, err, out)
+		}
+	}
+	runGit("init")
+	runGit("remote", "add", "origin", "https://x-token-auth:secret-pass@bitbucket.org/ws/demo.git?tok=1")
+
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(origDir) })
+
+	// Default flavor=auto with Cloud base URL https://api.bitbucket.org and --base main (offline).
+	out, err := runCommandCaptureWithFlavor(t, false, "", "https://api.bitbucket.org", "auto",
+		"pr", "fetch", "ws/demo/1", "--base", "main")
+	if err != nil {
+		t.Fatalf("offline Cloud pr fetch failed: %v", err)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(out), &payload); err != nil {
+		t.Fatalf("decode: %v\nraw: %s", err, out)
+	}
+	if payload["remote"] != "origin" {
+		t.Errorf("remote = %v, want origin", payload["remote"])
+	}
+	if payload["remote_url"] != "https://bitbucket.org/ws/demo.git" {
+		t.Errorf("remote_url = %v, want redacted https://bitbucket.org/ws/demo.git", payload["remote_url"])
+	}
+	if strings.Contains(out, "secret-pass") || strings.Contains(out, "x-token-auth") {
+		t.Errorf("stdout leaked remote credentials: %s", out)
+	}
 }

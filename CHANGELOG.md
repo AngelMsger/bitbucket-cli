@@ -22,18 +22,21 @@
 - `pr review <ref>` adds a two-phase composite review command (`--verdict`,
   `--expected-source-commit`, `--input <file|->` JSON/YAML, `--dry-run`). Phase
   1 checks `source.commit` (`PR_HEAD_MOVED`, exit 11) and resolves every inline
-  diff anchor before sending any write; Phase 2 posts comments sequentially and
-  casts the verdict only when all comments succeed, emitting partial outcomes
-  (`posted_comments`, `failed_item`, `vote_applied`) on stdout before returning
-  non-retryable `REVIEW_PARTIAL_FAILURE`.
+  diff anchor (retrying truncated files via per-path diff) before sending any
+  write; Phase 2 posts comments sequentially, rechecks `source.commit`
+  immediately before voting, and emits partial outcomes (`posted_comments`,
+  `failed_item`, `vote_applied`) on stdout before returning non-retryable
+  `REVIEW_PARTIAL_FAILURE` on failure or head drift.
 
 ### Changed
 
 - `pr fetch` and `pr checkout` now inspect `git remote -v` and verify
-  normalized remote URLs against the PR's destination and source repositories,
-  auto-selecting a matching `upstream` over `origin` and failing with
-  `GIT_REMOTE_MISMATCH` inside mismatched checkouts unless `--remote` is paired
-  with `--force-remote`. Print-only mode outside a git worktree is preserved.
+  normalized remote URLs against the PR's destination repository and configured
+  deployment (host, HTTP(S) port, and Data Center context path), auto-selecting
+  a matching `upstream` over `origin`, redacting credentials from displayed
+  remote URLs, and failing with `GIT_REMOTE_MISMATCH` inside mismatched or
+  fork-only checkouts unless `--remote` is paired with `--force-remote`.
+  Print-only mode outside a git worktree is preserved.
 
 ### Skill
 

@@ -811,8 +811,8 @@ and the exit code is non-zero if any approval failed.</p>
         <tr><td><code>--base</code></td><td></td><td>base branch to fetch (default: the PR&#39;s destination branch, looked up via the API)</td></tr>
         <tr><td><code>--branch</code></td><td><code>pr/%d</code></td><td>local branch name format; %d is replaced with the PR id</td></tr>
         <tr><td><code>--exec</code></td><td><code>false</code></td><td>actually run the git commands in the current working directory</td></tr>
-        <tr><td><code>--force-remote</code></td><td><code>false</code></td><td>bypass repository remote URL identity verification (for mirrors or custom remotes)</td></tr>
-        <tr><td><code>--remote</code></td><td></td><td>git remote to fetch from (default: auto-select remote matching PR repository, preferring upstream then origin)</td></tr>
+        <tr><td><code>--force-remote</code></td><td><code>false</code></td><td>bypass repository remote URL deployment verification (for mirrors or SSH config aliases)</td></tr>
+        <tr><td><code>--remote</code></td><td></td><td>git remote to fetch from (default: auto-select remote matching PR destination repository, preferring upstream then origin)</td></tr>
         </tbody>
       </table>
 
@@ -910,8 +910,8 @@ sets the optional decline comment.</p>
         <tbody>
         <tr><td><code>--base</code></td><td></td><td>base branch to fetch (default: the PR&#39;s destination branch, looked up via the API)</td></tr>
         <tr><td><code>--exec</code></td><td><code>false</code></td><td>actually run `git fetch` in the current working directory</td></tr>
-        <tr><td><code>--force-remote</code></td><td><code>false</code></td><td>bypass repository remote URL identity verification (for mirrors or custom remotes)</td></tr>
-        <tr><td><code>--remote</code></td><td></td><td>git remote to fetch from (default: auto-select remote matching PR repository, preferring upstream then origin)</td></tr>
+        <tr><td><code>--force-remote</code></td><td><code>false</code></td><td>bypass repository remote URL deployment verification (for mirrors or SSH config aliases)</td></tr>
+        <tr><td><code>--remote</code></td><td></td><td>git remote to fetch from (default: auto-select remote matching PR destination repository, preferring upstream then origin)</td></tr>
         </tbody>
       </table>
 
@@ -1057,10 +1057,13 @@ Phase 1 validates everything before sending any write request: checks
 PR_HEAD_MOVED on mismatch), fetches the diff once, and resolves every
 inline comment anchor. Any validation error aborts with zero remote writes.
 
-Phase 2 posts each comment sequentially and applies the verdict only after
-every comment succeeds. If a mid-flight write fails, the partial result
-(posted_comments, failed_item, vote_applied) is emitted on stdout before
-returning REVIEW_PARTIAL_FAILURE so recovery can be idempotent.
+Phase 2 posts each comment sequentially, rechecks the PR&#39;s source commit
+immediately before voting (Bitbucket REST APIs have no single atomic
+comments&#43;vote transaction), and applies the verdict only if every comment
+succeeded and the head has not moved. If a mid-flight write fails or the
+head moves before voting, the partial result (posted_comments, failed_item,
+vote_applied) is emitted on stdout before returning REVIEW_PARTIAL_FAILURE
+so recovery can be idempotent.
 
 Pass `--input &lt;file&gt;` or `--input -` (stdin) with either a JSON/YAML object
 (`{verdict, expected_source_commit, comments: [...]}`) or a bare array of

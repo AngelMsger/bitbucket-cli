@@ -36,10 +36,13 @@ func newPRReviewCmd(s *appState) *cobra.Command {
 			"`--expected-source-commit` against the remote PR head (returning\n" +
 			"PR_HEAD_MOVED on mismatch), fetches the diff once, and resolves every\n" +
 			"inline comment anchor. Any validation error aborts with zero remote writes.\n\n" +
-			"Phase 2 posts each comment sequentially and applies the verdict only after\n" +
-			"every comment succeeds. If a mid-flight write fails, the partial result\n" +
-			"(posted_comments, failed_item, vote_applied) is emitted on stdout before\n" +
-			"returning REVIEW_PARTIAL_FAILURE so recovery can be idempotent.\n\n" +
+			"Phase 2 posts each comment sequentially, rechecks the PR's source commit\n" +
+			"immediately before voting (Bitbucket REST APIs have no single atomic\n" +
+			"comments+vote transaction), and applies the verdict only if every comment\n" +
+			"succeeded and the head has not moved. If a mid-flight write fails or the\n" +
+			"head moves before voting, the partial result (posted_comments, failed_item,\n" +
+			"vote_applied) is emitted on stdout before returning REVIEW_PARTIAL_FAILURE\n" +
+			"so recovery can be idempotent.\n\n" +
 			"Pass `--input <file>` or `--input -` (stdin) with either a JSON/YAML object\n" +
 			"(`{verdict, expected_source_commit, comments: [...]}`) or a bare array of\n" +
 			"comment objects (`{content, path?, line?, side?, reply_to?}`). Explicit CLI\n" +
@@ -171,6 +174,9 @@ func parseReviewInput(raw []byte) (reviewInputDoc, error) {
 			return reviewInputDoc{}, cerrors.Wrap(err, cerrors.CategoryUsage, "BAD_REVIEW_INPUT",
 				"could not parse --input JSON comment array")
 		}
+		if err := ensureSingleJSONDoc(dec); err != nil {
+			return reviewInputDoc{}, err
+		}
 		return reviewInputDoc{Comments: comments}, nil
 	}
 	if trimmed[0] == '{' {
@@ -180,6 +186,9 @@ func parseReviewInput(raw []byte) (reviewInputDoc, error) {
 		if err := dec.Decode(&doc); err != nil {
 			return reviewInputDoc{}, cerrors.Wrap(err, cerrors.CategoryUsage, "BAD_REVIEW_INPUT",
 				"could not parse --input JSON object")
+		}
+		if err := ensureSingleJSONDoc(dec); err != nil {
+			return reviewInputDoc{}, err
 		}
 		return doc, nil
 	}
@@ -204,6 +213,9 @@ func parseReviewInput(raw []byte) (reviewInputDoc, error) {
 			return reviewInputDoc{}, cerrors.Wrap(err, cerrors.CategoryUsage, "BAD_REVIEW_INPUT",
 				"could not parse --input YAML comment list")
 		}
+		if err := ensureSingleYAMLDoc(dec); err != nil {
+			return reviewInputDoc{}, err
+		}
 		return reviewInputDoc{Comments: comments}, nil
 	case yaml.MappingNode:
 		var doc reviewInputDoc
@@ -213,9 +225,30 @@ func parseReviewInput(raw []byte) (reviewInputDoc, error) {
 			return reviewInputDoc{}, cerrors.Wrap(err, cerrors.CategoryUsage, "BAD_REVIEW_INPUT",
 				"could not parse --input YAML object")
 		}
+		if err := ensureSingleYAMLDoc(dec); err != nil {
+			return reviewInputDoc{}, err
+		}
 		return doc, nil
 	default:
 		return reviewInputDoc{}, cerrors.Newf(cerrors.CategoryUsage, "BAD_REVIEW_INPUT",
 			"--input must be a JSON/YAML object or array of comments (got %s)", strings.ToLower(string(trimmed[:min(len(trimmed), 24)])))
 	}
+}
+
+func ensureSingleJSONDoc(dec *json.Decoder) error {
+	var extra any
+	if err := dec.Decode(&extra); err != io.EOF {
+		return cerrors.New(cerrors.CategoryUsage, "BAD_REVIEW_INPUT",
+			"unexpected trailing content after JSON document in --input")
+	}
+	return nil
+}
+
+func ensureSingleYAMLDoc(dec *yaml.Decoder) error {
+	var extra yaml.Node
+	if err := dec.Decode(&extra); err != io.EOF {
+		return cerrors.New(cerrors.CategoryUsage, "BAD_REVIEW_INPUT",
+			"unexpected extra YAML document or trailing content in --input")
+	}
+	return nil
 }

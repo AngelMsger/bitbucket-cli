@@ -144,6 +144,36 @@ func (c *apiClient) SubmitPRReview(ctx context.Context, req SubmitPRReviewReq) (
 		res.PostedComments = append(res.PostedComments, *cm)
 	}
 
+	if prep.plan.Verdict != ReviewVerdictCommentOnly && len(prep.commentReqs) > 0 {
+		expectedHead := prep.plan.SourceCommit
+		if expectedHead == "" {
+			expectedHead = strings.TrimSpace(req.ExpectedSourceCommit)
+		}
+		if expectedHead != "" {
+			freshPR, gerr := c.GetPR(ctx, GetPROpts{Repo: req.Repo, ID: req.PRID, Scope: PRScopeSummary})
+			if gerr != nil {
+				ce := cerrors.AsCLIError(gerr)
+				body := ce.Payload().Error
+				res.FailedItem = &PRReviewFailure{
+					Kind:    "vote",
+					Verdict: prep.plan.Verdict,
+					Error:   &body,
+				}
+				return res, reviewPartialFailure(ce.Category, res)
+			}
+			if !commitsMatch(freshPR.Source.Commit, expectedHead) {
+				ce := prHeadMovedError(prep.plan.PR, freshPR.Source.Commit, expectedHead)
+				body := ce.Payload().Error
+				res.FailedItem = &PRReviewFailure{
+					Kind:    "vote",
+					Verdict: prep.plan.Verdict,
+					Error:   &body,
+				}
+				return res, reviewPartialFailure(cerrors.CategoryConflict, res)
+			}
+		}
+	}
+
 	switch prep.plan.Verdict {
 	case ReviewVerdictApprove:
 		if verr := c.ApprovePR(ctx, ApprovePRReq{Repo: req.Repo, ID: req.PRID, Approve: true}); verr != nil {
@@ -174,6 +204,19 @@ func (c *apiClient) SubmitPRReview(ctx context.Context, req SubmitPRReviewReq) (
 	}
 
 	return res, nil
+}
+
+func prHeadMovedError(prRefStr, actual, expected string) *cerrors.CLIError {
+	e := cerrors.Newf(cerrors.CategoryConflict, "PR_HEAD_MOVED",
+		"PR %s source commit is now %q, expected %q; aborting without applying verdict",
+		prRefStr, actual, expected).
+		WithHint("New commits were pushed to the PR since you inspected it. Refresh the PR and diff before submitting your review.").
+		WithNextSteps(
+			"bitbucket-cli pr status "+prRefStr,
+			"bitbucket-cli pr diff "+prRefStr,
+		)
+	e.Retryable = false
+	return e
 }
 
 func (c *apiClient) preparePRReview(ctx context.Context, req SubmitPRReviewReq) (*preparedPRReview, error) {
@@ -227,23 +270,33 @@ func (c *apiClient) preparePRReview(ctx context.Context, req SubmitPRReviewReq) 
 		return nil, err
 	}
 	if strings.TrimSpace(req.ExpectedSourceCommit) != "" && !commitsMatch(pr.Source.Commit, req.ExpectedSourceCommit) {
-		return nil, cerrors.Newf(cerrors.CategoryConflict, "PR_HEAD_MOVED",
-			"PR %s source commit is now %q, expected %q; aborting review without writing",
-			prRefStr, pr.Source.Commit, req.ExpectedSourceCommit).
-			WithHint("New commits were pushed to the PR since you inspected it. Refresh the PR and diff before submitting your review.").
-			WithNextSteps(
-				"bitbucket-cli pr status "+prRefStr,
-				"bitbucket-cli pr diff "+prRefStr,
-			)
+		return nil, prHeadMovedError(prRefStr, pr.Source.Commit, req.ExpectedSourceCommit)
 	}
 
+	type cachedFileDiff struct {
+		fd  *FileDiff
+		err error
+	}
 	var diffFiles []FileDiff
-	perPathCache := map[string]*FileDiff{}
+	perPathCache := map[string]cachedFileDiff{}
 	if needsDiff {
 		diffFiles, err = c.GetPRFileDiffs(ctx, req.Repo, req.PRID, "")
 		if err != nil {
 			return nil, err
 		}
+	}
+	fetchScopedFileDiff := func(path string) (*FileDiff, error) {
+		if cached, ok := perPathCache[path]; ok {
+			return cached.fd, cached.err
+		}
+		pfiles, perr := c.GetPRFileDiffs(ctx, req.Repo, req.PRID, path)
+		if perr != nil {
+			perPathCache[path] = cachedFileDiff{err: perr}
+			return nil, perr
+		}
+		sfd := findExactFileDiff(pfiles, path)
+		perPathCache[path] = cachedFileDiff{fd: sfd}
+		return sfd, nil
 	}
 
 	plan := &PRReviewPlan{
@@ -264,16 +317,11 @@ func (c *apiClient) preparePRReview(ctx context.Context, req SubmitPRReviewReq) 
 			kind = "reply"
 		} else if item.Path != "" {
 			kind = "inline"
-			fd := FindFileDiff(diffFiles, item.Path)
+			fd := findExactFileDiff(diffFiles, item.Path)
 			if fd == nil {
-				if cached, ok := perPathCache[item.Path]; ok {
-					fd = cached
-				} else {
-					pfiles, perr := c.GetPRFileDiffs(ctx, req.Repo, req.PRID, item.Path)
-					if perr == nil {
-						fd = FindFileDiff(pfiles, item.Path)
-					}
-					perPathCache[item.Path] = fd
+				fd, err = fetchScopedFileDiff(item.Path)
+				if err != nil {
+					return nil, err
 				}
 			}
 			if fd == nil {
@@ -282,6 +330,17 @@ func (c *apiClient) preparePRReview(ctx context.Context, req SubmitPRReviewReq) 
 					WithHint("Check the path against `pr files`, or omit path/line to post a general comment.")
 			}
 			anchor, err = ResolveInlineAnchor(fd, item.Line, item.Side)
+			if err != nil && fd.Truncated {
+				// Aggregate PR diffs on Data Center may truncate large files;
+				// retry against the file-scoped diff before rejecting the line.
+				sfd, serr := fetchScopedFileDiff(item.Path)
+				if serr != nil {
+					return nil, serr
+				}
+				if sfd != nil {
+					anchor, err = ResolveInlineAnchor(sfd, item.Line, item.Side)
+				}
+			}
 			if err != nil {
 				ce := cerrors.AsCLIError(err)
 				wrapped := cerrors.Newf(ce.Category, ce.Code, "review comment[%d]: %s", i, ce.Message)
@@ -331,11 +390,39 @@ func (c *apiClient) preparePRReview(ctx context.Context, req SubmitPRReviewReq) 
 	return &preparedPRReview{plan: plan, commentReqs: commentReqs}, nil
 }
 
+// findExactFileDiff matches a path strictly against a diff entry's old or new
+// path (ignoring leading "./" or "/"). Unlike FindFileDiff, it never treats a
+// single unrelated file entry as a match for another requested path.
+func findExactFileDiff(files []FileDiff, path string) *FileDiff {
+	want := cleanDiffPath(path)
+	if want == "" {
+		return nil
+	}
+	for i := range files {
+		if cleanDiffPath(files[i].NewPath) == want || cleanDiffPath(files[i].OldPath) == want {
+			return &files[i]
+		}
+	}
+	return nil
+}
+
+func cleanDiffPath(p string) string {
+	p = strings.TrimSpace(p)
+	p = strings.TrimPrefix(p, "./")
+	p = strings.TrimPrefix(p, "/")
+	return p
+}
+
 func reviewPartialFailure(cat cerrors.Category, res *PRReviewResult) error {
 	var msg string
 	if res.FailedItem != nil && res.FailedItem.Kind == "vote" {
-		msg = fmt.Sprintf("posted %d comment(s), but submitting verdict %q failed; see partial result on stdout",
-			len(res.PostedComments), res.FailedItem.Verdict)
+		if res.FailedItem.Error != nil && res.FailedItem.Error.Code == "PR_HEAD_MOVED" {
+			msg = fmt.Sprintf("posted %d comment(s), but PR head moved before applying verdict %q; vote was not applied; see partial result on stdout",
+				len(res.PostedComments), res.FailedItem.Verdict)
+		} else {
+			msg = fmt.Sprintf("posted %d comment(s), but submitting verdict %q failed; see partial result on stdout",
+				len(res.PostedComments), res.FailedItem.Verdict)
+		}
 	} else {
 		idx := 0
 		if res.FailedItem != nil {

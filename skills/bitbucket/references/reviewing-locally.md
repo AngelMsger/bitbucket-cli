@@ -21,12 +21,13 @@ Author-side feedback: [Responding to review comments](responding-to-review-comme
 ## Checklist
 
 1. **Scope and authorization.** Reuse the supplied PR URL or
-   `<workspace>/<repo>/<id>`; without one, run a bounded `pr inbox` (use
-   `--my-vote unvoted` to prune already-voted PRs; Cloud reviewer discovery
-   needs `--workspace`). Record separately whether the user or active workflow
-   authorizes analysis, comments, approval, or Needs Work: "review" alone
-   authorizes a report, and "approve if ready" does not authorize Needs Work.
-   Reuse existing authorization instead of asking again.
+   `<workspace>/<repo>/<id>`; without one, run a bounded `pr inbox` — include
+   previously voted PRs for incremental review (reserve `--my-vote unvoted` for
+   first-review-only runs; Cloud reviewer discovery needs `--workspace`). Record
+   separately whether the user or active workflow authorizes analysis, comments,
+   approval, or Needs Work: "review" alone authorizes a report, and "approve if
+   ready" does not authorize Needs Work. Reuse existing authorization instead of
+   asking again.
 2. **Read context with the cheapest reads.** `pr get <ref> --scope full`
    (description, `source`/`destination` branches and commits, reviewers);
    `pr status <ref>` (reviewer states, conflicts, CI, and `my_review` — vote,
@@ -55,11 +56,11 @@ Author-side feedback: [Responding to review comments](responding-to-review-comme
 
 Reuse matching clones; record root, remotes, branch, HEAD, staged and untracked changes.
 
-- **Verified remote selection.** `pr fetch` and `pr checkout` inspect
-  `git remote -v` and match normalized URLs against the PR's destination (and
-  source) repository, auto-selecting a matching `upstream` over `origin` and
-  refusing mismatched checkouts with `GIT_REMOTE_MISMATCH`. Pass `--remote`
-  (plus `--force-remote` only for intentional mirrors) when overriding.
+- **Verified remote selection.** `pr fetch` and `pr checkout` verify normalized
+  `git remote -v` URLs against the PR's destination repository and deployment,
+  preferring `upstream` over `origin` and refusing mismatched or fork-only
+  checkouts with `GIT_REMOTE_MISMATCH`. Pass `--remote` (with `--force-remote`
+  only for intentional mirrors or SSH aliases) to override.
 - **Fetch without switching.** Preview, then fetch when local writes are allowed:
 
   ```sh
@@ -262,13 +263,14 @@ agent-started thread. Keep AI attribution on agent-written text and use
 
 For multi-comment reviews plus a verdict, prefer
 `pr review <ref> --expected-source-commit <sha> --verdict <verdict> --input <file|->`
-(preview with `--dry-run`): it verifies the head commit and every inline anchor
-before sending any write, aborting with `PR_HEAD_MOVED` or an anchor error on
-zero remote side effects. Otherwise preview writes with `--dry-run`, respect
-[read-only mode](safety-modes.md), execute once, and verify state. Do not repeat
-a current vote; approval needs no companion comment, and decline is never a
-substitute for Needs Work ([vote commands](pr-workflows.md#reviewing)). For
-failures or uncertain writes, use [PR permissions and recovery](pr-permissions.md)
+(preview with `--dry-run`): it verifies the head commit and inline anchors
+before writing, rechecks `source.commit` before voting (returning
+`posted_comments` with the vote unapplied on drift; a tiny race remains on
+backends without atomic commit-pinned votes). Otherwise preview writes with
+`--dry-run`, respect [read-only mode](safety-modes.md), execute once, and verify
+state. Do not repeat a current vote; approval needs no companion comment, and
+decline is never a substitute for Needs Work ([vote commands](pr-workflows.md#reviewing)).
+For failures or uncertain writes, use [PR permissions and recovery](pr-permissions.md)
 and reconcile state before retrying. Batch approvals only after each target
 independently passes review and authorization.
 

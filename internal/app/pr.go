@@ -230,7 +230,7 @@ func newPRGetCmd(s *appState) *cobra.Command {
 				}
 				switch apiclient.PRScope(scope) {
 				case apiclient.PRScopeCommits:
-					items, _, err := collectPage(func(c string) (apiclient.ListResult[apiclient.Commit], error) {
+					items, info, err := collectPage(func(c string) (apiclient.ListResult[apiclient.Commit], error) {
 						return client.ListPRCommits(ctx, apiclient.PRListOpts{
 							Repo: ref, ListOpts: apiclient.ListOpts{Cursor: c}, Query: strconv.Itoa(id),
 						})
@@ -241,9 +241,13 @@ func newPRGetCmd(s *appState) *cobra.Command {
 					if items == nil {
 						items = []apiclient.Commit{}
 					}
-					return items, nil
+					return batchListPage[apiclient.Commit]{
+						Items:   items,
+						Next:    info.Next,
+						HasMore: info.HasMore,
+					}, nil
 				case apiclient.PRScopeActivity:
-					items, _, err := collectPage(func(c string) (apiclient.ListResult[apiclient.Activity], error) {
+					items, info, err := collectPage(func(c string) (apiclient.ListResult[apiclient.Activity], error) {
 						return client.ListPRActivity(ctx, apiclient.PRListOpts{
 							Repo: ref, ListOpts: apiclient.ListOpts{Cursor: c}, Query: strconv.Itoa(id),
 						})
@@ -254,7 +258,11 @@ func newPRGetCmd(s *appState) *cobra.Command {
 					if items == nil {
 						items = []apiclient.Activity{}
 					}
-					return items, nil
+					return batchListPage[apiclient.Activity]{
+						Items:   items,
+						Next:    info.Next,
+						HasMore: info.HasMore,
+					}, nil
 				default:
 					return client.GetPR(ctx, apiclient.GetPROpts{Repo: ref, ID: id, Scope: apiclient.PRScope(scope)})
 				}
@@ -264,6 +272,15 @@ func newPRGetCmd(s *appState) *cobra.Command {
 	cmd.Flags().StringVar(&scope, "scope", "summary",
 		"summary | full | diff | commits | activity")
 	return cmd
+}
+
+// batchListPage mirrors the family {items, next, has_more} list envelope for
+// paginated per-PR scopes inside a batch `pr get` response so callers see
+// truncation and continuation cursors for each PR.
+type batchListPage[T any] struct {
+	Items   []T    `json:"items"`
+	Next    string `json:"next,omitempty"`
+	HasMore bool   `json:"has_more"`
 }
 
 func newPRCreateCmd(s *appState) *cobra.Command {

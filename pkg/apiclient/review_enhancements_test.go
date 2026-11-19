@@ -551,3 +551,339 @@ func TestPlanAndSubmitPRReviewHappyPathAndPartialFailure(t *testing.T) {
 		})
 	}
 }
+
+func TestSubmitPRReviewRechecksHeadBeforeVoting(t *testing.T) {
+	for _, flavor := range []Flavor{FlavorCloud, FlavorDataCenter} {
+		for _, verdict := range []ReviewVerdict{ReviewVerdictApprove, ReviewVerdictRequestChanges} {
+			t.Run(string(flavor)+"/"+string(verdict), func(t *testing.T) {
+				head := "aaaa1111"
+				voteCalled := false
+				c := newWriteTestClient(t, flavor, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.Header().Set("Content-Type", "application/json")
+					if r.Method == http.MethodGet {
+						switch {
+						case r.URL.Path == "/rest/api/1.0/application-properties":
+							w.Header().Set("X-AUSERNAME", "alice")
+							_ = json.NewEncoder(w).Encode(map[string]any{"version": "8.19.0"})
+						case r.URL.Path == "/rest/api/1.0/users/alice":
+							_ = json.NewEncoder(w).Encode(map[string]any{"name": "alice", "slug": "alice"})
+						case strings.HasSuffix(r.URL.Path, "/pull-requests/1") || strings.HasSuffix(r.URL.Path, "/pullrequests/1"):
+							if flavor == FlavorCloud {
+								_ = json.NewEncoder(w).Encode(map[string]any{
+									"id": 1, "state": "OPEN",
+									"source": map[string]any{"commit": map[string]any{"hash": head}},
+								})
+							} else {
+								_ = json.NewEncoder(w).Encode(map[string]any{
+									"id": 1, "state": "OPEN",
+									"fromRef": map[string]any{"latestCommit": head},
+								})
+							}
+						default:
+							t.Fatalf("unexpected GET %s", r.URL.Path)
+						}
+						return
+					}
+					if strings.HasSuffix(r.URL.Path, "/comments") {
+						// Advance the PR head right after the comment is accepted.
+						head = "bbbb2222"
+						if flavor == FlavorCloud {
+							_ = json.NewEncoder(w).Encode(map[string]any{"id": 701, "content": map[string]any{"raw": "ok"}})
+						} else {
+							_ = json.NewEncoder(w).Encode(map[string]any{"id": 701, "text": "ok", "state": "OPEN"})
+						}
+						return
+					}
+					voteCalled = true
+					t.Errorf("vote must not be submitted after head moved: %s %s", r.Method, r.URL.Path)
+					w.WriteHeader(http.StatusOK)
+				}))
+
+				res, err := c.SubmitPRReview(context.Background(), SubmitPRReviewReq{
+					Repo:                 RepoRef{Workspace: "PROJ", Slug: "demo"},
+					PRID:                 1,
+					Verdict:              verdict,
+					ExpectedSourceCommit: "aaaa1111",
+					Comments:             []ReviewCommentInput{{Content: "Nit"}},
+				})
+				if err == nil {
+					t.Fatal("expected REVIEW_PARTIAL_FAILURE when PR head moved before vote")
+				}
+				if voteCalled {
+					t.Fatal("vote endpoint was called despite head drift")
+				}
+				ce := cerrors.AsCLIError(err)
+				if ce.Category != cerrors.CategoryConflict || ce.Code != "REVIEW_PARTIAL_FAILURE" || ce.Retryable {
+					t.Fatalf("got %s/%s (retryable=%v), want conflict/REVIEW_PARTIAL_FAILURE", ce.Category, ce.Code, ce.Retryable)
+				}
+				if res == nil || len(res.PostedComments) != 1 || res.PostedComments[0].ID != 701 || res.VoteApplied {
+					t.Fatalf("unexpected partial result: %+v", res)
+				}
+				if res.FailedItem == nil || res.FailedItem.Kind != "vote" || res.FailedItem.Error == nil || res.FailedItem.Error.Code != "PR_HEAD_MOVED" {
+					t.Fatalf("unexpected failed_item: %+v", res.FailedItem)
+				}
+			})
+		}
+	}
+}
+
+func TestPlanPRReviewRetriesTruncatedAggregateDiffAndPropagatesScopedErrors(t *testing.T) {
+	t.Run("truncated aggregate diff retries file-scoped diff", func(t *testing.T) {
+		scopedCalls := 0
+		c := newWriteTestClient(t, FlavorDataCenter, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			switch {
+			case r.URL.Path == "/rest/api/1.0/projects/PROJ/repos/demo/pull-requests/1":
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"id": 1, "state": "OPEN",
+					"fromRef": map[string]any{"latestCommit": "aaaa1111"},
+				})
+			case r.URL.Path == "/rest/api/1.0/projects/PROJ/repos/demo/pull-requests/1/diff":
+				// Aggregate diff includes src/big.go truncated after line 10.
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"diffs": []any{
+						map[string]any{
+							"source":      map[string]any{"toString": "src/big.go"},
+							"destination": map[string]any{"toString": "src/big.go"},
+							"truncated":   true,
+							"hunks": []any{
+								map[string]any{
+									"sourceLine": 1, "sourceSpan": 1, "destinationLine": 1, "destinationSpan": 2,
+									"segments": []any{
+										map[string]any{"type": "ADDED", "lines": []any{map[string]any{"source": 0, "destination": 2, "line": "early"}}},
+									},
+								},
+							},
+						},
+					},
+				})
+			case r.URL.Path == "/rest/api/1.0/projects/PROJ/repos/demo/pull-requests/1/diff/src/big.go":
+				scopedCalls++
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"diffs": []any{
+						map[string]any{
+							"source":      map[string]any{"toString": "src/big.go"},
+							"destination": map[string]any{"toString": "src/big.go"},
+							"truncated":   false,
+							"hunks": []any{
+								map[string]any{
+									"sourceLine": 250, "sourceSpan": 1, "destinationLine": 250, "destinationSpan": 2,
+									"segments": []any{
+										map[string]any{"type": "ADDED", "lines": []any{map[string]any{"source": 0, "destination": 251, "line": "lateLine"}}},
+									},
+								},
+							},
+						},
+					},
+				})
+			default:
+				t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+			}
+		}))
+
+		plan, err := c.PlanPRReview(context.Background(), SubmitPRReviewReq{
+			Repo:    RepoRef{Workspace: "PROJ", Slug: "demo"},
+			PRID:    1,
+			Verdict: ReviewVerdictCommentOnly,
+			Comments: []ReviewCommentInput{
+				{Content: "Late hunk comment", Path: "src/big.go", Line: 251, Side: "new"},
+			},
+		})
+		if err != nil {
+			t.Fatalf("expected truncated file to resolve via scoped diff, got: %v", err)
+		}
+		if scopedCalls != 1 {
+			t.Fatalf("scopedCalls = %d, want 1", scopedCalls)
+		}
+		if len(plan.Comments) != 1 || plan.Comments[0].Inline == nil || plan.Comments[0].Inline.To != 251 {
+			t.Fatalf("unexpected inline anchor: %+v", plan.Comments)
+		}
+	})
+
+	t.Run("scoped diff HTTP error propagates instead of INLINE_FILE_NOT_IN_DIFF", func(t *testing.T) {
+		c := newWriteTestClient(t, FlavorDataCenter, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			switch r.URL.Path {
+			case "/rest/api/1.0/projects/PROJ/repos/demo/pull-requests/1":
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"id": 1, "state": "OPEN",
+					"fromRef": map[string]any{"latestCommit": "aaaa1111"},
+				})
+			case "/rest/api/1.0/projects/PROJ/repos/demo/pull-requests/1/diff":
+				w.Header().Set("Content-Type", "text/plain")
+				_, _ = w.Write([]byte("--- a/other.go\n+++ b/other.go\n@@ -1,1 +1,2 @@\n a\n+b\n"))
+			case "/rest/api/1.0/projects/PROJ/repos/demo/pull-requests/1/diff/missing.go":
+				w.WriteHeader(http.StatusInternalServerError)
+				_, _ = w.Write([]byte(`{"errors":[{"message":"diff backend down"}]}`))
+			default:
+				t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+			}
+		}))
+
+		_, err := c.PlanPRReview(context.Background(), SubmitPRReviewReq{
+			Repo:    RepoRef{Workspace: "PROJ", Slug: "demo"},
+			PRID:    1,
+			Verdict: ReviewVerdictCommentOnly,
+			Comments: []ReviewCommentInput{
+				{Content: "Comment", Path: "missing.go", Line: 2, Side: "new"},
+			},
+		})
+		if err == nil {
+			t.Fatal("expected server error to propagate")
+		}
+		ce := cerrors.AsCLIError(err)
+		if ce.Code == "INLINE_FILE_NOT_IN_DIFF" || ce.HTTPStatus != http.StatusInternalServerError {
+			t.Fatalf("expected HTTP 500 error, got %s (http=%d): %v", ce.Code, ce.HTTPStatus, ce)
+		}
+	})
+
+	t.Run("single-file aggregate diff does not match a different missing path", func(t *testing.T) {
+		c := newWriteTestClient(t, FlavorDataCenter, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			switch r.URL.Path {
+			case "/rest/api/1.0/projects/PROJ/repos/demo/pull-requests/1":
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"id": 1, "state": "OPEN",
+					"fromRef": map[string]any{"latestCommit": "aaaa1111"},
+				})
+			case "/rest/api/1.0/projects/PROJ/repos/demo/pull-requests/1/diff":
+				w.Header().Set("Content-Type", "text/plain")
+				_, _ = w.Write([]byte("--- a/changed.go\n+++ b/changed.go\n@@ -1,1 +1,2 @@\n package main\n+func A() {}\n"))
+			case "/rest/api/1.0/projects/PROJ/repos/demo/pull-requests/1/diff/missing.go":
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"diffs":[]}`))
+			default:
+				t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+			}
+		}))
+
+		_, err := c.PlanPRReview(context.Background(), SubmitPRReviewReq{
+			Repo:    RepoRef{Workspace: "PROJ", Slug: "demo"},
+			PRID:    1,
+			Verdict: ReviewVerdictCommentOnly,
+			Comments: []ReviewCommentInput{
+				{Content: "Comment on absent file", Path: "missing.go", Line: 1, Side: "new"},
+			},
+		})
+		if err == nil {
+			t.Fatal("expected INLINE_FILE_NOT_IN_DIFF when requesting missing.go against single-file diff changed.go")
+		}
+		if ce := cerrors.AsCLIError(err); ce.Code != "INLINE_FILE_NOT_IN_DIFF" {
+			t.Fatalf("got %s (%v), want INLINE_FILE_NOT_IN_DIFF", ce.Code, ce)
+		}
+	})
+}
+
+func TestGetPRStatusUpdatedAfterMyVoteUnknownWhenActivityFails(t *testing.T) {
+	c := newWriteTestClient(t, FlavorCloud, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/2.0/user":
+			_ = json.NewEncoder(w).Encode(map[string]any{"uuid": "{alice}", "nickname": "alice", "type": "user"})
+		case "/2.0/repositories/ws/demo/pullrequests/9":
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"id": 9, "title": "PR", "state": "OPEN", "updated_on": "2026-04-02T12:00:00Z",
+				"source":      map[string]any{"branch": map[string]any{"name": "feat"}, "commit": map[string]any{"hash": "abc1234"}},
+				"destination": map[string]any{"branch": map[string]any{"name": "main"}},
+				"participants": []any{
+					map[string]any{
+						"user": map[string]any{"uuid": "{alice}"}, "role": "REVIEWER",
+						"approved": true, "state": "approved", "participated_on": "2026-04-01T12:00:00Z",
+					},
+				},
+			})
+		case "/2.0/repositories/ws/demo/pullrequests/9/statuses":
+			_ = json.NewEncoder(w).Encode(map[string]any{"values": []any{}})
+		case "/2.0/repositories/ws/demo/pullrequests/9/commits":
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"values": []any{map[string]any{"hash": "abc1234", "date": "2026-04-01T10:00:00Z"}},
+			})
+		case "/2.0/repositories/ws/demo/pullrequests/9/activity":
+			w.WriteHeader(http.StatusForbidden)
+			_, _ = w.Write([]byte(`{"error":{"message":"forbidden"}}`))
+		case "/2.0/repositories/ws/demo/pullrequests/9/comments":
+			_ = json.NewEncoder(w).Encode(map[string]any{"values": []any{}})
+		default:
+			t.Fatalf("unexpected path: %s", r.URL.Path)
+		}
+	}))
+
+	st, err := c.GetPRStatus(context.Background(), RepoRef{Workspace: "ws", Slug: "demo"}, 9)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.MyReview == nil {
+		t.Fatal("expected my_review")
+	}
+	if st.MyReview.UpdatedAfterMyVote != nil {
+		t.Fatalf("updated_after_my_vote = %v, want nil (unknown) when activity endpoint failed", *st.MyReview.UpdatedAfterMyVote)
+	}
+}
+
+func TestIsAIAttributedTextStrictLeadingMarker(t *testing.T) {
+	tests := []struct {
+		body string
+		want bool
+	}{
+		{"[[AI]](https://angelmsger.github.io/bitbucket-cli/) Real AI review", true},
+		{"  \n[[ai]](https://example.com) Leading whitespace allowed", true},
+		{"> [[AI]](https://example.com) Quoted AI comment\nHuman reply", false},
+		{"Please include `[[AI]](https://example.com)` on bot comments", false},
+		{"Human note\n\n[[AI]](https://example.com) Pasted later", false},
+		{"İstanbul [[AI]](https://example.com) Unicode prefix", false},
+		{"[[AI]]() Empty link", false},
+		{"[[AI]](not a url) Spaces in target", false},
+	}
+	for _, tc := range tests {
+		if got := IsAIAttributedText(tc.body); got != tc.want {
+			t.Errorf("IsAIAttributedText(%q) = %v, want %v", tc.body, got, tc.want)
+		}
+	}
+}
+
+func TestCloudInboxSurfacesLaterPageFailuresWhileSkippingForbiddenRepoPage1(t *testing.T) {
+	var page2URL string
+	c := newWriteTestClient(t, FlavorCloud, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/2.0/user":
+			_ = json.NewEncoder(w).Encode(map[string]any{"uuid": "{alice}", "nickname": "alice"})
+		case "/2.0/repositories/ws":
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"values": []any{
+					map[string]any{"slug": "private-repo", "workspace": map[string]any{"slug": "ws"}},
+					map[string]any{"slug": "paged-repo", "workspace": map[string]any{"slug": "ws"}},
+				},
+			})
+		case "/2.0/repositories/ws/private-repo/pullrequests":
+			w.WriteHeader(http.StatusForbidden)
+			_, _ = w.Write([]byte(`{"error":{"message":"no access"}}`))
+		case "/2.0/repositories/ws/paged-repo/pullrequests":
+			if r.URL.Query().Get("page") == "2" {
+				w.WriteHeader(http.StatusInternalServerError)
+				_, _ = w.Write([]byte(`{"error":{"message":"backend failure on page 2"}}`))
+				return
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"next": page2URL,
+				"values": []any{
+					map[string]any{
+						"id": 1, "title": "Page 1 PR", "state": "OPEN",
+						"destination": map[string]any{"repository": map[string]any{"full_name": "ws/paged-repo"}},
+					},
+				},
+			})
+		default:
+			t.Fatalf("unexpected path: %s", r.URL.Path)
+		}
+	}))
+	page2URL = c.BaseURL() + "/2.0/repositories/ws/paged-repo/pullrequests?page=2"
+
+	_, err := c.ListMyPRs(context.Background(), MyPRListOpts{Role: "REVIEWER", State: "OPEN", Workspace: "ws"})
+	if err == nil {
+		t.Fatal("expected error when page 2 fails; must not silently drop page 1 PRs")
+	}
+	if ce := cerrors.AsCLIError(err); ce.HTTPStatus != http.StatusInternalServerError {
+		t.Fatalf("got status %d (%v), want 500", ce.HTTPStatus, ce)
+	}
+}

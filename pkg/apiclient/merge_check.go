@@ -188,6 +188,7 @@ func (c *apiClient) GetPRStatus(ctx context.Context, repo RepoRef, id int) (*PRS
 		activities      []Activity
 		activitiesOK    bool
 		commits         []Commit
+		commitsOK       bool
 		cloudUnresolved *int
 	)
 	wg.Add(5)
@@ -247,6 +248,7 @@ func (c *apiClient) GetPRStatus(ctx context.Context, repo RepoRef, id int) (*PRS
 		if err == nil {
 			mu.Lock()
 			commits = page.Items
+			commitsOK = true
 			mu.Unlock()
 		}
 	}()
@@ -276,7 +278,7 @@ func (c *apiClient) GetPRStatus(ctx context.Context, repo RepoRef, id int) (*PRS
 
 	wg.Wait()
 
-	out.MyReview = buildMyReview(c.flavor, pr, me, activities, activitiesOK, commits, cloudUnresolved)
+	out.MyReview = buildMyReview(c.flavor, pr, me, activities, activitiesOK, commits, commitsOK, cloudUnresolved)
 	return out, nil
 }
 
@@ -313,7 +315,7 @@ func countDCUnresolvedThreads(activities []Activity) int {
 	return n
 }
 
-func buildMyReview(flavor Flavor, pr *PullRequest, me *User, activities []Activity, activitiesOK bool, commits []Commit, cloudUnresolved *int) *MyReview {
+func buildMyReview(flavor Flavor, pr *PullRequest, me *User, activities []Activity, activitiesOK bool, commits []Commit, commitsOK bool, cloudUnresolved *int) *MyReview {
 	if pr == nil || me == nil {
 		return nil
 	}
@@ -369,7 +371,9 @@ func buildMyReview(flavor Flavor, pr *PullRequest, me *User, activities []Activi
 	}
 
 	// Determine whether new commits or non-system review activity occurred after
-	// the caller's last vote.
+	// the caller's last vote. Positive evidence of an update always yields true;
+	// reporting false requires both activity and commit state to have been read
+	// cleanly so a failed source never causes incremental pruning to skip a PR.
 	if !votedAt.IsZero() {
 		updated := false
 		if !latestCommitTime.IsZero() && latestCommitTime.After(votedAt) {
@@ -396,16 +400,16 @@ func buildMyReview(flavor Flavor, pr *PullRequest, me *User, activities []Activi
 				}
 			}
 		}
-		// Fallback when neither commits nor activity were available: compare PR updated_at.
-		if !updated && latestCommitTime.IsZero() && !activitiesOK {
-			if prUpdated, ok := parseBitbucketTime(pr.UpdatedAt); ok && prUpdated.After(votedAt) {
-				updated = true
-			}
+		if updated {
+			mr.UpdatedAfterMyVote = &updated
+		} else if activitiesOK && (commitsOK || lastReviewedCommit != "") {
+			mr.UpdatedAfterMyVote = &updated
 		}
-		mr.UpdatedAfterMyVote = &updated
 	} else if lastReviewedCommit != "" && pr.Source.Commit != "" {
-		updated := !commitsMatch(pr.Source.Commit, lastReviewedCommit)
-		mr.UpdatedAfterMyVote = &updated
+		if !commitsMatch(pr.Source.Commit, lastReviewedCommit) {
+			updated := true
+			mr.UpdatedAfterMyVote = &updated
+		}
 	}
 
 	return mr

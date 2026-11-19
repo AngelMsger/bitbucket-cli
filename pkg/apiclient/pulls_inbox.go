@@ -203,10 +203,7 @@ func (c *apiClient) cloudListMyPRs(ctx context.Context, opt MyPRListOpts, role, 
 			repoRef := RepoRef{Workspace: opt.Workspace, Slug: r.Slug}
 			prs, err := c.cloudListRepoPRsForInbox(ctx, repoRef, state, qFilter)
 			if err != nil {
-				// 403/404 on a particular repo (permissions / archived) is
-				// expected when the user spans many workspaces; skip rather
-				// than abort the whole listing.
-				continue
+				return ListResult[PullRequest]{}, err
 			}
 			for _, pr := range prs {
 				pr.MyVote, _, _ = resolveUserVote(&pr, me)
@@ -226,10 +223,13 @@ func (c *apiClient) cloudListMyPRs(ctx context.Context, opt MyPRListOpts, role, 
 
 // cloudListRepoPRsForInbox fetches matching PRs in one Cloud repository with
 // `+values.participants` so reviewer vote state is available without N+1 GETs.
+// HTTP 403/404 on the initial page skips an inaccessible or archived repository;
+// operational failures and any failure on a subsequent page are returned so an
+// incomplete inbox is never mistaken for empty.
 func (c *apiClient) cloudListRepoPRsForInbox(ctx context.Context, repo RepoRef, state, query string) ([]PullRequest, error) {
 	var all []PullRequest
 	cursor := ""
-	for {
+	for page := 0; ; page++ {
 		path := c.prsPath(repo)
 		q := url.Values{}
 		if cloudFollowURL(cursor) {
@@ -247,6 +247,9 @@ func (c *apiClient) cloudListRepoPRsForInbox(ctx context.Context, repo RepoRef, 
 		}
 		var raw cloudPRList
 		if err := c.getJSON(ctx, path, q, &raw); err != nil {
+			if page == 0 && isSkippableRepoInboxErr(err) {
+				return nil, nil
+			}
 			return nil, err
 		}
 		for _, p := range raw.Values {
@@ -259,6 +262,11 @@ func (c *apiClient) cloudListRepoPRsForInbox(ctx context.Context, repo RepoRef, 
 		cursor = next
 	}
 	return all, nil
+}
+
+func isSkippableRepoInboxErr(err error) bool {
+	ce := cerrors.AsCLIError(err)
+	return ce.HTTPStatus == 403 || ce.HTTPStatus == 404
 }
 
 // repoFromCloudPR derives the destination RepoRef from a Cloud PR record. The
