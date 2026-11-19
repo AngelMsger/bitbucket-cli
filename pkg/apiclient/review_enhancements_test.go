@@ -887,3 +887,206 @@ func TestCloudInboxSurfacesLaterPageFailuresWhileSkippingForbiddenRepoPage1(t *t
 		t.Fatalf("got status %d (%v), want 500", ce.HTTPStatus, ce)
 	}
 }
+
+func TestSubmitPRReviewDataCenterSendsLastReviewedCommit(t *testing.T) {
+	for _, verdict := range []ReviewVerdict{ReviewVerdictApprove, ReviewVerdictRequestChanges} {
+		t.Run(string(verdict), func(t *testing.T) {
+			head := "aaaa1111deadbeef"
+			var gotBody map[string]any
+			advanceAfterGetPR := false
+
+			c := newWriteTestClient(t, FlavorDataCenter, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				switch {
+				case r.Method == http.MethodGet && r.URL.Path == "/rest/api/1.0/application-properties":
+					w.Header().Set("X-AUSERNAME", "alice")
+					_ = json.NewEncoder(w).Encode(map[string]any{"version": "8.19.0"})
+				case r.Method == http.MethodGet && r.URL.Path == "/rest/api/1.0/users/alice":
+					_ = json.NewEncoder(w).Encode(map[string]any{"name": "alice", "slug": "alice"})
+				case r.Method == http.MethodGet && r.URL.Path == "/rest/api/1.0/projects/PROJ/repos/demo/pull-requests/1":
+					_ = json.NewEncoder(w).Encode(map[string]any{
+						"id": 1, "state": "OPEN",
+						"fromRef": map[string]any{"latestCommit": head},
+					})
+					if advanceAfterGetPR {
+						// Simulate a push arriving right after Phase 1 GetPR and before the vote PUT.
+						head = "bbbb2222cafebabe"
+					}
+				case r.Method == http.MethodPut && r.URL.Path == "/rest/api/1.0/projects/PROJ/repos/demo/pull-requests/1/participants/alice":
+					gotBody = nil
+					_ = json.NewDecoder(r.Body).Decode(&gotBody)
+					lrc, _ := gotBody["lastReviewedCommit"].(string)
+					if lrc != head {
+						w.WriteHeader(http.StatusConflict)
+						_ = json.NewEncoder(w).Encode(map[string]any{
+							"errors": []any{map[string]any{"message": "Pull request head changed since lastReviewedCommit"}},
+						})
+						return
+					}
+					_ = json.NewEncoder(w).Encode(map[string]any{"status": gotBody["status"], "lastReviewedCommit": lrc})
+				default:
+					t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+				}
+			}))
+
+			wantStatus := "APPROVED"
+			if verdict == ReviewVerdictRequestChanges {
+				wantStatus = "NEEDS_WORK"
+			}
+
+			// 1. Dry-run previews PUT /participants/alice with status + lastReviewedCommit.
+			plan, err := c.PlanPRReview(context.Background(), SubmitPRReviewReq{
+				Repo:                 RepoRef{Workspace: "PROJ", Slug: "demo"},
+				PRID:                 1,
+				Verdict:              verdict,
+				ExpectedSourceCommit: "aaaa1111",
+			})
+			if err != nil {
+				t.Fatalf("PlanPRReview: %v", err)
+			}
+			if plan.Vote == nil || plan.Vote.Method != "PUT" || !strings.HasSuffix(plan.Vote.URL, "/participants/alice") {
+				t.Fatalf("unexpected vote plan: %+v", plan.Vote)
+			}
+			pm, _ := plan.Vote.Payload.(map[string]any)
+			if pm["status"] != wantStatus || pm["lastReviewedCommit"] != "aaaa1111deadbeef" {
+				t.Fatalf("vote payload = %+v, want status=%s lastReviewedCommit=aaaa1111deadbeef", pm, wantStatus)
+			}
+
+			// 2. Happy path sends lastReviewedCommit and succeeds.
+			res, err := c.SubmitPRReview(context.Background(), SubmitPRReviewReq{
+				Repo:                 RepoRef{Workspace: "PROJ", Slug: "demo"},
+				PRID:                 1,
+				Verdict:              verdict,
+				ExpectedSourceCommit: "aaaa1111",
+			})
+			if err != nil {
+				t.Fatalf("SubmitPRReview happy path: %v", err)
+			}
+			if !res.VoteApplied || gotBody["lastReviewedCommit"] != "aaaa1111deadbeef" || gotBody["status"] != wantStatus {
+				t.Fatalf("unexpected result/body: res=%+v body=%+v", res, gotBody)
+			}
+
+			// 3. Head moves from A -> B right before vote PUT (even with 0 comments):
+			// server rejects stale lastReviewedCommit with 409 Conflict; CLI must not report vote applied.
+			advanceAfterGetPR = true
+			res, err = c.SubmitPRReview(context.Background(), SubmitPRReviewReq{
+				Repo:                 RepoRef{Workspace: "PROJ", Slug: "demo"},
+				PRID:                 1,
+				Verdict:              verdict,
+				ExpectedSourceCommit: "aaaa1111",
+			})
+			if err == nil {
+				t.Fatal("expected HTTP 409 conflict error when PR moved before vote PUT")
+			}
+			if res != nil && res.VoteApplied {
+				t.Fatalf("vote must not be reported applied on 409 conflict: %+v", res)
+			}
+			if ce := cerrors.AsCLIError(err); ce.Category != cerrors.CategoryConflict || ce.HTTPStatus != http.StatusConflict {
+				t.Fatalf("got %s (http=%d), want conflict/409", ce.Category, ce.HTTPStatus)
+			}
+		})
+	}
+}
+
+func TestGetPRStatusUpdatedAfterMyVoteWhenPeerRequestsChanges(t *testing.T) {
+	t.Run("Cloud peer changes_requested after my approval", func(t *testing.T) {
+		c := newWriteTestClient(t, FlavorCloud, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			switch r.URL.Path {
+			case "/2.0/user":
+				_ = json.NewEncoder(w).Encode(map[string]any{"uuid": "{alice}", "nickname": "alice", "type": "user"})
+			case "/2.0/repositories/ws/demo/pullrequests/9":
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"id": 9, "title": "PR", "state": "OPEN", "updated_on": "2026-04-01T13:00:00Z",
+					"source":      map[string]any{"branch": map[string]any{"name": "feat"}, "commit": map[string]any{"hash": "abc1234"}},
+					"destination": map[string]any{"branch": map[string]any{"name": "main"}},
+					"participants": []any{
+						map[string]any{
+							"user": map[string]any{"uuid": "{alice}"}, "role": "REVIEWER",
+							"approved": true, "state": "approved", "participated_on": "2026-04-01T12:00:00Z",
+						},
+						map[string]any{
+							"user": map[string]any{"uuid": "{bob}"}, "role": "REVIEWER",
+							"approved": false, "state": "changes_requested", "participated_on": "2026-04-01T13:00:00Z",
+						},
+					},
+				})
+			case "/2.0/repositories/ws/demo/pullrequests/9/statuses":
+				_ = json.NewEncoder(w).Encode(map[string]any{"values": []any{}})
+			case "/2.0/repositories/ws/demo/pullrequests/9/commits":
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"values": []any{map[string]any{"hash": "abc1234", "date": "2026-04-01T10:00:00Z"}},
+				})
+			case "/2.0/repositories/ws/demo/pullrequests/9/activity":
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"values": []any{
+						map[string]any{"approval": map[string]any{"date": "2026-04-01T12:00:00Z", "user": map[string]any{"uuid": "{alice}"}}},
+						map[string]any{"changes_requested": map[string]any{"date": "2026-04-01T13:00:00Z", "user": map[string]any{"uuid": "{bob}"}}},
+					},
+				})
+			case "/2.0/repositories/ws/demo/pullrequests/9/comments":
+				_ = json.NewEncoder(w).Encode(map[string]any{"values": []any{}})
+			default:
+				t.Fatalf("unexpected Cloud path: %s", r.URL.Path)
+			}
+		}))
+
+		st, err := c.GetPRStatus(context.Background(), RepoRef{Workspace: "ws", Slug: "demo"}, 9)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if st.MyReview == nil || st.MyReview.UpdatedAfterMyVote == nil || !*st.MyReview.UpdatedAfterMyVote {
+			t.Fatalf("updated_after_my_vote = %v, want true when peer requested changes after my approval", st.MyReview)
+		}
+	})
+
+	t.Run("Data Center peer REVIEWED (Needs Work) after my approval", func(t *testing.T) {
+		c := newWriteTestClient(t, FlavorDataCenter, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			switch r.URL.Path {
+			case "/rest/api/1.0/application-properties":
+				w.Header().Set("X-AUSERNAME", "alice")
+				_ = json.NewEncoder(w).Encode(map[string]any{"version": "8.19.0"})
+			case "/rest/api/1.0/users/alice":
+				_ = json.NewEncoder(w).Encode(map[string]any{"name": "alice", "slug": "alice"})
+			case "/rest/api/1.0/projects/PROJ/repos/demo/pull-requests/7":
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"id": 7, "title": "Feature", "state": "OPEN", "updatedDate": 1700000020000,
+					"fromRef": map[string]any{"displayId": "feat", "latestCommit": "samehead", "repository": map[string]any{"slug": "demo", "project": map[string]any{"key": "PROJ"}}},
+					"toRef":   map[string]any{"displayId": "main", "latestCommit": "base0000", "repository": map[string]any{"slug": "demo", "project": map[string]any{"key": "PROJ"}}},
+					"reviewers": []any{
+						map[string]any{"user": map[string]any{"name": "alice", "slug": "alice"}, "approved": true, "status": "APPROVED", "lastReviewedCommit": "samehead"},
+						map[string]any{"user": map[string]any{"name": "bob", "slug": "bob"}, "approved": false, "status": "NEEDS_WORK", "lastReviewedCommit": "samehead"},
+					},
+				})
+			case "/rest/api/1.0/projects/PROJ/repos/demo/pull-requests/7/merge":
+				_ = json.NewEncoder(w).Encode(map[string]any{"canMerge": false})
+			case "/rest/build-status/1.0/commits/samehead":
+				_ = json.NewEncoder(w).Encode(map[string]any{"values": []any{}, "isLastPage": true})
+			case "/rest/api/1.0/projects/PROJ/repos/demo/pull-requests/7/commits":
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"isLastPage": true,
+					"values":     []any{map[string]any{"id": "samehead", "authorTimestamp": 1700000005000}},
+				})
+			case "/rest/api/1.0/projects/PROJ/repos/demo/pull-requests/7/activities":
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"isLastPage": true,
+					"values": []any{
+						map[string]any{"action": "APPROVED", "createdDate": 1700000010000, "user": map[string]any{"name": "alice", "slug": "alice"}},
+						map[string]any{"action": "REVIEWED", "createdDate": 1700000020000, "user": map[string]any{"name": "bob", "slug": "bob"}},
+					},
+				})
+			default:
+				t.Fatalf("unexpected DC path: %s", r.URL.Path)
+			}
+		}))
+
+		st, err := c.GetPRStatus(context.Background(), RepoRef{Workspace: "PROJ", Slug: "demo"}, 7)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if st.MyReview == nil || st.MyReview.UpdatedAfterMyVote == nil || !*st.MyReview.UpdatedAfterMyVote {
+			t.Fatalf("updated_after_my_vote = %v, want true when DC peer marked REVIEWED after my approval", st.MyReview)
+		}
+	})
+}

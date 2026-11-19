@@ -110,11 +110,11 @@ permission failures, use [PR permissions and recovery](pr-permissions.md).
   (`PR_HEAD_MOVED` on mismatch) and resolves every inline anchor (retrying
   truncated files via per-path diff) before sending any write. Phase 2 posts
   comments sequentially, rechecks `source.commit` immediately before voting, and
-  casts the verdict only if all comments succeeded and the head has not moved;
-  a mid-flight failure or drift prints `posted_comments`, `failed_item`, and
-  `vote_applied` on stdout and exits with `REVIEW_PARTIAL_FAILURE` for
-  idempotent recovery (Bitbucket REST APIs lack a single atomic comments+vote
-  transaction, so a minimal server-side race window remains).
+  on Data Center sends `lastReviewedCommit` on `PUT /participants/{user}` for
+  both verdicts so the server rejects stale votes; a mid-flight failure or drift
+  prints `posted_comments`, `failed_item`, and `vote_applied` on stdout and
+  exits with `REVIEW_PARTIAL_FAILURE` for idempotent recovery (Cloud lacks a
+  commit-pinned vote endpoint, so a minimal server-side race window remains).
 - Approve: `bitbucket-cli pr approve <ref>`
 - Withdraw: `bitbucket-cli pr unapprove <ref>`
 - Request changes: `bitbucket-cli pr request-changes <ref>` (aliases:

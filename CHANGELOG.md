@@ -24,7 +24,8 @@
   1 checks `source.commit` (`PR_HEAD_MOVED`, exit 11) and resolves every inline
   diff anchor (retrying truncated files via per-path diff) before sending any
   write; Phase 2 posts comments sequentially, rechecks `source.commit`
-  immediately before voting, and emits partial outcomes (`posted_comments`,
+  immediately before voting (and sends `lastReviewedCommit` on Data Center
+  participant status updates), and emits partial outcomes (`posted_comments`,
   `failed_item`, `vote_applied`) on stdout before returning non-retryable
   `REVIEW_PARTIAL_FAILURE` on failure or head drift.
 

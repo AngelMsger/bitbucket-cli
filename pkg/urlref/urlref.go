@@ -18,6 +18,7 @@ import (
 // Ref is a parsed Bitbucket reference. Fields are populated best-effort.
 type Ref struct {
 	IsURL     bool
+	BaseURL   string // scheme://host[:port][/<context>] derived from a full Bitbucket URL
 	Workspace string // Cloud workspace slug or DC project key
 	Slug      string // repository slug
 	PRID      int    // pull request numeric ID, 0 if absent
@@ -54,12 +55,35 @@ func parseURL(raw string) Ref {
 		return Ref{IsURL: true}
 	}
 	r := Ref{IsURL: true}
+	origin := ""
+	if u.Scheme != "" && u.Host != "" {
+		origin = strings.ToLower(u.Scheme) + "://" + u.Host
+	}
+	r.BaseURL = origin
 	segments := strings.Split(strings.Trim(u.Path, "/"), "/")
-	if len(segments) >= 4 && segments[0] == "projects" && segments[2] == "repos" {
-		r.Workspace = segments[1]
-		r.Slug = segments[3]
-		findPRAndCommit(segments[4:], &r)
-		return r
+	for i := 0; i+3 < len(segments); i++ {
+		if segments[i] == "projects" && segments[i+2] == "repos" {
+			if origin != "" && i > 0 {
+				r.BaseURL = origin + "/" + strings.Join(segments[:i], "/")
+			}
+			r.Workspace = segments[i+1]
+			r.Slug = segments[i+3]
+			findPRAndCommit(segments[i+4:], &r)
+			return r
+		}
+		if segments[i] == "users" && segments[i+2] == "repos" {
+			if origin != "" && i > 0 {
+				r.BaseURL = origin + "/" + strings.Join(segments[:i], "/")
+			}
+			ws := segments[i+1]
+			if !strings.HasPrefix(ws, "~") {
+				ws = "~" + ws
+			}
+			r.Workspace = ws
+			r.Slug = segments[i+3]
+			findPRAndCommit(segments[i+4:], &r)
+			return r
+		}
 	}
 	if len(segments) >= 2 {
 		r.Workspace = segments[0]

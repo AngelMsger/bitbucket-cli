@@ -3,6 +3,7 @@ package apiclient
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"strings"
 
 	cerrors "github.com/angelmsger/bitbucket-cli/pkg/errors"
@@ -99,6 +100,13 @@ type PRReviewResult struct {
 type preparedPRReview struct {
 	plan        *PRReviewPlan
 	commentReqs []AddPRCommentReq
+	vote        *preparedVote
+}
+
+type preparedVote struct {
+	method  string
+	path    string
+	payload any
 }
 
 // PlanPRReview runs Phase 1 validation and builds every planned HTTP request
@@ -113,7 +121,9 @@ func (c *apiClient) PlanPRReview(ctx context.Context, req SubmitPRReviewReq) (*P
 
 // SubmitPRReview validates the entire review up front (zero remote writes on
 // any validation error), then posts comments sequentially and casts the verdict
-// only after every comment succeeds.
+// only after every comment succeeds. On Data Center, votes use the participant
+// status endpoint with `lastReviewedCommit` so the server rejects votes if the
+// PR head advanced before the request landed.
 func (c *apiClient) SubmitPRReview(ctx context.Context, req SubmitPRReviewReq) (*PRReviewResult, error) {
 	prep, err := c.preparePRReview(ctx, req)
 	if err != nil {
@@ -144,39 +154,41 @@ func (c *apiClient) SubmitPRReview(ctx context.Context, req SubmitPRReviewReq) (
 		res.PostedComments = append(res.PostedComments, *cm)
 	}
 
-	if prep.plan.Verdict != ReviewVerdictCommentOnly && len(prep.commentReqs) > 0 {
-		expectedHead := prep.plan.SourceCommit
-		if expectedHead == "" {
-			expectedHead = strings.TrimSpace(req.ExpectedSourceCommit)
-		}
-		if expectedHead != "" {
-			freshPR, gerr := c.GetPR(ctx, GetPROpts{Repo: req.Repo, ID: req.PRID, Scope: PRScopeSummary})
-			if gerr != nil {
-				ce := cerrors.AsCLIError(gerr)
-				body := ce.Payload().Error
-				res.FailedItem = &PRReviewFailure{
-					Kind:    "vote",
-					Verdict: prep.plan.Verdict,
-					Error:   &body,
-				}
-				return res, reviewPartialFailure(ce.Category, res)
+	if prep.vote != nil {
+		if len(prep.commentReqs) > 0 {
+			expectedHead := prep.plan.SourceCommit
+			if expectedHead == "" {
+				expectedHead = strings.TrimSpace(req.ExpectedSourceCommit)
 			}
-			if !commitsMatch(freshPR.Source.Commit, expectedHead) {
-				ce := prHeadMovedError(prep.plan.PR, freshPR.Source.Commit, expectedHead)
-				body := ce.Payload().Error
-				res.FailedItem = &PRReviewFailure{
-					Kind:    "vote",
-					Verdict: prep.plan.Verdict,
-					Error:   &body,
+			if expectedHead != "" {
+				freshPR, gerr := c.GetPR(ctx, GetPROpts{Repo: req.Repo, ID: req.PRID, Scope: PRScopeSummary})
+				if gerr != nil {
+					ce := cerrors.AsCLIError(gerr)
+					body := ce.Payload().Error
+					res.FailedItem = &PRReviewFailure{
+						Kind:    "vote",
+						Verdict: prep.plan.Verdict,
+						Error:   &body,
+					}
+					return res, reviewPartialFailure(ce.Category, res)
 				}
-				return res, reviewPartialFailure(cerrors.CategoryConflict, res)
+				if !commitsMatch(freshPR.Source.Commit, expectedHead) {
+					ce := prHeadMovedError(prep.plan.PR, freshPR.Source.Commit, expectedHead)
+					body := ce.Payload().Error
+					res.FailedItem = &PRReviewFailure{
+						Kind:    "vote",
+						Verdict: prep.plan.Verdict,
+						Error:   &body,
+					}
+					return res, reviewPartialFailure(cerrors.CategoryConflict, res)
+				}
 			}
 		}
-	}
 
-	switch prep.plan.Verdict {
-	case ReviewVerdictApprove:
-		if verr := c.ApprovePR(ctx, ApprovePRReq{Repo: req.Repo, ID: req.PRID, Approve: true}); verr != nil {
+		if verr := c.doWriteJSON(ctx, prep.vote.method, prep.vote.path, nil, prep.vote.payload, nil, prReviewWriteTarget(req.Repo, req.PRID)); verr != nil {
+			if len(res.PostedComments) == 0 {
+				return nil, verr
+			}
 			ce := cerrors.AsCLIError(verr)
 			body := ce.Payload().Error
 			res.FailedItem = &PRReviewFailure{
@@ -187,23 +199,52 @@ func (c *apiClient) SubmitPRReview(ctx context.Context, req SubmitPRReviewReq) (
 			return res, reviewPartialFailure(ce.Category, res)
 		}
 		res.VoteApplied = true
-	case ReviewVerdictRequestChanges:
-		if verr := c.RequestPRChanges(ctx, RequestChangesReq{Repo: req.Repo, ID: req.PRID, Request: true}); verr != nil {
-			ce := cerrors.AsCLIError(verr)
-			body := ce.Payload().Error
-			res.FailedItem = &PRReviewFailure{
-				Kind:    "vote",
-				Verdict: prep.plan.Verdict,
-				Error:   &body,
-			}
-			return res, reviewPartialFailure(ce.Category, res)
-		}
-		res.VoteApplied = true
-	case ReviewVerdictCommentOnly:
-		// No vote write.
 	}
 
 	return res, nil
+}
+
+// buildPRReviewVote constructs the HTTP vote request shared by dry-run preview
+// and live execution. On Data Center, both approve and request-changes use
+// PUT /participants/{userSlug} carrying `lastReviewedCommit` so the server can
+// reject votes against a stale PR head atomically.
+func (c *apiClient) buildPRReviewVote(ctx context.Context, repo RepoRef, prID int, verdict ReviewVerdict, reviewedCommit string) (*preparedVote, error) {
+	if verdict == ReviewVerdictCommentOnly {
+		return nil, nil
+	}
+	if c.flavor == FlavorDataCenter {
+		me, err := c.CurrentUser(ctx)
+		if err != nil {
+			return nil, err
+		}
+		status := "APPROVED"
+		if verdict == ReviewVerdictRequestChanges {
+			status = "NEEDS_WORK"
+		}
+		payload := map[string]any{"status": status}
+		if commit := strings.TrimSpace(reviewedCommit); commit != "" {
+			payload["lastReviewedCommit"] = commit
+		}
+		return &preparedVote{
+			method:  "PUT",
+			path:    c.prPath(repo, prID) + "/participants/" + url.PathEscape(me.Slug),
+			payload: payload,
+		}, nil
+	}
+	switch verdict {
+	case ReviewVerdictApprove:
+		return &preparedVote{
+			method: "POST",
+			path:   c.prPath(repo, prID) + "/approve",
+		}, nil
+	case ReviewVerdictRequestChanges:
+		return &preparedVote{
+			method: "POST",
+			path:   c.prPath(repo, prID) + "/request-changes",
+		}, nil
+	default:
+		return nil, nil
+	}
 }
 
 func prHeadMovedError(prRefStr, actual, expected string) *cerrors.CLIError {
@@ -367,27 +408,23 @@ func (c *apiClient) preparePRReview(ctx context.Context, req SubmitPRReviewReq) 
 		})
 	}
 
-	switch verdict {
-	case ReviewVerdictApprove:
+	reviewedCommit := pr.Source.Commit
+	if reviewedCommit == "" {
+		reviewedCommit = strings.TrimSpace(req.ExpectedSourceCommit)
+	}
+	vote, verr := c.buildPRReviewVote(ctx, req.Repo, req.PRID, verdict, reviewedCommit)
+	if verr != nil {
+		return nil, verr
+	}
+	if vote != nil {
 		plan.Vote = &WriteRequestPlan{
-			Method: "POST",
-			URL:    c.baseURL + c.prPath(req.Repo, req.PRID) + "/approve",
-		}
-	case ReviewVerdictRequestChanges:
-		m, p, payload, verr := c.buildRequestPRChanges(ctx, RequestChangesReq{
-			Repo: req.Repo, ID: req.PRID, Request: true,
-		})
-		if verr != nil {
-			return nil, verr
-		}
-		plan.Vote = &WriteRequestPlan{
-			Method:  m,
-			URL:     c.baseURL + p,
-			Payload: payload,
+			Method:  vote.method,
+			URL:     c.baseURL + vote.path,
+			Payload: vote.payload,
 		}
 	}
 
-	return &preparedPRReview{plan: plan, commentReqs: commentReqs}, nil
+	return &preparedPRReview{plan: plan, commentReqs: commentReqs, vote: vote}, nil
 }
 
 // findExactFileDiff matches a path strictly against a diff entry's old or new

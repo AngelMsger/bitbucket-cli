@@ -336,13 +336,25 @@ func routes() http.Handler {
 	// Data Center stores review votes on participants.
 	mux.HandleFunc("PUT "+prKey+"/{id}/participants/{user}", func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
-			Status string `json:"status"`
+			Status             string `json:"status"`
+			LastReviewedCommit string `json:"lastReviewedCommit"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || (body.Status != "NEEDS_WORK" && body.Status != "UNAPPROVED") {
-			http.Error(w, `{"errors":[{"message":"status must be NEEDS_WORK or UNAPPROVED"}]}`, http.StatusBadRequest)
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil ||
+			(body.Status != "APPROVED" && body.Status != "NEEDS_WORK" && body.Status != "UNAPPROVED") {
+			http.Error(w, `{"errors":[{"message":"status must be APPROVED, NEEDS_WORK, or UNAPPROVED"}]}`, http.StatusBadRequest)
 			return
 		}
-		writeJSON(w, map[string]any{"user": namedUser(r.PathValue("user")), "role": "REVIEWER", "approved": false, "status": body.Status})
+		if body.LastReviewedCommit != "" && body.LastReviewedCommit != "bbbb222" {
+			http.Error(w, `{"errors":[{"message":"The pull request has been updated since you last reviewed it."}]}`, http.StatusConflict)
+			return
+		}
+		writeJSON(w, map[string]any{
+			"user":               namedUser(r.PathValue("user")),
+			"role":               "REVIEWER",
+			"approved":           body.Status == "APPROVED",
+			"status":             body.Status,
+			"lastReviewedCommit": body.LastReviewedCommit,
+		})
 	})
 
 	branchKey := "/rest/api/1.0/projects/{key}/repos/{slug}/branches"

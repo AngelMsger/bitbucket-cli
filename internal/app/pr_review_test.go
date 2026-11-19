@@ -103,6 +103,26 @@ func TestParseReviewInput(t *testing.T) {
 		}
 	})
 
+	t.Run("YAML flow sequence [{content: hello}] succeeds", func(t *testing.T) {
+		doc, err := parseReviewInput([]byte(`[{content: hello}, {path: a.go, line: 3, content: fix}]`))
+		if err != nil {
+			t.Fatalf("flow YAML sequence failed: %v", err)
+		}
+		if len(doc.Comments) != 2 || doc.Comments[0].Content != "hello" || doc.Comments[1].Path != "a.go" || doc.Comments[1].Line != 3 {
+			t.Fatalf("got %+v", doc)
+		}
+	})
+
+	t.Run("YAML flow mapping succeeds", func(t *testing.T) {
+		doc, err := parseReviewInput([]byte(`{verdict: approve, expected_source_commit: abc123, comments: [{content: ship it}]}`))
+		if err != nil {
+			t.Fatalf("flow YAML mapping failed: %v", err)
+		}
+		if doc.Verdict != "approve" || doc.ExpectedSourceCommit != "abc123" || len(doc.Comments) != 1 || doc.Comments[0].Content != "ship it" {
+			t.Fatalf("got %+v", doc)
+		}
+	})
+
 	t.Run("single YAML document with explicit end marker succeeds", func(t *testing.T) {
 		raw := "---\nverdict: approve\n...\n"
 		doc, err := parseReviewInput([]byte(raw))
@@ -152,9 +172,11 @@ func runCommandCaptureWithFlavor(t *testing.T, readOnly bool, stdin string, base
 	cmd := NewRootCmd()
 	args := []string{
 		"--config", t.TempDir(),
-		"--base-url", baseURL,
 		"--auth-scheme", "pat",
 		"--format", "json",
+	}
+	if baseURL != "" {
+		args = append(args, "--base-url", baseURL)
 	}
 	if flavor != "" {
 		args = append(args, "--flavor", flavor)
@@ -180,6 +202,11 @@ func TestPRReviewCLIContract(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/rest/api/1.0/application-properties":
+			w.Header().Set("X-AUSERNAME", "alice")
+			_, _ = w.Write([]byte(`{"version":"8.19.0"}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/rest/api/1.0/users/alice":
+			_, _ = w.Write([]byte(`{"name":"alice","slug":"alice","displayName":"Alice","type":"NORMAL"}`))
 		case r.Method == http.MethodGet && r.URL.Path == "/rest/api/1.0/projects/PROJ/repos/demo/pull-requests/1":
 			_, _ = w.Write([]byte(`{
 				"id": 1, "title": "Fix bug", "state": "OPEN", "version": 2,
@@ -197,9 +224,9 @@ func TestPRReviewCLIContract(t *testing.T) {
 				return
 			}
 			_, _ = w.Write([]byte(`{"id": 100, "text": "posted", "author": {"name": "alice", "type": "NORMAL"}}`))
-		case r.Method == http.MethodPost && r.URL.Path == "/rest/api/1.0/projects/PROJ/repos/demo/pull-requests/1/approve":
+		case r.Method == http.MethodPut && r.URL.Path == "/rest/api/1.0/projects/PROJ/repos/demo/pull-requests/1/participants/alice":
 			atomic.AddInt32(&writes, 1)
-			_, _ = w.Write([]byte(`{"approved": true}`))
+			_, _ = w.Write([]byte(`{"approved": true, "status": "APPROVED"}`))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -223,6 +250,9 @@ func TestPRReviewCLIContract(t *testing.T) {
 		}
 		if !plan.Validated || plan.Verdict != apiclient.ReviewVerdictApprove || len(plan.Comments) != 1 || plan.Vote == nil {
 			t.Fatalf("unexpected plan: %+v", plan)
+		}
+		if plan.Vote.Method != "PUT" || !strings.HasSuffix(plan.Vote.URL, "/participants/alice") {
+			t.Fatalf("DC approve plan should use PUT /participants/alice with lastReviewedCommit, got %+v", plan.Vote)
 		}
 	})
 
@@ -456,5 +486,54 @@ func TestPRFetchOfflineBaseCloudAutoFlavorAndRedaction(t *testing.T) {
 	}
 	if strings.Contains(out, "secret-pass") || strings.Contains(out, "x-token-auth") {
 		t.Errorf("stdout leaked remote credentials: %s", out)
+	}
+}
+
+func TestPRFetchOfflineFullPRURLVerifiesHostWithoutServerConfig(t *testing.T) {
+	dir := t.TempDir()
+	runGit := func(args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", args...)
+		cmd.Dir = dir
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v failed: %v\n%s", args, err, out)
+		}
+	}
+	runGit("init")
+	runGit("remote", "add", "origin", "git@other-host.example:ws/demo.git")
+
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(origDir) })
+
+	// No --base-url configured, full bitbucket.org PR URL passed with --base main:
+	// must reject the same-named repo on other-host.example!
+	_, err = runCommandCaptureWithFlavor(t, false, "", "", "",
+		"pr", "fetch", "https://bitbucket.org/ws/demo/pull-requests/1", "--base", "main")
+	if err == nil {
+		t.Fatal("expected GIT_REMOTE_MISMATCH when PR URL host differs from local remote host")
+	}
+	if ce := cerrors.AsCLIError(err); ce.Code != "GIT_REMOTE_MISMATCH" {
+		t.Fatalf("got %s (%v), want GIT_REMOTE_MISMATCH", ce.Code, ce)
+	}
+
+	// Once a matching bitbucket.org remote exists, it is selected even without server config.
+	runGit("remote", "add", "upstream", "git@bitbucket.org:ws/demo.git")
+	out, err := runCommandCaptureWithFlavor(t, false, "", "", "",
+		"pr", "fetch", "https://bitbucket.org/ws/demo/pull-requests/1", "--base", "main")
+	if err != nil {
+		t.Fatalf("expected matching bitbucket.org upstream to succeed: %v", err)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(out), &payload); err != nil {
+		t.Fatalf("decode: %v\nraw: %s", err, out)
+	}
+	if payload["remote"] != "upstream" {
+		t.Fatalf("remote = %v, want upstream", payload["remote"])
 	}
 }

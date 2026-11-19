@@ -392,8 +392,24 @@ func buildMyReview(flavor Flavor, pr *PullRequest, me *User, activities []Activi
 					continue
 				}
 				switch strings.ToLower(a.Kind) {
-				case "comment", "update", "rescoped":
+				case "comment", "update", "updated", "rescoped", "changes_requested", "needs_work", "reviewed":
 					updated = true
+				}
+				if updated {
+					break
+				}
+			}
+		}
+		if !updated {
+			for _, group := range [][]Participant{pr.Participants, pr.Reviewers} {
+				for _, p := range group {
+					if userMatchesUser(p.User, *me) || !isChangeRequestVote(participantVote(p)) {
+						continue
+					}
+					if t, ok := parseBitbucketTime(p.ParticipatedAt); ok && t.After(votedAt) {
+						updated = true
+						break
+					}
 				}
 				if updated {
 					break

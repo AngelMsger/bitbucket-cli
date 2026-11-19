@@ -9,6 +9,7 @@ import (
 	"github.com/angelmsger/bitbucket-cli/internal/gittransport"
 	"github.com/angelmsger/bitbucket-cli/pkg/apiclient"
 	cerrors "github.com/angelmsger/bitbucket-cli/pkg/errors"
+	"github.com/angelmsger/bitbucket-cli/pkg/urlref"
 	"github.com/spf13/cobra"
 )
 
@@ -34,7 +35,7 @@ func newPRFetchCmd(s *appState) *cobra.Command {
 			if execIt && s.readOnly() {
 				return readOnlyBlockedGitExec()
 			}
-			meta, err := resolvePRGitMeta(s, ref, id, base)
+			meta, err := resolvePRGitMeta(s, args[0], ref, id, base)
 			if err != nil {
 				return err
 			}
@@ -79,7 +80,7 @@ func newPRCheckoutCmd(s *appState) *cobra.Command {
 			if execIt && s.readOnly() {
 				return readOnlyBlockedGitExec()
 			}
-			meta, err := resolvePRGitMeta(s, ref, id, base)
+			meta, err := resolvePRGitMeta(s, args[0], ref, id, base)
 			if err != nil {
 				return err
 			}
@@ -130,15 +131,25 @@ type prGitMeta struct {
 // resolvePRGitMeta determines the PR's destination/source repository identities
 // and base branch/commit. An explicit --base skips the API call (keeping the
 // command usable offline) while still verifying the destination RepoRef and
-// Bitbucket Cloud host detection from the configured base URL.
-func resolvePRGitMeta(s *appState, ref apiclient.RepoRef, id int, baseOverride string) (prGitMeta, error) {
+// deployment host (from the PR URL when supplied, or the configured base URL).
+func resolvePRGitMeta(s *appState, rawArg string, ref apiclient.RepoRef, id int, baseOverride string) (prGitMeta, error) {
+	baseURL := strings.TrimSpace(s.cfg().BaseURL)
 	flavor := apiclient.Flavor(s.cfg().Flavor)
+	parsedURL := urlref.Parse(rawArg)
+	if parsedURL.IsURL && parsedURL.BaseURL != "" && (baseOverride != "" || baseURL == "") {
+		baseURL = parsedURL.BaseURL
+		if apiclient.IsCloudHost(baseURL) {
+			flavor = apiclient.FlavorCloud
+		} else if flavor == apiclient.FlavorCloud {
+			flavor = apiclient.FlavorAuto
+		}
+	}
 	isCloud := flavor == apiclient.FlavorCloud ||
-		((flavor == "" || flavor == apiclient.FlavorAuto) && apiclient.IsCloudHost(s.cfg().BaseURL))
+		((flavor == "" || flavor == apiclient.FlavorAuto) && apiclient.IsCloudHost(baseURL))
 	meta := prGitMeta{
 		baseBranch: baseOverride,
 		destRepo:   ref,
-		baseURL:    s.cfg().BaseURL,
+		baseURL:    baseURL,
 		isCloud:    isCloud,
 	}
 	if baseOverride != "" {

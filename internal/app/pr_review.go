@@ -2,7 +2,6 @@ package app
 
 import (
 	"bytes"
-	"encoding/json"
 	"io"
 	"os"
 	"strings"
@@ -156,8 +155,9 @@ func readReviewInput(path string, stdin io.Reader) ([]byte, error) {
 
 // parseReviewInput parses either a JSON/YAML object ({verdict,
 // expected_source_commit, comments}) or a bare JSON/YAML array of comment
-// objects. Unknown top-level keys are rejected so typos like `comment:` fail
-// loudly instead of silently posting zero comments.
+// objects (including YAML flow style such as `[{content: hello}]`). Unknown
+// keys and trailing or multi-document streams are rejected so typos or
+// malformed inputs fail loudly instead of silently dropping feedback.
 func parseReviewInput(raw []byte) (reviewInputDoc, error) {
 	trimmed := bytes.TrimSpace(raw)
 	if len(trimmed) == 0 {
@@ -165,44 +165,24 @@ func parseReviewInput(raw []byte) (reviewInputDoc, error) {
 			"--input content is empty")
 	}
 
-	// Fast-path JSON for crisp error messages on JSON inputs.
-	if trimmed[0] == '[' {
-		var comments []apiclient.ReviewCommentInput
-		dec := json.NewDecoder(bytes.NewReader(trimmed))
-		dec.DisallowUnknownFields()
-		if err := dec.Decode(&comments); err != nil {
-			return reviewInputDoc{}, cerrors.Wrap(err, cerrors.CategoryUsage, "BAD_REVIEW_INPUT",
-				"could not parse --input JSON comment array")
-		}
-		if err := ensureSingleJSONDoc(dec); err != nil {
-			return reviewInputDoc{}, err
-		}
-		return reviewInputDoc{Comments: comments}, nil
-	}
-	if trimmed[0] == '{' {
-		var doc reviewInputDoc
-		dec := json.NewDecoder(bytes.NewReader(trimmed))
-		dec.DisallowUnknownFields()
-		if err := dec.Decode(&doc); err != nil {
-			return reviewInputDoc{}, cerrors.Wrap(err, cerrors.CategoryUsage, "BAD_REVIEW_INPUT",
-				"could not parse --input JSON object")
-		}
-		if err := ensureSingleJSONDoc(dec); err != nil {
-			return reviewInputDoc{}, err
-		}
-		return doc, nil
-	}
-
-	// Otherwise parse YAML (supports both sequence and mapping documents).
+	// YAML 1.2 is a superset of JSON and handles JSON, block YAML, and flow
+	// YAML (`[{content: hello}]`) uniformly. Decode the document AST first to
+	// distinguish sequence vs mapping and confirm the entire stream is a single
+	// document ending at EOF.
+	nodeDec := yaml.NewDecoder(bytes.NewReader(trimmed))
 	var node yaml.Node
-	if err := yaml.Unmarshal(trimmed, &node); err != nil {
+	if err := nodeDec.Decode(&node); err != nil {
 		return reviewInputDoc{}, cerrors.Wrap(err, cerrors.CategoryUsage, "BAD_REVIEW_INPUT",
 			"could not parse --input as JSON or YAML")
+	}
+	if err := ensureSingleYAMLDoc(nodeDec); err != nil {
+		return reviewInputDoc{}, err
 	}
 	if len(node.Content) == 0 {
 		return reviewInputDoc{}, cerrors.New(cerrors.CategoryUsage, "BAD_REVIEW_INPUT",
 			"--input content is empty")
 	}
+
 	root := node.Content[0]
 	switch root.Kind {
 	case yaml.SequenceNode:
@@ -211,7 +191,7 @@ func parseReviewInput(raw []byte) (reviewInputDoc, error) {
 		dec.KnownFields(true)
 		if err := dec.Decode(&comments); err != nil {
 			return reviewInputDoc{}, cerrors.Wrap(err, cerrors.CategoryUsage, "BAD_REVIEW_INPUT",
-				"could not parse --input YAML comment list")
+				"could not parse --input comment list")
 		}
 		if err := ensureSingleYAMLDoc(dec); err != nil {
 			return reviewInputDoc{}, err
@@ -223,7 +203,7 @@ func parseReviewInput(raw []byte) (reviewInputDoc, error) {
 		dec.KnownFields(true)
 		if err := dec.Decode(&doc); err != nil {
 			return reviewInputDoc{}, cerrors.Wrap(err, cerrors.CategoryUsage, "BAD_REVIEW_INPUT",
-				"could not parse --input YAML object")
+				"could not parse --input review object")
 		}
 		if err := ensureSingleYAMLDoc(dec); err != nil {
 			return reviewInputDoc{}, err
@@ -235,20 +215,11 @@ func parseReviewInput(raw []byte) (reviewInputDoc, error) {
 	}
 }
 
-func ensureSingleJSONDoc(dec *json.Decoder) error {
-	var extra any
-	if err := dec.Decode(&extra); err != io.EOF {
-		return cerrors.New(cerrors.CategoryUsage, "BAD_REVIEW_INPUT",
-			"unexpected trailing content after JSON document in --input")
-	}
-	return nil
-}
-
 func ensureSingleYAMLDoc(dec *yaml.Decoder) error {
 	var extra yaml.Node
 	if err := dec.Decode(&extra); err != io.EOF {
 		return cerrors.New(cerrors.CategoryUsage, "BAD_REVIEW_INPUT",
-			"unexpected extra YAML document or trailing content in --input")
+			"unexpected extra document or trailing content in --input")
 	}
 	return nil
 }
