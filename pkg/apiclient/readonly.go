@@ -62,6 +62,9 @@ func (r *readOnlyClient) ApprovePR(_ context.Context, _ ApprovePRReq) error {
 func (r *readOnlyClient) RequestPRChanges(_ context.Context, _ RequestChangesReq) error {
 	return blocked("RequestPRChanges")
 }
+func (r *readOnlyClient) SubmitPRReview(_ context.Context, _ SubmitPRReviewReq) (*PRReviewResult, error) {
+	return nil, blocked("SubmitPRReview")
+}
 
 // Comment writes.
 func (r *readOnlyClient) AddPRComment(_ context.Context, _ AddPRCommentReq) (*Comment, error) {

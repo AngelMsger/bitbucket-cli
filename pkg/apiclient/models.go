@@ -148,10 +148,12 @@ type PRRef struct {
 
 // Participant is a reviewer / participant on a PR.
 type Participant struct {
-	User     User   `json:"user"`
-	Role     string `json:"role,omitempty"` // REVIEWER / PARTICIPANT
-	Approved bool   `json:"approved,omitempty"`
-	State    string `json:"state,omitempty"` // approved / changes_requested / null
+	User               User   `json:"user"`
+	Role               string `json:"role,omitempty"` // REVIEWER / PARTICIPANT
+	Approved           bool   `json:"approved,omitempty"`
+	State              string `json:"state,omitempty"`                // approved / changes_requested / needs_work / unapproved
+	ParticipatedAt     string `json:"participated_at,omitempty"`      // Cloud participated_on timestamp
+	LastReviewedCommit string `json:"last_reviewed_commit,omitempty"` // Data Center lastReviewedCommit hash
 }
 
 // PullRequest is a normalized Bitbucket pull request.
@@ -174,6 +176,10 @@ type PullRequest struct {
 	UpdatedAt    string        `json:"updated_at,omitempty"`
 	ClosedAt     string        `json:"closed_at,omitempty"`
 	MergeCommit  string        `json:"merge_commit,omitempty"`
+	// MyVote is the authenticated user's review vote on this PR when surfaced by
+	// a listing that already includes participant state (such as `pr inbox`):
+	// "unvoted", "approved", "needs_work" (DC), or "changes_requested" (Cloud).
+	MyVote string `json:"my_vote,omitempty"`
 }
 
 // InlineAnchor pins an inline review comment to a path and line.
@@ -215,6 +221,15 @@ type Comment struct {
 	// Center; on servers before 7.7 a like reads as thumbsup). Bitbucket Cloud
 	// has no reactions, so the field is absent there.
 	Reactions []CommentReaction `json:"reactions,omitempty"`
+	// IsSelf reports whether Author matches the authenticated user. Omitted when
+	// the caller's identity was not resolved.
+	IsSelf *bool `json:"is_self,omitempty"`
+	// IsAIAttributed is true when Content carries a standard AI attribution link
+	// marker such as `[[AI]](...)`.
+	IsAIAttributed bool `json:"is_ai_attributed"`
+	// AuthorKind classifies Author from platform account metadata ("human",
+	// "bot", or "unknown"). Never guessed from display names.
+	AuthorKind string `json:"author_kind,omitempty"`
 }
 
 // CommentReaction is one emoji on a comment and the users who reacted with
@@ -570,6 +585,17 @@ type BuildStatus struct {
 	UpdatedAt   string `json:"updated_at,omitempty"`
 }
 
+// MyReview summarizes the authenticated user's review state on a PR so a single
+// `pr status` call can answer when they last voted and whether new commits or
+// unresolved discussions appeared afterward.
+type MyReview struct {
+	Vote                  string `json:"vote"`
+	VotedAt               string `json:"voted_at,omitempty"`
+	LatestCommitAt        string `json:"latest_commit_at,omitempty"`
+	UpdatedAfterMyVote    *bool  `json:"updated_after_my_vote,omitempty"`
+	UnresolvedThreadCount *int   `json:"unresolved_thread_count,omitempty"`
+}
+
 // PRStatus is the aggregated "is this PR ready to merge?" view returned by
 // the `pr status` command. Each field is independently fetched and may be nil
 // if the server omits / errors on that piece.
@@ -578,6 +604,7 @@ type PRStatus struct {
 	MergeCheck *MergeCheck   `json:"merge_check,omitempty"`
 	Reviewers  []Participant `json:"reviewers,omitempty"`
 	Builds     []BuildStatus `json:"builds,omitempty"`
+	MyReview   *MyReview     `json:"my_review,omitempty"`
 }
 
 // FileListOpts narrows a directory listing.
@@ -607,6 +634,7 @@ type TreeOpts struct {
 //
 // Role values: "REVIEWER" (default) | "AUTHOR" | "PARTICIPANT" | "ANY".
 // State values: "OPEN" (default) | "MERGED" | "DECLINED" | "ALL".
+// MyVote values: "" (all) | "unvoted" | "approved" | "needs_work" | "changes_requested".
 //
 // Workspace is optional on Data Center (the dashboard endpoint searches every
 // project the user can see) and required on Cloud when Role == "REVIEWER" —
@@ -617,5 +645,6 @@ type MyPRListOpts struct {
 	Role               string
 	State              string
 	Workspace          string
-	ClosedSinceSeconds int64 // DC only: keep PRs closed within this many seconds
+	ClosedSinceSeconds int64  // DC only: keep PRs closed within this many seconds
+	MyVote             string // optional filter on authenticated user's review vote
 }

@@ -157,9 +157,12 @@ func prMatchesUsers(pr PullRequest, author, reviewer string) bool {
 }
 
 func userMatchesSelector(user User, selector string) bool {
-	selector = strings.ToLower(strings.Trim(strings.TrimSpace(selector), "{}"))
+	selector = normID(selector)
+	if selector == "" {
+		return false
+	}
 	for _, value := range []string{user.AccountID, user.UUID, user.Name, user.Slug} {
-		if strings.ToLower(strings.Trim(strings.TrimSpace(value), "{}")) == selector {
+		if normID(value) == selector {
 			return true
 		}
 	}
@@ -349,6 +352,10 @@ func (c *apiClient) ListPRActivity(ctx context.Context, opt PRListOpts) (ListRes
 					Date string    `json:"date"`
 					User cloudUser `json:"user"`
 				} `json:"approval"`
+				ChangesRequested *struct {
+					Date string    `json:"date"`
+					User cloudUser `json:"user"`
+				} `json:"changes_requested"`
 				Comment *cloudComment `json:"comment"`
 			} `json:"values"`
 			Next string `json:"next"`
@@ -364,6 +371,8 @@ func (c *apiClient) ListPRActivity(ctx context.Context, opt PRListOpts) (ListRes
 				res.Items = append(res.Items, Activity{Kind: "comment", Actor: cm.Author, When: v.Comment.CreatedOn, PullRequest: prRef, Comment: &cm})
 			case v.Approval != nil:
 				res.Items = append(res.Items, Activity{Kind: "approval", Actor: mapCloudUser(v.Approval.User), When: v.Approval.Date, PullRequest: prRef, Approved: true})
+			case v.ChangesRequested != nil:
+				res.Items = append(res.Items, Activity{Kind: "changes_requested", Actor: mapCloudUser(v.ChangesRequested.User), When: v.ChangesRequested.Date, PullRequest: prRef, State: "changes_requested"})
 			case v.Update != nil:
 				res.Items = append(res.Items, Activity{Kind: "update", Actor: mapCloudUser(v.Update.Author), When: v.Update.Date, PullRequest: prRef, State: v.Update.State})
 			}

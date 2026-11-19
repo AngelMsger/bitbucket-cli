@@ -80,6 +80,10 @@ type Reader interface {
 	ListPRStatuses(ctx context.Context, repo RepoRef, id int) (ListResult[BuildStatus], error)
 	GetPRStatus(ctx context.Context, repo RepoRef, id int) (*PRStatus, error)
 
+	// PlanPRReview validates a composite review (source commit check + inline
+	// diff anchors + vote plan) without sending any write requests.
+	PlanPRReview(ctx context.Context, req SubmitPRReviewReq) (*PRReviewPlan, error)
+
 	// DescribeWrite returns the request a write would send, without sending
 	// it; --dry-run previews use it, so it stays usable in read-only mode.
 	DescribeWrite(ctx context.Context, op any) (WriteRequestPlan, error)
@@ -99,6 +103,7 @@ type Writer interface {
 	MergePR(ctx context.Context, req MergePRReq) (*PullRequest, error)
 	ApprovePR(ctx context.Context, req ApprovePRReq) error
 	RequestPRChanges(ctx context.Context, req RequestChangesReq) error
+	SubmitPRReview(ctx context.Context, req SubmitPRReviewReq) (*PRReviewResult, error)
 
 	AddPRComment(ctx context.Context, req AddPRCommentReq) (*Comment, error)
 	UpdatePRComment(ctx context.Context, req UpdatePRCommentReq) (*Comment, error)
@@ -172,6 +177,40 @@ func (c *apiClient) limitOf(opt ListOpts) int {
 // getJSON performs a GET and decodes the JSON body into out.
 func (c *apiClient) getJSON(ctx context.Context, path string, query url.Values, out any) error {
 	return c.doJSON(ctx, http.MethodGet, path, query, nil, out)
+}
+
+// getJSONWithHeader performs a GET, decodes the JSON body into out, and returns
+// one response header (used on Data Center to read X-AUSERNAME from an already
+// issued GET without an extra round trip).
+func (c *apiClient) getJSONWithHeader(ctx context.Context, path string, query url.Values, header string, out any) (string, error) {
+	endpoint := c.absEndpoint(path, query)
+	req, err := http.NewRequest(http.MethodGet, endpoint, nil)
+	if err != nil {
+		return "", cerrors.Wrap(err, cerrors.CategoryUsage, "BAD_REQUEST", "failed to build request")
+	}
+	req.Header.Set("Accept", "application/json")
+	resp, err := c.http.Do(ctx, req)
+	if err != nil {
+		return "", cerrors.Wrap(err, cerrors.CategoryNetwork, "NETWORK",
+			fmt.Sprintf("request to %s failed", endpoint))
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return "", c.httpError(resp)
+	}
+	hdr := resp.Header.Get(header)
+	if out == nil {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return hdr, nil
+	}
+	rawResp, _ := io.ReadAll(resp.Body)
+	if len(bytes.TrimSpace(rawResp)) == 0 {
+		return hdr, nil
+	}
+	if err := decodeJSON(rawResp, out); err != nil {
+		return hdr, cerrors.AsCLIError(err).WithHTTPStatus(resp.StatusCode)
+	}
+	return hdr, nil
 }
 
 // getResponseHeader performs a GET and returns one response header, discarding

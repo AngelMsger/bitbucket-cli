@@ -13,12 +13,16 @@ import (
 // single dashboard endpoint that supports it natively; Cloud has no global
 // reviewer index, so the CLI uses different strategies per role on Cloud.
 func (c *apiClient) ListMyPRs(ctx context.Context, opt MyPRListOpts) (ListResult[PullRequest], error) {
+	myVote, err := NormalizeMyVoteFilter(opt.MyVote)
+	if err != nil {
+		return ListResult[PullRequest]{}, err
+	}
 	role := normalizeInboxRole(opt.Role)
 	state := normalizeInboxState(opt.State)
 	if c.flavor == FlavorCloud {
-		return c.cloudListMyPRs(ctx, opt, role, state)
+		return c.cloudListMyPRs(ctx, opt, role, state, myVote)
 	}
-	return c.dcListDashboardPRs(ctx, opt, role, state)
+	return c.dcListDashboardPRs(ctx, opt, role, state, myVote)
 }
 
 func normalizeInboxRole(r string) string {
@@ -51,8 +55,9 @@ func normalizeInboxState(s string) string {
 
 // dcListDashboardPRs hits the single Data Center dashboard endpoint:
 // GET /rest/api/1.0/dashboard/pull-requests?role=REVIEWER&state=OPEN. The
-// endpoint scopes by the authenticated user — no UUID handoff needed.
-func (c *apiClient) dcListDashboardPRs(ctx context.Context, opt MyPRListOpts, role, state string) (ListResult[PullRequest], error) {
+// endpoint scopes by the authenticated user and stamps X-AUSERNAME on the
+// response, so my_vote is resolved without N+1 requests.
+func (c *apiClient) dcListDashboardPRs(ctx context.Context, opt MyPRListOpts, role, state, myVote string) (ListResult[PullRequest], error) {
 	limit := c.limitOf(opt.ListOpts)
 	q := c.queryWithLimit(opt.Cursor, limit)
 	if role != "" {
@@ -66,8 +71,22 @@ func (c *apiClient) dcListDashboardPRs(ctx context.Context, opt MyPRListOpts, ro
 		q.Set("order", "CLOSED_DATE")
 	}
 	var raw dcPRList
-	if err := c.getJSON(ctx, "/rest/api/1.0/dashboard/pull-requests", q, &raw); err != nil {
+	username, err := c.getJSONWithHeader(ctx, "/rest/api/1.0/dashboard/pull-requests", q, "X-AUSERNAME", &raw)
+	if err != nil {
 		return ListResult[PullRequest]{}, err
+	}
+	var me *User
+	if u := strings.TrimSpace(username); u != "" {
+		me = &User{Name: u, Slug: u}
+	} else if len(raw.Values) > 0 || myVote != "" {
+		resolved, uerr := c.CurrentUser(ctx)
+		if uerr != nil {
+			if myVote != "" {
+				return ListResult[PullRequest]{}, uerr
+			}
+		} else {
+			me = resolved
+		}
 	}
 	out := ListResult[PullRequest]{
 		Next: nextOffsetToken(raw.dcPage),
@@ -77,7 +96,14 @@ func (c *apiClient) dcListDashboardPRs(ctx context.Context, opt MyPRListOpts, ro
 			Workspace: p.ToRef.Repository.Project.Key,
 			Slug:      p.ToRef.Repository.Slug,
 		}
-		out.Items = append(out.Items, *mapDCPR(repo, p))
+		pr := *mapDCPR(repo, p)
+		if me != nil {
+			pr.MyVote, _, _ = resolveUserVote(&pr, me)
+		}
+		if myVote != "" && !voteMatchesFilter(pr.MyVote, myVote) {
+			continue
+		}
+		out.Items = append(out.Items, pr)
 	}
 	return out, nil
 }
@@ -90,7 +116,7 @@ func (c *apiClient) dcListDashboardPRs(ctx context.Context, opt MyPRListOpts, ro
 //     Cloud has no global "PRs awaiting my review" index, so cross-workspace
 //     queries would have to enumerate the user's workspaces — left to a
 //     future iteration; the CLI surfaces a clear usage error for now.
-func (c *apiClient) cloudListMyPRs(ctx context.Context, opt MyPRListOpts, role, state string) (ListResult[PullRequest], error) {
+func (c *apiClient) cloudListMyPRs(ctx context.Context, opt MyPRListOpts, role, state, myVote string) (ListResult[PullRequest], error) {
 	if opt.ClosedSinceSeconds > 0 {
 		sup := c.supportFor(CapPRInboxClosedSince)
 		return ListResult[PullRequest]{}, cerrors.New(cerrors.CategoryUsage, "INBOX_CLOSED_SINCE_UNSUPPORTED",
@@ -111,6 +137,9 @@ func (c *apiClient) cloudListMyPRs(ctx context.Context, opt MyPRListOpts, role, 
 		q := url.Values{}
 		addCloudStateParams(q, state)
 		q.Set("pagelen", itoa(c.limitOf(opt.ListOpts)))
+		// Ask Cloud to include participant vote records on the list response so
+		// my_vote is populated without per-PR GETs.
+		q.Set("fields", "+values.participants")
 		path := c.apiBase() + "/pullrequests/" + url.PathEscape(selector)
 		if cloudFollowURL(opt.Cursor) {
 			path = opt.Cursor
@@ -122,7 +151,12 @@ func (c *apiClient) cloudListMyPRs(ctx context.Context, opt MyPRListOpts, role, 
 		}
 		res := ListResult[PullRequest]{Next: cloudNextCursor(raw.Next)}
 		for _, p := range raw.Values {
-			res.Items = append(res.Items, *mapCloudPR(repoFromCloudPR(p), p))
+			pr := *mapCloudPR(repoFromCloudPR(p), p)
+			pr.MyVote, _, _ = resolveUserVote(&pr, me)
+			if myVote != "" && !voteMatchesFilter(pr.MyVote, myVote) {
+				continue
+			}
+			res.Items = append(res.Items, pr)
 		}
 		return res, nil
 	}
@@ -143,16 +177,16 @@ func (c *apiClient) cloudListMyPRs(ctx context.Context, opt MyPRListOpts, role, 
 	if uuidFilter == "" {
 		uuidFilter = selector
 	}
-	q := `reviewers.uuid="` + uuidFilter + `"`
+	qFilter := `reviewers.uuid="` + uuidFilter + `"`
 	switch role {
 	case "PARTICIPANT":
-		q = `participants.uuid="` + uuidFilter + `"`
+		qFilter = `participants.uuid="` + uuidFilter + `"`
 	case "":
-		q = `(author.uuid="` + uuidFilter + `" OR reviewers.uuid="` + uuidFilter +
+		qFilter = `(author.uuid="` + uuidFilter + `" OR reviewers.uuid="` + uuidFilter +
 			`" OR participants.uuid="` + uuidFilter + `")`
 	}
 	if state != "ALL" {
-		q = q + ` AND state="` + state + `"`
+		qFilter = qFilter + ` AND state="` + state + `"`
 	}
 
 	var aggregated []PullRequest
@@ -167,17 +201,20 @@ func (c *apiClient) cloudListMyPRs(ctx context.Context, opt MyPRListOpts, role, 
 		}
 		for _, r := range repos.Items {
 			repoRef := RepoRef{Workspace: opt.Workspace, Slug: r.Slug}
-			page, err := c.ListPRs(ctx, PRListOpts{
-				ListOpts: ListOpts{Limit: 50},
-				Repo:     repoRef, State: state, Query: q,
-			})
+			prs, err := c.cloudListRepoPRsForInbox(ctx, repoRef, state, qFilter)
 			if err != nil {
 				// 403/404 on a particular repo (permissions / archived) is
 				// expected when the user spans many workspaces; skip rather
 				// than abort the whole listing.
 				continue
 			}
-			aggregated = append(aggregated, page.Items...)
+			for _, pr := range prs {
+				pr.MyVote, _, _ = resolveUserVote(&pr, me)
+				if myVote != "" && !voteMatchesFilter(pr.MyVote, myVote) {
+					continue
+				}
+				aggregated = append(aggregated, pr)
+			}
 		}
 		if repos.Next == "" {
 			break
@@ -185,6 +222,43 @@ func (c *apiClient) cloudListMyPRs(ctx context.Context, opt MyPRListOpts, role, 
 		repoCursor = repos.Next
 	}
 	return ListResult[PullRequest]{Items: aggregated}, nil
+}
+
+// cloudListRepoPRsForInbox fetches matching PRs in one Cloud repository with
+// `+values.participants` so reviewer vote state is available without N+1 GETs.
+func (c *apiClient) cloudListRepoPRsForInbox(ctx context.Context, repo RepoRef, state, query string) ([]PullRequest, error) {
+	var all []PullRequest
+	cursor := ""
+	for {
+		path := c.prsPath(repo)
+		q := url.Values{}
+		if cloudFollowURL(cursor) {
+			path = cursor
+			q = nil
+		} else {
+			q.Set("pagelen", "50")
+			if state != "" {
+				addCloudStateParams(q, state)
+			}
+			if query != "" {
+				q.Set("q", query)
+			}
+			q.Set("fields", "+values.participants")
+		}
+		var raw cloudPRList
+		if err := c.getJSON(ctx, path, q, &raw); err != nil {
+			return nil, err
+		}
+		for _, p := range raw.Values {
+			all = append(all, *mapCloudPR(repo, p))
+		}
+		next := cloudNextCursor(raw.Next)
+		if next == "" {
+			break
+		}
+		cursor = next
+	}
+	return all, nil
 }
 
 // repoFromCloudPR derives the destination RepoRef from a Cloud PR record. The
