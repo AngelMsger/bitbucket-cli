@@ -24,6 +24,7 @@ func newPRCmd(s *appState) *cobra.Command {
 		newPRFilesCmd(s), newPRThreadsCmd(s), newPRStatusCmd(s),
 		newPRFetchCmd(s), newPRCheckoutCmd(s),
 		newPRApproveCmd(s), newPRUnapproveCmd(s), newPRRequestChangesCmd(s),
+		newPRReviewCmd(s),
 		newPRDeclineCmd(s), newPRMergeCmd(s),
 	)
 	return cmd
@@ -87,10 +88,10 @@ func newPRListCmd(s *appState) *cobra.Command {
 
 func newPRInboxCmd(s *appState) *cobra.Command {
 	var (
-		role, state, workspace, closedSince string
-		limit                               int
-		all                                 bool
-		cursor                              string
+		role, state, workspace, closedSince, myVote string
+		limit                                       int
+		all                                         bool
+		cursor                                      string
 	)
 	cmd := &cobra.Command{
 		Use:   "inbox",
@@ -100,12 +101,18 @@ func newPRInboxCmd(s *appState) *cobra.Command {
 			"Data Center uses the dashboard endpoint — a single call covers every project.\n" +
 			"Bitbucket Cloud has no global reviewer index, so --role reviewer, participant,\n" +
 			"or any require --workspace; --role author works globally via the user's\n" +
-			"`/pullrequests/<uuid>` endpoint.",
+			"`/pullrequests/<uuid>` endpoint.\n\n" +
+			"Each returned item includes `my_vote` (unvoted | approved | needs_work |\n" +
+			"changes_requested) when the platform list payload includes participant status,\n" +
+			"allowing `--my-vote` filtering without extra per-PR API calls.",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			closedSinceSeconds, err := parseClosedSince(closedSince)
 			if err != nil {
 				return cerrors.Wrap(err, cerrors.CategoryUsage, "BAD_CLOSED_SINCE",
 					"invalid --closed-since value")
+			}
+			if _, err := apiclient.NormalizeMyVoteFilter(myVote); err != nil {
+				return err
 			}
 			ws := defaultWorkspace(s, workspace)
 			ctx, cancel := cmdContext(s)
@@ -121,6 +128,7 @@ func newPRInboxCmd(s *appState) *cobra.Command {
 					State:              state,
 					Workspace:          ws,
 					ClosedSinceSeconds: closedSinceSeconds,
+					MyVote:             myVote,
 				})
 			}
 			items, info, err := collectPage(fetch, cursor, all)
@@ -133,6 +141,7 @@ func newPRInboxCmd(s *appState) *cobra.Command {
 	f := cmd.Flags()
 	f.StringVar(&role, "role", "reviewer", "reviewer | author | participant | any")
 	f.StringVar(&state, "state", "OPEN", "OPEN | MERGED | DECLINED | ALL")
+	f.StringVar(&myVote, "my-vote", "", "filter by my current vote: unvoted | approved | needs_work | changes_requested")
 	f.StringVar(&workspace, "workspace", "",
 		"Cloud workspace to scope reviewer / participant queries to (ignored on Data Center)")
 	f.StringVar(&closedSince, "closed-since", "",
@@ -140,19 +149,32 @@ func newPRInboxCmd(s *appState) *cobra.Command {
 	addListFlags(cmd, &limit, &all, &cursor)
 	enumComplete(cmd, "role", "reviewer", "author", "participant", "any")
 	enumComplete(cmd, "state", "OPEN", "MERGED", "DECLINED", "ALL")
+	enumComplete(cmd, "my-vote", "unvoted", "approved", "needs_work", "changes_requested")
 	return cmd
 }
 
 func newPRGetCmd(s *appState) *cobra.Command {
 	var scope string
 	cmd := &cobra.Command{
-		Use:   "get <workspace>/<repo>/<id> | <url>",
-		Short: "Show a pull request",
-		Args:  cobra.ExactArgs(1),
+		Use:   "get <workspace>/<repo>/<id>...",
+		Short: "Show one or more pull requests",
+		Long: "Show one or more pull requests. Pass several PR references or a single '-'\n" +
+			"to read newline-separated references from stdin. With more than one\n" +
+			"reference, output is a {items, has_more} aggregate with per-PR ok / result /\n" +
+			"error entries; `--scope diff` is only available for a single PR.",
+		Example: "  bitbucket-cli pr get myws/myrepo/7\n" +
+			"  bitbucket-cli pr get myws/myrepo/7 myws/myrepo/8\n" +
+			"  bitbucket-cli pr inbox --fields ref | jq -r '.items[].ref' | bitbucket-cli pr get -",
+		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ref, id, err := resolvePRRef(args[0], apiclient.RepoRef{})
+			refs, err := collectBatchArgs(args, cmd.InOrStdin())
 			if err != nil {
 				return err
+			}
+			if len(refs) > 1 && apiclient.PRScope(scope) == apiclient.PRScopeDiff {
+				return cerrors.New(cerrors.CategoryUsage, "PR_GET_BATCH_DIFF",
+					"--scope diff cannot be combined with multiple PR references").
+					WithNextSteps("Pass a single PR reference when using --scope diff, or use `pr diff`")
 			}
 			ctx, cancel := cmdContext(s)
 			defer cancel()
@@ -160,40 +182,83 @@ func newPRGetCmd(s *appState) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			switch apiclient.PRScope(scope) {
-			case apiclient.PRScopeDiff:
-				diff, err := client.GetPRDiff(ctx, ref, id)
+			if len(refs) == 1 {
+				ref, id, err := resolvePRRef(refs[0], apiclient.RepoRef{})
 				if err != nil {
 					return err
 				}
-				_, _ = fmt.Fprint(os.Stdout, diff)
-				return nil
-			case apiclient.PRScopeCommits:
-				items, info, err := collectPage(func(c string) (apiclient.ListResult[apiclient.Commit], error) {
-					return client.ListPRCommits(ctx, apiclient.PRListOpts{
-						Repo: ref, ListOpts: apiclient.ListOpts{Cursor: c}, Query: strconv.Itoa(id),
-					})
-				}, "", false)
+				switch apiclient.PRScope(scope) {
+				case apiclient.PRScopeDiff:
+					diff, err := client.GetPRDiff(ctx, ref, id)
+					if err != nil {
+						return err
+					}
+					_, _ = fmt.Fprint(os.Stdout, diff)
+					return nil
+				case apiclient.PRScopeCommits:
+					items, info, err := collectPage(func(c string) (apiclient.ListResult[apiclient.Commit], error) {
+						return client.ListPRCommits(ctx, apiclient.PRListOpts{
+							Repo: ref, ListOpts: apiclient.ListOpts{Cursor: c}, Query: strconv.Itoa(id),
+						})
+					}, "", false)
+					if err != nil {
+						return err
+					}
+					return s.emitList(items, info)
+				case apiclient.PRScopeActivity:
+					items, info, err := collectPage(func(c string) (apiclient.ListResult[apiclient.Activity], error) {
+						return client.ListPRActivity(ctx, apiclient.PRListOpts{
+							Repo: ref, ListOpts: apiclient.ListOpts{Cursor: c}, Query: strconv.Itoa(id),
+						})
+					}, "", false)
+					if err != nil {
+						return err
+					}
+					return s.emitList(items, info)
+				}
+				pr, err := client.GetPR(ctx, apiclient.GetPROpts{Repo: ref, ID: id, Scope: apiclient.PRScope(scope)})
 				if err != nil {
 					return err
 				}
-				return s.emitList(items, info)
-			case apiclient.PRScopeActivity:
-				items, info, err := collectPage(func(c string) (apiclient.ListResult[apiclient.Activity], error) {
-					return client.ListPRActivity(ctx, apiclient.PRListOpts{
-						Repo: ref, ListOpts: apiclient.ListOpts{Cursor: c}, Query: strconv.Itoa(id),
-					})
-				}, "", false)
-				if err != nil {
-					return err
-				}
-				return s.emitList(items, info)
+				return s.emit(pr)
 			}
-			pr, err := client.GetPR(ctx, apiclient.GetPROpts{Repo: ref, ID: id, Scope: apiclient.PRScope(scope)})
-			if err != nil {
-				return err
-			}
-			return s.emit(pr)
+
+			return runBatchRead(s, refs, func(arg string) (any, error) {
+				ref, id, err := resolvePRRef(arg, apiclient.RepoRef{})
+				if err != nil {
+					return nil, err
+				}
+				switch apiclient.PRScope(scope) {
+				case apiclient.PRScopeCommits:
+					items, _, err := collectPage(func(c string) (apiclient.ListResult[apiclient.Commit], error) {
+						return client.ListPRCommits(ctx, apiclient.PRListOpts{
+							Repo: ref, ListOpts: apiclient.ListOpts{Cursor: c}, Query: strconv.Itoa(id),
+						})
+					}, "", false)
+					if err != nil {
+						return nil, err
+					}
+					if items == nil {
+						items = []apiclient.Commit{}
+					}
+					return items, nil
+				case apiclient.PRScopeActivity:
+					items, _, err := collectPage(func(c string) (apiclient.ListResult[apiclient.Activity], error) {
+						return client.ListPRActivity(ctx, apiclient.PRListOpts{
+							Repo: ref, ListOpts: apiclient.ListOpts{Cursor: c}, Query: strconv.Itoa(id),
+						})
+					}, "", false)
+					if err != nil {
+						return nil, err
+					}
+					if items == nil {
+						items = []apiclient.Activity{}
+					}
+					return items, nil
+				default:
+					return client.GetPR(ctx, apiclient.GetPROpts{Repo: ref, ID: id, Scope: apiclient.PRScope(scope)})
+				}
+			})
 		},
 	}
 	cmd.Flags().StringVar(&scope, "scope", "summary",

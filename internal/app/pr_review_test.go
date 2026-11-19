@@ -1,0 +1,330 @@
+package app
+
+import (
+	"bytes"
+	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"strings"
+	"sync/atomic"
+	"testing"
+
+	"github.com/angelmsger/bitbucket-cli/pkg/apiclient"
+	cerrors "github.com/angelmsger/bitbucket-cli/pkg/errors"
+	"github.com/zalando/go-keyring"
+)
+
+func TestParseReviewInput(t *testing.T) {
+	t.Run("JSON object", func(t *testing.T) {
+		doc, err := parseReviewInput([]byte(`{
+			"verdict": "request-changes",
+			"expected_source_commit": "abc123",
+			"comments": [{"path":"a.go","line":2,"content":"fix this"}]
+		}`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if doc.Verdict != "request-changes" || doc.ExpectedSourceCommit != "abc123" || len(doc.Comments) != 1 {
+			t.Fatalf("got %+v", doc)
+		}
+	})
+
+	t.Run("JSON bare array", func(t *testing.T) {
+		doc, err := parseReviewInput([]byte(`[{"content":"looks good"},{"reply_to":12,"content":"done"}]`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(doc.Comments) != 2 || doc.Comments[1].ReplyTo != 12 {
+			t.Fatalf("got %+v", doc)
+		}
+	})
+
+	t.Run("YAML object", func(t *testing.T) {
+		raw := "verdict: approve\nexpected_source_commit: deadbeef\ncomments:\n  - path: main.go\n    line: 5\n    side: new\n    content: nice\n"
+		doc, err := parseReviewInput([]byte(raw))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if doc.Verdict != "approve" || doc.ExpectedSourceCommit != "deadbeef" || len(doc.Comments) != 1 || doc.Comments[0].Line != 5 {
+			t.Fatalf("got %+v", doc)
+		}
+	})
+
+	t.Run("YAML bare sequence", func(t *testing.T) {
+		raw := "- content: general note\n- path: x.go\n  line: 10\n  content: inline note\n"
+		doc, err := parseReviewInput([]byte(raw))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(doc.Comments) != 2 || doc.Comments[1].Path != "x.go" {
+			t.Fatalf("got %+v", doc)
+		}
+	})
+
+	t.Run("unknown JSON key fails loudly", func(t *testing.T) {
+		_, err := parseReviewInput([]byte(`{"comment":[{"content":"typo key"}]}`))
+		if err == nil {
+			t.Fatal("expected BAD_REVIEW_INPUT for unknown key")
+		}
+		if ce := cerrors.AsCLIError(err); ce.Code != "BAD_REVIEW_INPUT" {
+			t.Fatalf("code = %s, want BAD_REVIEW_INPUT", ce.Code)
+		}
+	})
+
+	t.Run("empty input fails loudly", func(t *testing.T) {
+		_, err := parseReviewInput([]byte("   \n"))
+		if err == nil || cerrors.AsCLIError(err).Code != "BAD_REVIEW_INPUT" {
+			t.Fatalf("want BAD_REVIEW_INPUT, got %v", err)
+		}
+	})
+}
+
+// runCommandCapture executes the full root CLI against a fake Bitbucket server,
+// capturing os.Stdout (where output.Emit writes) so CLI wire contracts can be
+// verified end-to-end without leaving the process.
+func runCommandCapture(t *testing.T, readOnly bool, stdin string, baseURL string, extraArgs ...string) (string, error) {
+	t.Helper()
+	keyring.MockInit()
+	t.Setenv("BITBUCKET_TOKEN", "test-pat")
+	t.Setenv("BITBUCKET_PERSONAL_ACCESS_TOKEN", "")
+	t.Setenv("BITBUCKET_USERNAME", "")
+	t.Setenv("BITBUCKET_PASSWORD", "")
+	t.Setenv("BITBUCKET_API_TOKEN", "")
+	t.Setenv("BITBUCKET_SERVER", "")
+	t.Setenv("BITBUCKET_CONTEXT", "")
+	t.Setenv("BITBUCKET_CLI_NO_SKILL_HINT", "1")
+	t.Setenv("BITBUCKET_CLI_NO_CONTEXT_HINT", "1")
+	if readOnly {
+		t.Setenv("BITBUCKET_CLI_READ_ONLY", "1")
+	} else {
+		t.Setenv("BITBUCKET_CLI_READ_ONLY", "")
+	}
+
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Stdout = w
+	defer func() { os.Stdout = oldStdout }()
+
+	cmd := NewRootCmd()
+	args := append([]string{
+		"--config", t.TempDir(),
+		"--base-url", baseURL,
+		"--flavor", "datacenter",
+		"--auth-scheme", "pat",
+		"--format", "json",
+	}, extraArgs...)
+	cmd.SetArgs(args)
+	if stdin != "" {
+		cmd.SetIn(strings.NewReader(stdin))
+	}
+	cmd.SetErr(new(bytes.Buffer))
+
+	runErr := cmd.Execute()
+	_ = w.Close()
+	outBytes, _ := io.ReadAll(r)
+	_ = r.Close()
+	return string(outBytes), runErr
+}
+
+func TestPRReviewCLIContract(t *testing.T) {
+	var writes int32
+	var failSecondComment atomic.Bool
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/rest/api/1.0/projects/PROJ/repos/demo/pull-requests/1":
+			_, _ = w.Write([]byte(`{
+				"id": 1, "title": "Fix bug", "state": "OPEN", "version": 2,
+				"fromRef": {"displayId": "feat", "latestCommit": "aaaa1111"},
+				"toRef": {"displayId": "main", "latestCommit": "00001111"}
+			}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/rest/api/1.0/projects/PROJ/repos/demo/pull-requests/1/diff":
+			w.Header().Set("Content-Type", "text/plain")
+			_, _ = w.Write([]byte("diff --git a/app.go b/app.go\n--- a/app.go\n+++ b/app.go\n@@ -1,2 +1,3 @@\n package app\n+func New() {}\n func Old() {}\n"))
+		case r.Method == http.MethodPost && r.URL.Path == "/rest/api/1.0/projects/PROJ/repos/demo/pull-requests/1/comments":
+			n := atomic.AddInt32(&writes, 1)
+			if failSecondComment.Load() && n == 2 {
+				w.WriteHeader(http.StatusInternalServerError)
+				_, _ = w.Write([]byte(`{"errors":[{"message":"boom"}]}`))
+				return
+			}
+			_, _ = w.Write([]byte(`{"id": 100, "text": "posted", "author": {"name": "alice", "type": "NORMAL"}}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/rest/api/1.0/projects/PROJ/repos/demo/pull-requests/1/approve":
+			atomic.AddInt32(&writes, 1)
+			_, _ = w.Write([]byte(`{"approved": true}`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer srv.Close()
+
+	t.Run("dry-run works in read-only mode with stdin YAML", func(t *testing.T) {
+		atomic.StoreInt32(&writes, 0)
+		stdin := "expected_source_commit: aaaa1111\ncomments:\n  - path: app.go\n    line: 2\n    content: Looks good\n"
+		out, err := runCommandCapture(t, true, stdin, srv.URL, "pr", "review", "PROJ/demo/1",
+			"--verdict", "approve", "--input", "-", "--dry-run")
+		if err != nil {
+			t.Fatalf("dry-run error: %v", err)
+		}
+		if atomic.LoadInt32(&writes) != 0 {
+			t.Fatalf("dry-run sent %d writes", writes)
+		}
+		var plan apiclient.PRReviewPlan
+		if err := json.Unmarshal([]byte(out), &plan); err != nil {
+			t.Fatalf("decode plan: %v\nraw: %s", err, out)
+		}
+		if !plan.Validated || plan.Verdict != apiclient.ReviewVerdictApprove || len(plan.Comments) != 1 || plan.Vote == nil {
+			t.Fatalf("unexpected plan: %+v", plan)
+		}
+	})
+
+	t.Run("read-only blocks live submission with zero writes", func(t *testing.T) {
+		atomic.StoreInt32(&writes, 0)
+		_, err := runCommandCapture(t, true, "", srv.URL, "pr", "review", "PROJ/demo/1", "--verdict", "approve")
+		if err == nil {
+			t.Fatal("expected READONLY_BLOCKED")
+		}
+		if ce := cerrors.AsCLIError(err); ce.Code != "READONLY_BLOCKED" {
+			t.Fatalf("code = %s, want READONLY_BLOCKED", ce.Code)
+		}
+		if atomic.LoadInt32(&writes) != 0 {
+			t.Fatalf("read-only sent %d writes", writes)
+		}
+	})
+
+	t.Run("CLI flags override input document and mismatch aborts cleanly", func(t *testing.T) {
+		atomic.StoreInt32(&writes, 0)
+		stdin := `{"verdict":"comment-only","expected_source_commit":"aaaa1111","comments":[{"content":"hi"}]}`
+		_, err := runCommandCapture(t, false, stdin, srv.URL, "pr", "review", "PROJ/demo/1",
+			"--expected-source-commit", "deadbeef", "--input", "-")
+		if err == nil {
+			t.Fatal("expected PR_HEAD_MOVED")
+		}
+		if ce := cerrors.AsCLIError(err); ce.Code != "PR_HEAD_MOVED" {
+			t.Fatalf("code = %s, want PR_HEAD_MOVED", ce.Code)
+		}
+		if atomic.LoadInt32(&writes) != 0 {
+			t.Fatalf("head mismatch sent %d writes", writes)
+		}
+	})
+
+	t.Run("mid-flight failure emits partial stdout result and returns REVIEW_PARTIAL_FAILURE", func(t *testing.T) {
+		atomic.StoreInt32(&writes, 0)
+		failSecondComment.Store(true)
+		defer failSecondComment.Store(false)
+
+		stdin := `[{"content":"first"},{"content":"second"}]`
+		out, err := runCommandCapture(t, false, stdin, srv.URL, "pr", "review", "PROJ/demo/1",
+			"--verdict", "approve", "--expected-source-commit", "aaaa1111", "--input", "-")
+		if err == nil {
+			t.Fatal("expected REVIEW_PARTIAL_FAILURE")
+		}
+		if ce := cerrors.AsCLIError(err); ce.Code != "REVIEW_PARTIAL_FAILURE" || ce.Retryable {
+			t.Fatalf("err = %+v, want non-retryable REVIEW_PARTIAL_FAILURE", ce)
+		}
+		var res apiclient.PRReviewResult
+		if err := json.Unmarshal([]byte(out), &res); err != nil {
+			t.Fatalf("decode partial result: %v\nraw: %s", err, out)
+		}
+		if len(res.PostedComments) != 1 || res.VoteApplied || res.FailedItem == nil || res.FailedItem.Index != 1 {
+			t.Fatalf("unexpected partial result: %+v", res)
+		}
+	})
+}
+
+func TestBatchReadAndCommentMetadataCLI(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/rest/api/1.0/application-properties":
+			w.Header().Set("X-AUSERNAME", "alice")
+			_, _ = w.Write([]byte(`{"version":"8.19.0"}`))
+		case "/rest/api/1.0/users/alice":
+			_, _ = w.Write([]byte(`{"name":"alice","slug":"alice","displayName":"Alice","type":"NORMAL"}`))
+		case "/rest/api/1.0/projects/PROJ/repos/demo/pull-requests/1":
+			_, _ = w.Write([]byte(`{"id":1,"title":"PR One","state":"OPEN","fromRef":{"displayId":"a","latestCommit":"1111"},"toRef":{"displayId":"main","latestCommit":"0000"}}`))
+		case "/rest/api/1.0/projects/PROJ/repos/demo/pull-requests/2":
+			_, _ = w.Write([]byte(`{"id":2,"title":"PR Two","state":"OPEN","fromRef":{"displayId":"b","latestCommit":"2222"},"toRef":{"displayId":"main","latestCommit":"0000"}}`))
+		case "/rest/api/1.0/projects/PROJ/repos/demo/pull-requests/1/activities":
+			_, _ = w.Write([]byte(`{
+				"values": [
+					{"id":10,"action":"COMMENTED","comment":{"id":51,"text":"[[AI]](https://example.com) Looks good","author":{"name":"alice","slug":"alice","type":"NORMAL"}}},
+					{"id":11,"action":"COMMENTED","comment":{"id":52,"text":"Build green","author":{"name":"ci-bot","slug":"ci-bot","type":"SERVICE"}}}
+				],
+				"isLastPage": true
+			}`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"errors":[{"message":"not found"}]}`))
+		}
+	}))
+	defer srv.Close()
+
+	t.Run("pr get batch via stdin handles partial failure", func(t *testing.T) {
+		out, err := runCommandCapture(t, false, "PROJ/demo/1\nPROJ/demo/999\nPROJ/demo/2\n", srv.URL, "pr", "get", "-")
+		if err == nil {
+			t.Fatal("expected BATCH_PARTIAL_FAILURE")
+		}
+		if ce := cerrors.AsCLIError(err); ce.Code != "BATCH_PARTIAL_FAILURE" {
+			t.Fatalf("code = %s, want BATCH_PARTIAL_FAILURE", ce.Code)
+		}
+		var env struct {
+			Items []batchItem `json:"items"`
+		}
+		if err := json.Unmarshal([]byte(out), &env); err != nil {
+			t.Fatalf("decode: %v\nraw: %s", err, out)
+		}
+		if len(env.Items) != 3 || !env.Items[0].OK || env.Items[1].OK || !env.Items[2].OK {
+			t.Fatalf("unexpected batch items: %+v", env.Items)
+		}
+	})
+
+	t.Run("comment list projects is_self, is_ai_attributed, author_kind", func(t *testing.T) {
+		out, err := runCommandCapture(t, false, "", srv.URL, "comment", "list", "--pr", "PROJ/demo/1",
+			"--fields", "id,is_self,is_ai_attributed,author_kind")
+		if err != nil {
+			t.Fatalf("comment list error: %v", err)
+		}
+		var env struct {
+			Items []struct {
+				ID             int    `json:"id"`
+				IsSelf         *bool  `json:"is_self"`
+				IsAIAttributed bool   `json:"is_ai_attributed"`
+				AuthorKind     string `json:"author_kind"`
+			} `json:"items"`
+		}
+		if err := json.Unmarshal([]byte(out), &env); err != nil {
+			t.Fatalf("decode: %v\nraw: %s", err, out)
+		}
+		if len(env.Items) != 2 {
+			t.Fatalf("got %d comments, want 2: %s", len(env.Items), out)
+		}
+		// Comments are reversed into chronological order or returned as listed; match by ID.
+		byID := map[int]struct {
+			isSelf *bool
+			isAI   bool
+			kind   string
+		}{}
+		for _, c := range env.Items {
+			byID[c.ID] = struct {
+				isSelf *bool
+				isAI   bool
+				kind   string
+			}{c.IsSelf, c.IsAIAttributed, c.AuthorKind}
+		}
+		c51 := byID[51]
+		if c51.isSelf == nil || !*c51.isSelf || !c51.isAI || c51.kind != "human" {
+			t.Fatalf("comment 51 = %+v, want is_self=true is_ai=true kind=human", c51)
+		}
+		c52 := byID[52]
+		if c52.isSelf == nil || *c52.isSelf || c52.isAI || c52.kind != "bot" {
+			t.Fatalf("comment 52 = %+v, want is_self=false is_ai=false kind=bot", c52)
+		}
+	})
+}
