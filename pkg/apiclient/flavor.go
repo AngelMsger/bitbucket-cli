@@ -21,7 +21,7 @@ func NormalizeBaseURL(raw string) string {
 //  3. Cloud probe at the configured base: <base>/2.0/user.
 //  4. Data Center probe: <base>/rest/api/1.0/application-properties.
 func Detect(ctx context.Context, tc *transport.Client, baseURL string) (Flavor, error) {
-	if isBitbucketCloudHost(baseURL) {
+	if IsCloudHost(baseURL) {
 		return FlavorCloud, nil
 	}
 	base := NormalizeBaseURL(baseURL)
@@ -37,8 +37,9 @@ func Detect(ctx context.Context, tc *transport.Client, baseURL string) (Flavor, 
 			"bitbucket-cli doctor")
 }
 
-// isBitbucketCloudHost reports whether rawURL points at a Bitbucket Cloud host.
-func isBitbucketCloudHost(rawURL string) bool {
+// IsCloudHost reports whether rawURL points at a Bitbucket Cloud host
+// (`bitbucket.org`, `api.bitbucket.org`, or `*.bitbucket.org`).
+func IsCloudHost(rawURL string) bool {
 	parsed, err := url.Parse(rawURL)
 	host := ""
 	if err == nil && parsed.Host != "" {

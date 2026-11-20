@@ -79,6 +79,10 @@ func TestReadOnlyBlocksEveryMutator(t *testing.T) {
 		{"RequestPRChanges", func() error {
 			return c.RequestPRChanges(ctx, RequestChangesReq{Repo: repo, ID: 1, Request: true})
 		}},
+		{"SubmitPRReview", func() error {
+			_, err := c.SubmitPRReview(ctx, SubmitPRReviewReq{Repo: repo, PRID: 1, Verdict: ReviewVerdictApprove})
+			return err
+		}},
 		{"AddPRComment", func() error {
 			_, err := c.AddPRComment(ctx, AddPRCommentReq{Repo: repo, PRID: 1, Content: "x"})
 			return err
@@ -353,6 +357,11 @@ func (r *recordingReader) GetPRStatus(ctx context.Context, repo RepoRef, id int)
 	return &PRStatus{}, errCannedRead
 }
 
+func (r *recordingReader) PlanPRReview(ctx context.Context, req SubmitPRReviewReq) (*PRReviewPlan, error) {
+	r.record("PlanPRReview", ctx, req)
+	return &PRReviewPlan{}, errCannedRead
+}
+
 func (r *recordingReader) DescribeWrite(ctx context.Context, op any) (WriteRequestPlan, error) {
 	r.record("DescribeWrite", ctx, op)
 	return WriteRequestPlan{}, errCannedRead
@@ -409,6 +418,7 @@ func TestReadOnlyDelegatesEveryRead(t *testing.T) {
 			"ListCommitStatuses": {ctx, repo, "hash"},
 			"ListPRStatuses":     {ctx, repo, 7},
 			"GetPRStatus":        {ctx, repo, 7},
+			"PlanPRReview":       {ctx, SubmitPRReviewReq{Repo: repo, PRID: 7, Verdict: ReviewVerdictApprove}},
 			"DescribeWrite":      {ctx, DeleteBranchReq{Repo: repo, Name: "feature/x"}},
 		}
 	}

@@ -251,12 +251,18 @@ assert_contains  "inline anchor on JSON diff"  '"method": "POST"' \
                                              "${CLI[@]}" comment add --pr PROJ/demo/2 --inline src/server.go:11 --content "x" --dry-run
 assert_contains  "pr status mergeable=false" '"can_merge": false' "${CLI[@]}" pr status PROJ/demo/1
 assert_contains  "pr status has builds"      "SUCCESSFUL"     "${CLI[@]}" pr status PROJ/demo/1
+assert_contains  "pr status has my_review"   '"my_review"'    "${CLI[@]}" pr status PROJ/demo/1
+assert_contains  "pr status unresolved count" '"unresolved_thread_count": 2' "${CLI[@]}" pr status PROJ/demo/1
 assert_contains  "pr threads"                "Looks good"     "${CLI[@]}" pr threads PROJ/demo/1
 # v0.4 — comment resolution / task status surfacing + filters
 assert_contains      "comment list shows reactions" '"emoji": "white_check_mark"' "${CLI[@]}" comment list --pr PROJ/demo/1
 assert_contains      "pr threads shows reactions"   '"emoji": "thumbsup"'         "${CLI[@]}" pr threads PROJ/demo/1
 assert_contains      "comment list resolved field" '"resolved": true'  "${CLI[@]}" comment list --pr PROJ/demo/1
 assert_contains      "comment list task field"     '"task": true'      "${CLI[@]}" comment list --pr PROJ/demo/1
+assert_contains      "comment list is_self field"  '"is_self": true'   "${CLI[@]}" comment list --pr PROJ/demo/1
+assert_contains      "comment list is_ai_attributed" '"is_ai_attributed": true' "${CLI[@]}" comment list --pr PROJ/demo/1
+assert_contains      "comment list author_kind bot"  '"author_kind": "bot"'     "${CLI[@]}" comment list --pr PROJ/demo/1
+assert_contains      "pr threads is_ai_attributed"   '"is_ai_attributed": true' "${CLI[@]}" pr threads PROJ/demo/1
 assert_not_contains  "comment list --unresolved drops resolved" "Already fixed" "${CLI[@]}" comment list --pr PROJ/demo/1 --unresolved
 assert_contains      "comment list --unresolved keeps open"     "Looks good"    "${CLI[@]}" comment list --pr PROJ/demo/1 --unresolved
 assert_contains      "comment list --tasks keeps task"          "Please rename" "${CLI[@]}" comment list --pr PROJ/demo/1 --tasks
@@ -267,10 +273,25 @@ assert_contains      "pr threads --comment selects thread"       "Please rename"
 assert_not_contains  "pr threads --comment excludes others"      "Looks good"    "${CLI[@]}" pr threads PROJ/demo/1 --comment 9003
 assert_exit          "pr threads --comment unknown -> 6" 6                        "${CLI[@]}" pr threads PROJ/demo/1 --comment 999999
 assert_err_contains  "pr threads --comment unknown hint" "pr threads"            "${CLI[@]}" pr threads PROJ/demo/1 --comment 999999
-assert_contains  "pr fetch print-only"       "git fetch"      "${CLI[@]}" pr fetch PROJ/demo/1
-assert_contains  "pr checkout print-only"    "git checkout"   "${CLI[@]}" pr checkout PROJ/demo/1
+# pr fetch / pr checkout verify git remote identity against the PR repository.
+assert_err_contains  "pr fetch rejects mismatched repo" "GIT_REMOTE_MISMATCH"    "${CLI[@]}" pr fetch PROJ/demo/1
+TMPGIT="$(mktemp -d)"
+git -C "$TMPGIT" init -q
+git -C "$TMPGIT" remote add origin "$MOCK_URL/scm/~alice/demo.git"
+git -C "$TMPGIT" remote add upstream "$MOCK_URL/scm/proj/demo.git"
+assert_contains  "pr fetch auto-selects matching upstream" '"remote": "upstream"' bash -c "cd '$TMPGIT' && \"\$@\"" _ "${CLI[@]}" pr fetch PROJ/demo/1
+assert_contains  "pr checkout print-only in matching repo" "git checkout"         bash -c "cd '$TMPGIT' && \"\$@\"" _ "${CLI[@]}" pr checkout PROJ/demo/1
+assert_err_contains "pr fetch explicit wrong remote rejected" "GIT_REMOTE_MISMATCH" bash -c "cd '$TMPGIT' && \"\$@\"" _ "${CLI[@]}" pr fetch PROJ/demo/1 --remote origin
+assert_contains  "pr fetch --force-remote overrides mismatch" '"remote": "origin"' bash -c "cd '$TMPGIT' && \"\$@\"" _ "${CLI[@]}" pr fetch PROJ/demo/1 --remote origin --force-remote
+assert_contains  "pr fetch print-only outside git repo"    "git fetch"            bash -c "cd '$TMPCFG' && \"\$@\"" _ "${CLI[@]}" pr fetch PROJ/demo/1
+rm -rf "$TMPGIT"
 assert_contains  "pr inbox (DC dashboard)"   "Wire payment retry" "${CLI[@]}" pr inbox --role reviewer
 assert_contains  "pr inbox exposes batch ref" '"ref": "PROJ/demo/7"' "${CLI[@]}" pr inbox --role reviewer
+assert_contains  "pr inbox exposes my_vote"   '"my_vote": "unvoted"' "${CLI[@]}" pr inbox --role reviewer
+assert_contains  "pr inbox --my-vote unvoted keeps #7"  "Wire payment retry" "${CLI[@]}" pr inbox --role reviewer --my-vote unvoted
+assert_not_contains "pr inbox --my-vote unvoted drops #8" "Already approved PR" "${CLI[@]}" pr inbox --role reviewer --my-vote unvoted
+assert_contains  "pr inbox --my-vote approved keeps #8" "Already approved PR" "${CLI[@]}" pr inbox --role reviewer --my-vote approved
+assert_not_contains "pr inbox --my-vote approved drops #7" "Wire payment retry" "${CLI[@]}" pr inbox --role reviewer --my-vote approved
 assert_contains  "pr inbox closed-since"      "Wire payment retry" "${CLI[@]}" pr inbox --role any --state ALL --closed-since 48h
 assert_err_contains "pr inbox Cloud closed-since rejected" "INBOX_CLOSED_SINCE_UNSUPPORTED" \
                                              "${CLI[@]}" --flavor cloud pr inbox --workspace team --closed-since 48h
@@ -278,6 +299,18 @@ assert_contains  "fields projection is item-relative" '"repository.workspace": "
                                              "${CLI[@]}" pr inbox --role reviewer --fields id,repository.workspace
 assert_contains  "fields help explains list scope" "omit the items envelope prefix" \
                                              "${CLI[@]}" pr inbox --help
+# Batch reads: pr get, pr status, pr threads accept multiple refs or stdin '-'.
+assert_contains  "pr get batch multi-ref"     '"ref": "PROJ/demo/2"' "${CLI[@]}" pr get PROJ/demo/1 PROJ/demo/2
+assert_exit      "pr get batch partial failure -> 6" 6 "${CLI[@]}" pr get PROJ/demo/1 PROJ/demo/404
+assert_contains  "pr threads batch multi-ref" '"ref": "PROJ/demo/2"' "${CLI[@]}" pr threads PROJ/demo/1 PROJ/demo/2 --unresolved
+out="$("${CLI[@]}" pr inbox --role reviewer --fields ref 2>/dev/null \
+  | jq -r '.items[].ref' \
+  | "${CLI[@]}" pr status - 2>/dev/null)"
+if [[ "$out" == *'"ref": "PROJ/demo/7"'* && "$out" == *'"my_review"'* ]]; then
+  pass "inbox refs piped to batch pr status -"
+else
+  fail "inbox refs piped to batch pr status - (missing ref or my_review)"
+fi
 out="$("${CLI[@]}" pr inbox --role reviewer --format json 2>/dev/null \
   | jq -r '.items[].ref' \
   | "${CLI[@]}" pr approve - 2>/dev/null)"
@@ -450,12 +483,31 @@ assert_contains     "read-only repo fork dry-run previews"  '"method": "POST"' \
 assert_err_contains "read-only blocks pr fetch --exec"     "READONLY_BLOCKED" \
                                                      "${RO_ENV[@]}" "${CLI[@]}" pr fetch PROJ/demo/1 --exec
 assert_contains     "read-only allows pr fetch (print-only)" "git fetch" \
-                                                     "${RO_ENV[@]}" "${CLI[@]}" pr fetch PROJ/demo/1
+                                                     bash -c "cd '$TMPCFG' && \"\$@\"" _ "${RO_ENV[@]}" "${CLI[@]}" pr fetch PROJ/demo/1
+assert_err_contains "read-only blocks pr review"            "READONLY_BLOCKED" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" pr review PROJ/demo/1 --verdict approve
+REVIEW_IN="$(mktemp)"
+cat >"$REVIEW_IN" <<'EOF'
+{"expected_source_commit":"bbbb222","comments":[{"path":"src/server.go","line":11,"content":"Looks clean"}]}
+EOF
+assert_contains     "read-only pr review dry-run previews"  '"validated": true' \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" pr review PROJ/demo/2 --verdict approve --input "$REVIEW_IN" --dry-run
+assert_err_contains "pr review stale head -> PR_HEAD_MOVED" "PR_HEAD_MOVED" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" --allow-writes pr review PROJ/demo/2 --verdict approve --expected-source-commit deadbeef --input "$REVIEW_IN"
+REVIEW_BAD="$(mktemp)"
+cat >"$REVIEW_BAD" <<'EOF'
+{"expected_source_commit":"bbbb222","comments":[{"path":"src/server.go","line":11,"content":"ok"},{"path":"src/server.go","line":999,"content":"bad line"}]}
+EOF
+assert_err_contains "pr review invalid inline aborts before writes" "INLINE_LINE_NOT_IN_DIFF" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" --allow-writes pr review PROJ/demo/2 --verdict approve --input "$REVIEW_BAD"
 if [[ -s "$WRITE_LOG" ]]; then
-  fail "read-only sent no write request (server saw: $(tr '\n' ';' <"$WRITE_LOG"))"
+  fail "read-only and pre-validated aborts sent no write request (server saw: $(tr '\n' ';' <"$WRITE_LOG"))"
 else
-  pass "read-only sent no write request"
+  pass "read-only and pre-validated aborts sent no write request"
 fi
+assert_contains     "--allow-writes permits pr review"      '"vote_applied": true' \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" --allow-writes pr review PROJ/demo/2 --verdict approve --input "$REVIEW_IN"
+rm -f "$REVIEW_IN" "$REVIEW_BAD"
 assert_contains     "--allow-writes overrides read-only"   '"approved": true' \
                                                      "${RO_ENV[@]}" "${CLI[@]}" --allow-writes pr approve PROJ/demo/1
 assert_contains     "--allow-writes permits repo fork"      "allowed-fork" \

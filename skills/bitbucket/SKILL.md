@@ -1,6 +1,6 @@
 ---
 name: bitbucket
-version: 0.20.1
+version: 0.21.0
 description: "Work with Bitbucket Cloud and Data Center / Server: browse repositories and source, create or update pull requests, review diffs, address review feedback, and manage comments or PR state. Use for Bitbucket repository or PR URLs, code review, inline findings, review threads, approvals, merges, and CLI dry-run or read-only workflows."
 metadata:
   requires:
@@ -24,6 +24,27 @@ Trigger this skill when the user:
   review, comment on, approve, decline, or merge it.
 - Wants to browse a repository, list branches, query commits, or compare refs.
 
+## Workflow precedence
+
+Separate non-negotiable tool invariants from default policies that a user or
+upper-layer team/task Skill may explicitly override:
+
+- **Invariants (never override):** honor explicit read-only intent
+  (`BITBUCKET_CLI_READ_ONLY=1` or a read-only/report-only request — never add
+  `--allow-writes`); refresh `source.commit`, votes, and threads before any
+  write-back (never vote on a stale commit); diff against the real `merge-base`
+  (`destination.commit...source.commit`), not a stale local default branch;
+  validate inline anchors and keep AI attribution truthful (agent text carries
+  attribution, verbatim human text does not); reconcile state on HTTP
+  403/409/timeout or uncertain writes instead of fabricating outcomes.
+- **Default policies (explicitly overridable):** report-only when no upper
+  policy authorizes writes (honor explicit auto-write scope); per-item
+  human-reply draft confirmation for interactive defaults (allow bounded
+  automated replies when explicitly authorized); collaboration hold on another
+  human's `Needs Work` (allow withholding a vote / leaving human disagreement);
+  no duplicate confirmations on existing comments (allow explicit confirmation
+  on adopted blockers).
+
 ## Getting started
 
 ```sh
@@ -32,239 +53,174 @@ bitbucket-cli doctor                     # verify connectivity + auth
 bitbucket-cli whoami
 ```
 
-Auth, environment and contexts: `references/getting-started.md`. `--pretty` is human-only (TUI, colorized JSON) and errors without a
-TTY; agents never pass it.
+Auth, environment and contexts: `references/getting-started.md`. `--pretty` is
+human-only (TUI, colorized JSON) and errors without a TTY; agents never pass it.
 
 ## Core workflows
 
-- **Create a PR or update its description** — settle the target first: repo from
-  the git remote, source from the current branch, `pr list --source <branch>` to
-  catch an existing PR (a hit makes this an update, not a create), branch pushed.
-  Read the diffstat before the diff. Follow the user's body requirements, then
-  the repository template. For a concise default, see
-  [Writing PR descriptions](references/writing-pr-descriptions.md). Apply the
-  [description attribution](#ai-attribution-agent-writes). Full sequence:
+- **Create a PR or update its description** — settle target first: repo from git
+  remote, source from current branch, `pr list --source <branch>` to catch an
+  existing PR (a hit means update, not create), branch pushed. Read diffstat
+  before diff. Follow user requirements, then repo template, or
+  [Writing PR descriptions](references/writing-pr-descriptions.md). Apply
+  [description attribution](#ai-attribution-agent-writes). Details:
   [Creating](references/pr-workflows.md#creating),
   [Updating descriptions](references/pr-workflows.md#updating-descriptions).
-- **Review a PR** — follow the checklist in
-  [Reviewing a pull request](references/reviewing-locally.md): record what the
-  request authorizes; read `pr get <ref> --scope full`, `pr status`, `pr files`,
-  then `pr diff` and `pr threads`; pin `source.commit` / `destination.commit`
-  and review against their merge-base (a detached worktree when local checks
-  need isolation); verify each finding, including claims in existing comments;
-  apply the verdict table; refresh revisions and reviewer states before any
-  authorized comment or vote. Routine summaries and limits go in the user
-  report. A review may finish without comments or a vote; an authorized
-  approval needs no companion comment. Several related PRs:
+- **Review a PR** — follow [Reviewing a pull request](references/reviewing-locally.md):
+  record authorized scope; read `pr get <ref> --scope full`, `pr status`,
+  `pr files`, `pr diff`, `pr threads`; pin `source.commit` / `destination.commit`
+  and review against their merge-base; verify each finding and existing claims;
+  apply verdict rules; refresh before any authorized write (or submit atomically
+  via `pr review <ref> --expected-source-commit <sha>`). Several PRs:
   [Reviewing batches](references/reviewing-batches.md).
-- **Recover a blocked PR action** — read
-  [PR permissions and recovery](references/pr-permissions.md). Distinguish a
-  server permission rejection from local read-only mode and inaccessible
-  credentials. A Data Center read-only PAT can read a PR while being unable to
-  approve, decline, or vote on it. For an authorized action the server rejected,
-  make one attempt in the same user's existing browser session when available,
-  then verify the result.
-- **Respond to received review comments** — when the user is the PR *author*
-  addressing feedback. Usually they hand you a specific PR (ref or URL) — list its
-  open threads with `pr threads <ref> --unresolved`, or target a single thread the
-  user named with `pr threads <ref> --comment <id>`. (No PR in hand? Discover with
-  `pr inbox --role author`.) For each thread, locate the code (local checkout
-  preferred for real verification), judge whether the comment is valid, propose a
-  fix + verification, and draft a reply. Read-only analysis by default; replies
-  follow the human-reply gate below. See
-  `references/responding-to-review-comments.md` for the triage flow.
-- **Collect review activity for a worklog** — narrow candidates with
-  `pr inbox --role any --state MERGED --closed-since 48h` (Data Center; repeat
-  for declined, query open PRs separately), pipe `.items[].ref` into
-  `pr activity -` with `--actor me`, `--kind approval,comment,decline`, and a
-  bounded `--since` or `--from` / `--to` window. Filtered queries drop recognized
-  system comments unless `--include-system` is set. Inbox discovery covers only
-  the authenticated user; for another user in a known repository use
-  `pr list --author/--reviewer <user>` (`--all` on Data Center). See
-  `references/pr-workflows.md`.
-- **Browse source at any ref** — `bitbucket-cli file list/get/tree` reads
-  directories and files at a branch, tag or commit. See `references/files.md`.
-- **Comment** — for review feedback, apply the
-  [publication rules](references/reviewing-locally.md#decide-what-to-publish) first.
-  `bitbucket-cli comment add --pr <ws>/<repo>/<id> --content "<text>"`,
-  add `--inline <path>:<line>` for inline review comments. Resolve a
-  thread with `comment resolve <id> --pr <ref>` (`--unresolve` reopens); on
-  Data Center this also completes/reopens a task.
-- **Repository / branches / commits** — browse, create, fork, and delete
-  repositories with `repo ...`; see `references/reading-repos.md` for the
-  Cloud/DC `repo fork --into/--name` rules.
-- **Batch writes** — `pr approve`, `pr decline` and `comment delete` take several
-  references/IDs in one call, or a single `-` to read them from stdin. Batch only
-  individually reviewed, authorized targets; inbox membership is not approval
-  evidence. With more than one, output is an `{items, has_more}` aggregate with a
-  per-item `ok`/`error`; the run continues past failures and exits non-zero if
-  any failed.
+- **Recover a blocked PR action** — see
+  [PR permissions and recovery](references/pr-permissions.md). Separate server
+  403s, local read-only mode, and inaccessible credentials. For an authorized
+  action blocked by a DC read-only PAT, make one attempt in the same user's
+  browser session when available, then verify.
+- **Respond to received review comments** — list open threads with
+  `pr threads <ref> --unresolved` (or `--comment <id>`); discover authored PRs
+  with `pr inbox --role author`. Locate code, judge validity, propose a fix +
+  verification, and draft a reply. Read-only by default; see
+  `references/responding-to-review-comments.md`.
+- **Collect review activity for a worklog** — narrow with
+  `pr inbox --role any --state MERGED --closed-since 48h` (DC; repeat for
+  declined, query open separately), pipe `.items[].ref` into
+  `pr activity - --actor me --kind approval,comment,decline` with `--since` or
+  `--from`/`--to`. System comments are excluded unless `--include-system`. Other
+  users in a known repo: `pr list --author/--reviewer <user>` (`--all` on DC).
+  See `references/pr-workflows.md`.
+- **Browse source / repos / comments** — `file list|get|tree`
+  (`references/files.md`), `repo ...` (`references/reading-repos.md`),
+  `comment add|resolve|react` (`references/commenting.md`).
+- **Batch operations** — `pr get`, `pr status`, `pr threads`, `pr activity`,
+  `pr approve`, `pr decline`, and `comment delete` accept several refs/IDs or
+  `-` from stdin. Multi-item runs return `{items, has_more}` with per-item
+  `ok`/`result`/`error`, continue past failures, and exit non-zero if any fail.
+  Batch writes only for individually reviewed, authorized targets.
 
 ## Commands
 
-A PR reference is `<workspace>/<repo>/<id>` or a PR URL; a repo reference is
+A PR ref is `<workspace>/<repo>/<id>` or a PR URL; a repo ref is
 `<workspace>/<repo>` or a repo URL. On Data Center, `<workspace>` is the project key.
 
 ```
-bitbucket-cli pr list <workspace>/<repo>     # PRs in a repository (--author/--reviewer/--state)
-bitbucket-cli pr inbox                       # PRs involving me across repos (--role reviewer|author|any)
-bitbucket-cli pr get <ref>                   # one PR (--scope summary trims the body)
-bitbucket-cli pr status <ref>                # merge readiness: mergeable, conflicts, reviewers, CI
-bitbucket-cli pr files <ref>                 # changed files (diffstat) — budget context before diffing
-bitbucket-cli pr diff <ref>                  # unified diff (--path scopes to one file)
+bitbucket-cli pr list <workspace>/<repo>     # PRs in a repo (--author/--reviewer/--state)
+bitbucket-cli pr inbox                       # my PRs across repos (--role, --my-vote)
+bitbucket-cli pr get <ref>...                # one or more PRs ('-' stdin; --scope)
+bitbucket-cli pr status <ref>...             # merge readiness, CI, and my_review ('-' stdin)
+bitbucket-cli pr files <ref>                 # changed files (diffstat) — budget before diffing
+bitbucket-cli pr diff <ref>                  # unified diff (--path, --line-numbers, --commentable)
 bitbucket-cli pr commits <ref>               # commits included in the PR
-bitbucket-cli pr threads <ref>               # review threads by file (--unresolved, --comment <id>)
-bitbucket-cli pr activity <ref>...           # activity timeline; '-' reads refs from stdin
-bitbucket-cli pr fetch <ref>                 # print (or --exec) git fetch for the PR source + base
-bitbucket-cli pr checkout <ref>              # print (or --exec) fetch + checkout of the PR source
-bitbucket-cli pr create                      # open a PR (--repo --source --target --title); adds default reviewers unless --reviewer
+bitbucket-cli pr threads <ref>...            # review threads ('-' stdin; --unresolved, --comment)
+bitbucket-cli pr activity <ref>...           # activity timeline ('-' reads refs from stdin)
+bitbucket-cli pr fetch <ref>                 # verify remote + print (or --exec) git fetch (--force-remote)
+bitbucket-cli pr checkout <ref>              # verify remote + print (or --exec) fetch + checkout
+bitbucket-cli pr create                      # open a PR (--repo --source --target --title)
 bitbucket-cli pr update <ref>                # edit --title / --description / --reviewer
-bitbucket-cli pr approve <ref>...            # approve one or more PRs ('-' reads from stdin)
+bitbucket-cli pr review <ref>                # pre-validate + submit comments & verdict (--verdict, --expected-source-commit, --input)
+bitbucket-cli pr approve <ref>...            # approve one or more PRs ('-' stdin)
 bitbucket-cli pr unapprove <ref>             # withdraw an approval
-bitbucket-cli pr request-changes <ref>       # request-changes / needs-work vote (--withdraw removes it)
+bitbucket-cli pr request-changes <ref>       # request-changes / needs-work vote (--withdraw)
 bitbucket-cli pr decline <ref>...            # close without merging (needs --yes)
 bitbucket-cli pr merge <ref>                 # merge (--strategy, needs --yes)
-bitbucket-cli comment list --pr <ref>        # PR comments (--unresolved, --tasks)
+bitbucket-cli comment list --pr <ref>        # PR comments (--unresolved, --tasks; includes is_self, is_ai_attributed, author_kind)
 bitbucket-cli comment add --pr <ref>         # comment (--inline <path>:<line>, --reply-to <id>)
 bitbucket-cli comment update <comment-id>    # edit a comment (--pr <ref>)
 bitbucket-cli comment resolve <comment-id>   # resolve a thread (--unresolve reopens; --pr <ref>)
 bitbucket-cli comment react <comment-id>     # --emoji <name> (--remove; --pr <ref>)
 bitbucket-cli comment delete <comment-id>... # delete one or more comments (needs --yes)
-bitbucket-cli file list <repo-ref>           # directory entries at a ref (--ref, --path)
-bitbucket-cli file get <repo-ref>            # raw file contents at a ref (-o writes to a file)
-bitbucket-cli file tree <repo-ref>           # recursive file listing under a path
-bitbucket-cli repo list <workspace>          # repositories in a workspace / project
-bitbucket-cli repo get <repo-ref>            # one repository
-bitbucket-cli repo create <slug>             # create a repository
-bitbucket-cli repo fork <repo-ref>           # fork (--into / --name)
-bitbucket-cli repo delete <repo-ref>         # delete a repository (irreversible; needs --yes)
-bitbucket-cli repo clone-url <repo-ref>      # HTTPS or SSH clone URL
+bitbucket-cli file list|get|tree <repo-ref>  # browse files at --ref (--path, -o)
+bitbucket-cli repo list|get|create|fork|delete|clone-url   # manage repositories
 bitbucket-cli git -- <git-args>
-bitbucket-cli branch list <repo-ref>         # branches (also: get, create, delete — delete needs --yes)
-bitbucket-cli tag list <repo-ref>            # tags (also: get)
-bitbucket-cli commit list <repo-ref>         # commits (also: get <hash>, compare)
-bitbucket-cli workspace list|get <name>      # workspaces (Cloud) / projects (Data Center)
-bitbucket-cli user list|get <selector>       # discover users; resolves --author/--reviewer selectors
-bitbucket-cli whoami                         # the user the credentials act as (alias: user me)
-bitbucket-cli config init|show|path          # configuration
-bitbucket-cli config get-contexts|use-context|delete-context   # named contexts
-bitbucket-cli auth login|logout|status       # stored credentials
+bitbucket-cli branch list|get|create|delete <repo-ref>     # manage branches (delete needs --yes)
+bitbucket-cli tag list|get <repo-ref>        # tags
+bitbucket-cli commit list|get|compare <repo-ref>           # commits
+bitbucket-cli workspace list|get <name>      # workspaces (Cloud) / projects (DC)
+bitbucket-cli user list|get <selector>       # discover users
+bitbucket-cli whoami                         # authenticated user (alias: user me)
+bitbucket-cli config init|show|path|set-context|get-contexts|use-context|delete-context
+bitbucket-cli auth guide|reuse|login|logout|status         # credentials
 bitbucket-cli doctor                         # diagnose setup + connectivity
-bitbucket-cli skill install|status|path|show|uninstall   # manage the companion Skill
+bitbucket-cli skill install|status|path|show|uninstall     # manage companion Skill
 ```
 
-Writes accept `--dry-run`; see `references/safety-modes.md`.
-
+Writes accept `--dry-run`. `--allow-writes` is a **root-level flag**
+(`bitbucket-cli --allow-writes <subcommand> ...`): pass it only when local
+read-only config is active **and** the current action is authorized — never
+append it unconditionally. See `references/safety-modes.md` and
 [Git authentication](references/git-transport.md).
 
 ## Agent-facing conventions
 
-- **Follow NDJSON pagination on stderr.** `--format ndjson` emits only item rows
-  on stdout. When more pages exist, stderr includes a compact
-  `{"_notice":{"pagination":{"next":"<opaque>","has_more":true},"next_steps":["Pass next as --cursor to retrieve the next page."]}}`.
-  Pass `next` verbatim as `--cursor`, even when a filtered page contains no rows.
-  Projection preserves this notice; completed pages emit none. `--all` collects
-  every page before rendering and emits no continuation notice. Start with a
-  bounded page and follow only as far as the task requires.
+- **NDJSON pagination on stderr.** `--format ndjson` prints rows on stdout;
+  when more pages exist, stderr emits
+  `{"_notice":{"pagination":{"next":"<opaque>","has_more":true},...}}`. Pass
+  `next` verbatim as `--cursor`, even after a filtered empty page. `--all`
+  collects every page with no notice.
+- **Projected fields are record-relative.** `--fields` applies to each item
+  inside `{items, next, has_more}` (`--fields id,title`, never `items.id`).
+  Nested paths emit literal dotted keys (`repository.workspace`).
+- **Skill handshake — set `BITBUCKET_CLI_SKILL=0.21.0`.** Export this exact
+  value after loading the Skill. `skill status` compares loaded, installed, and
+  embedded versions. Silence without loading via `BITBUCKET_CLI_NO_SKILL_HINT=1`.
+- **Update notices on stderr.** `{"_notice":{"update":{…}}}` never hits stdout;
+  follow `next_steps` (upgrade, `skill install`, reload). Silence with
+  `BITBUCKET_CLI_NO_UPDATE_NOTIFIER=1`.
+- **Forgiving flags & literal `\n`.** Non-canonical flags and `\n`/`\r`/`\t`/`\\`
+  in `--content`/`--description`/`--message` are auto-corrected and logged on
+  stderr; use `--content-file`/`--description-file` for exact bytes.
 
-- **Treat projected fields as record-relative.** JSON list commands keep the
-  `{items, next, has_more}` envelope, but `--fields` applies to each item: use
-  `--fields id,title,repository`, never `--fields items.id,items.title`.
-  Selecting a nested path emits a literal dotted key (`--fields
-  repository.workspace` produces `{"repository.workspace":"myws"}`), so
-  either select the containing object for normal jq access or read the flat key
-  as `.["repository.workspace"]`. Inspect `.items[0]` before composing a
-  longer pipeline.
-- **Skill handshake — set `BITBUCKET_CLI_SKILL=0.20.1`.** Once you have loaded
-  this Skill, export that exact value in the environment used to run the CLI.
-  The CLI compares it with the embedded Skill version and emits a structured
-  stderr notice when the Skill is missing, old, or uses the legacy unversioned
-  handshake. `bitbucket-cli skill status` reports loaded, installed, and
-  embedded versions. To suppress the notice without loading the Skill, set
-  `BITBUCKET_CLI_NO_SKILL_HINT=1`.
-- **Update notices on stderr.** When a newer release exists, commands print a
-  one-line `{"_notice":{"update":{…}}}` to stderr, never stdout. Follow every
-  `next_steps` entry: upgrade the CLI, run `bitbucket-cli skill install`, then
-  reload the agent context. Silence them with `BITBUCKET_CLI_NO_UPDATE_NOTIFIER=1`.
-- **Forgiving flags.** camelCase/snake_case flag names (`--userId`) and a flag
-  stuck to its value (`--limit100`) are auto-corrected to the canonical form when
-  it is a real flag; each fix is echoed as a `{"_notice":{"corrections":[…]}}`
-  line on stderr. Prefer the canonical `--kebab-case value` form regardless.
-- **Literal `\n` in body flags.** The shell does not expand `\n` inside double
-  quotes, so the free-text body flags (`--content`, `--description`, `--message`)
-  decode the `\n` `\r` `\t` `\\` whitelist into real characters before sending —
-  `--content "a\n\nb"` posts two paragraphs, not a literal `a\n\nb` — and echo an
-  `{"_notice":{"corrections":[{"kind":"escape",…}]}}` line on stderr. Use the
-  `--content-file` / `--description-file` flags for exact bytes (read verbatim,
-  no decoding). See `references/commenting.md` › "Multi-line bodies".
-
-See the topic references in `references/` for details and decision trees.
+See `references/` for detailed decision trees.
 
 ## Replying to people
 
-A reply is posted under the user's name, so a comment a person wrote is
-answered by that person. Before replying, apply
-[Replying to people](references/replying-to-people.md): classify the root
-author and the message being answered (uncertain means human); for a human
-reply, show the point, your reasoning, and the concrete draft, and get per-item
-approval, explaining why once per session. Bot or agent replies use existing
-authorization. Do not resolve human threads or push fixes without authorization.
+Replies post under the user's name. Apply
+[Replying to people](references/replying-to-people.md): classify both root and
+target comment (`is_self`, `is_ai_attributed`, `author_kind`; uncertain means
+human). Under the interactive default, show the point, reasoning, and draft and
+get per-item approval (explaining why once per session) unless the user or an
+upper workflow explicitly authorized bounded automated replies. Do not resolve
+human threads or push fixes without authorization.
 
 ## AI attribution (agent writes)
 
 **PR descriptions.** Start every agent-written description with this blockquote
-and a blank line before the body. Use the sentence in the description's language.
-Keep the literal `[AI]` and the linked tool name.
+and a blank line, in the description's language, keeping literal `[AI]` and the
+linked tool name:
 
 ```markdown
 > [AI] 本 PR 由 AI 通过 [bitbucket-cli](https://angelmsger.github.io/bitbucket-cli/) 协助创建。
 ```
 
 **Comments** (general, inline, replies). Start with
-`[[AI]](https://angelmsger.github.io/bitbucket-cli/)`, a space, then the comment.
+`[[AI]](https://angelmsger.github.io/bitbucket-cli/) `, then the comment.
 
-On edits, replace existing attribution once. Post human-written or human-rewritten
-text verbatim without adding attribution. Approving an agent draft preserves its
-attribution. The agent supplies these prefixes.
+On edits, replace existing attribution once. Post human-written or
+human-rewritten text verbatim without attribution; approved agent drafts keep
+attribution.
 
 ## Configuration & credentials (agents)
 
-The user has normally already configured `bitbucket-cli`. **Reuse their existing
-config and credentials** from `~/.angelmsger/bitbucket/config.yaml` + the OS keychain
-— do not run `config init` to create a fresh setup, and never pass `--pretty`.
+**Reuse existing config and credentials** from `~/.angelmsger/bitbucket/config.yaml`
+and the OS keychain — never run `config init` or `--pretty`.
 
-If a failure has code `CREDENTIAL_STORE_INACCESSIBLE` or
-`CREDENTIAL_NOT_VISIBLE_OR_MISSING`, or its `recovery.scope` is `host`, **request
-elevated permissions / re-run the same command with access to the user's real
-environment, then retry once — do not re-initialize config inside the sandbox.** Never launch
-interactive `config init` / `auth login` yourself (no TTY → they fail fast, and
-historically could hang); if credentials are truly missing, ask the user to run
-`config init` in their own terminal or to export `BITBUCKET_*` env vars. See
-`references/getting-started.md` › "For agents and sandboxes".
+If an error returns `CREDENTIAL_STORE_INACCESSIBLE`,
+`CREDENTIAL_NOT_VISIBLE_OR_MISSING`, or `recovery.scope: "host"`, request host
+access and retry the same command once — do not re-initialize inside a sandbox.
+Never launch interactive `config init` / `auth login`; if truly missing, ask the
+user to run them in their own terminal or export `BITBUCKET_*`. See
+`references/getting-started.md`.
 
 ## Team service presets and authentication
 
-- Inspect existing configuration and reuse it. `config set-context <name>` is the
-  offline installer entrypoint (`--base-url`, `--auth-scheme`, `--credential-url`,
-  `--flavor`, `--activate`, `--overwrite`, `--dry-run`). Presets never copy a
-  personal username or secret from the environment; conflicts preserve existing
-  values unless explicitly overwritten. `BITBUCKET_AUTH_SCHEME` and
-  `BITBUCKET_CREDENTIAL_URL` complement the existing service variables.
-- `auth guide` returns the instance's credential page, its source, navigation
-  steps, and limitations; links are hints, not evidence of server capabilities.
-  Do not invent a token URL or assume ingestion credentials authorize queries.
-- Once a service is preset, direct the member to run `auth login` in their own
-  terminal; never ask for secrets in chat. Non-interactive environments use
-  transient credential variables. A server/context mismatch requires selecting
-  or creating a matching context; a partial login write error names what was
-  stored and how to recover.
-
-See [team setup](references/team-setup.md) for output fields, conflict
-semantics, credential URL overrides, and failure recovery.
-
-
-## Reuse existing authentication
-
-Before sign-in, run `auth reuse`: it adopts a login verified for the context's
-service. Writes act as its `account`; confirm it first. See
-[reuse](references/getting-started.md#reuse-existing-authentication).
+- `config set-context <name>` is the offline preset entrypoint (`--base-url`,
+  `--auth-scheme`, `--credential-url`, `--flavor`, `--activate`, `--overwrite`,
+  `--dry-run`); it never copies personal credentials and preserves existing
+  values unless `--overwrite`.
+- `auth guide` reports the instance credential URL, source, steps, and limits
+  without requesting it; never invent URLs.
+- After presetting, try `auth reuse` before sign-in (confirm its `account`
+  before writes), or direct the user to run `auth login` in their own terminal.
+  See [team setup](references/team-setup.md) and
+  [reuse](references/getting-started.md#reuse-existing-authentication).

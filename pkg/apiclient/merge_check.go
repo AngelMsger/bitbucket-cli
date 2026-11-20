@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"sync"
+	"time"
 )
 
 // CheckPRMerge returns the server-side pre-merge verdict.
@@ -169,9 +170,10 @@ func (c *apiClient) ListPRStatuses(ctx context.Context, repo RepoRef, id int) (L
 }
 
 // GetPRStatus assembles the aggregated review-readiness view: PR detail +
-// merge check + reviewer states + CI build statuses. The three secondary
-// fetches run in parallel; partial failures degrade gracefully (the field is
-// left nil / empty so the caller still sees the rest).
+// merge check + reviewer states + CI build statuses + caller's incremental
+// review summary (`my_review`). Secondary fetches run in parallel; partial
+// failures degrade gracefully (the field is left nil / empty so the caller
+// still sees the rest).
 func (c *apiClient) GetPRStatus(ctx context.Context, repo RepoRef, id int) (*PRStatus, error) {
 	pr, err := c.GetPR(ctx, GetPROpts{Repo: repo, ID: id})
 	if err != nil {
@@ -179,28 +181,265 @@ func (c *apiClient) GetPRStatus(ctx context.Context, repo RepoRef, id int) (*PRS
 	}
 	out := &PRStatus{PR: pr, Reviewers: pr.Reviewers}
 
-	var wg sync.WaitGroup
-	var mu sync.Mutex
-	wg.Add(2)
+	var (
+		wg              sync.WaitGroup
+		mu              sync.Mutex
+		me              *User
+		activities      []Activity
+		activitiesOK    bool
+		commits         []Commit
+		commitsOK       bool
+		cloudUnresolved *int
+	)
+	wg.Add(5)
 
 	go func() {
 		defer wg.Done()
 		mc, err := c.CheckPRMerge(ctx, repo, id)
-		mu.Lock()
-		defer mu.Unlock()
 		if err == nil {
+			mu.Lock()
 			out.MergeCheck = mc
+			mu.Unlock()
 		}
 	}()
 	go func() {
 		defer wg.Done()
 		builds, err := c.ListPRStatuses(ctx, repo, id)
-		mu.Lock()
-		defer mu.Unlock()
 		if err == nil {
+			mu.Lock()
 			out.Builds = builds.Items
+			mu.Unlock()
 		}
 	}()
+	go func() {
+		defer wg.Done()
+		u, err := c.CurrentUser(ctx)
+		if err == nil && u != nil {
+			mu.Lock()
+			me = u
+			mu.Unlock()
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		acts, err := CollectAll(func(cursor string) (ListResult[Activity], error) {
+			return c.ListPRActivity(ctx, PRListOpts{
+				Repo:     repo,
+				ListOpts: ListOpts{Limit: 100, Cursor: cursor},
+				Query:    itoa(id),
+			})
+		}, 0)
+		if err == nil {
+			mu.Lock()
+			activities = acts
+			activitiesOK = true
+			mu.Unlock()
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		// First page of commits (newest first on both Cloud and DC) gives
+		// latest_commit_at without walking unbounded history.
+		page, err := c.ListPRCommits(ctx, PRListOpts{
+			Repo:     repo,
+			ListOpts: ListOpts{Limit: 25},
+			Query:    itoa(id),
+		})
+		if err == nil {
+			mu.Lock()
+			commits = page.Items
+			commitsOK = true
+			mu.Unlock()
+		}
+	}()
+
+	// Cloud does not include comment resolution status in /activity, so fetch
+	// comments in parallel on Cloud to count unresolved root threads. On Data
+	// Center, /activities already carries every root comment's current state.
+	if c.flavor == FlavorCloud {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			comments, err := CollectAll(func(cursor string) (ListResult[Comment], error) {
+				return c.ListPRComments(ctx, ListPRCommentsOpts{
+					ListOpts: ListOpts{Limit: 100, Cursor: cursor},
+					Repo:     repo,
+					PRID:     id,
+				})
+			}, 0)
+			if err == nil {
+				n := countUnresolvedRootComments(comments)
+				mu.Lock()
+				cloudUnresolved = &n
+				mu.Unlock()
+			}
+		}()
+	}
+
 	wg.Wait()
+
+	out.MyReview = buildMyReview(c.flavor, pr, me, activities, activitiesOK, commits, commitsOK, cloudUnresolved)
 	return out, nil
+}
+
+func countUnresolvedRootComments(comments []Comment) int {
+	seen := map[int]bool{}
+	n := 0
+	for _, cm := range comments {
+		if cm.ParentID != 0 || seen[cm.ID] {
+			continue
+		}
+		seen[cm.ID] = true
+		if !cm.Resolved {
+			n++
+		}
+	}
+	return n
+}
+
+func countDCUnresolvedThreads(activities []Activity) int {
+	seen := map[int]bool{}
+	n := 0
+	for _, a := range activities {
+		if a.System || a.Comment == nil || a.Comment.ParentID != 0 {
+			continue
+		}
+		if seen[a.Comment.ID] {
+			continue
+		}
+		seen[a.Comment.ID] = true
+		if !a.Comment.Resolved {
+			n++
+		}
+	}
+	return n
+}
+
+func buildMyReview(flavor Flavor, pr *PullRequest, me *User, activities []Activity, activitiesOK bool, commits []Commit, commitsOK bool, cloudUnresolved *int) *MyReview {
+	if pr == nil || me == nil {
+		return nil
+	}
+	vote, participatedAt, lastReviewedCommit := resolveUserVote(pr, me)
+	mr := &MyReview{Vote: vote}
+
+	// Latest commit timestamp across returned PR commits.
+	var latestCommitTime time.Time
+	for _, cm := range commits {
+		if t, ok := parseBitbucketTime(cm.Date); ok && t.After(latestCommitTime) {
+			latestCommitTime = t
+		}
+	}
+	if !latestCommitTime.IsZero() {
+		mr.LatestCommitAt = formatRFC3339UTC(latestCommitTime)
+	}
+
+	// Unresolved thread count: reused from /activities on DC, or fetched from
+	// /comments on Cloud.
+	if flavor == FlavorCloud {
+		mr.UnresolvedThreadCount = cloudUnresolved
+	} else if activitiesOK {
+		n := countDCUnresolvedThreads(activities)
+		mr.UnresolvedThreadCount = &n
+	}
+
+	if vote == VoteUnvoted {
+		return mr
+	}
+
+	// Find the caller's most recent matching vote event in the activity stream.
+	var votedAt time.Time
+	for _, a := range activities {
+		if !userMatchesUser(a.Actor, *me) {
+			continue
+		}
+		if !activityMatchesVote(a, vote) {
+			continue
+		}
+		if t, ok := parseBitbucketTime(a.When); ok && t.After(votedAt) {
+			votedAt = t
+		}
+	}
+	// Fall back to Cloud's participant.participated_on if activity did not have a
+	// matching vote timestamp (for example, Cloud change-request timestamps).
+	if votedAt.IsZero() && participatedAt != "" {
+		if t, ok := parseBitbucketTime(participatedAt); ok {
+			votedAt = t
+		}
+	}
+	if !votedAt.IsZero() {
+		mr.VotedAt = formatRFC3339UTC(votedAt)
+	}
+
+	// Determine whether new commits or non-system review activity occurred after
+	// the caller's last vote. Positive evidence of an update always yields true;
+	// reporting false requires both activity and commit state to have been read
+	// cleanly so a failed source never causes incremental pruning to skip a PR.
+	if !votedAt.IsZero() {
+		updated := false
+		if !latestCommitTime.IsZero() && latestCommitTime.After(votedAt) {
+			updated = true
+		}
+		if lastReviewedCommit != "" && pr.Source.Commit != "" && !commitsMatch(pr.Source.Commit, lastReviewedCommit) {
+			updated = true
+		}
+		if !updated && activitiesOK {
+			for _, a := range activities {
+				if a.System {
+					continue
+				}
+				t, ok := parseBitbucketTime(a.When)
+				if !ok || !t.After(votedAt) {
+					continue
+				}
+				switch strings.ToLower(a.Kind) {
+				case "comment", "update", "updated", "rescoped", "changes_requested", "needs_work", "reviewed":
+					updated = true
+				}
+				if updated {
+					break
+				}
+			}
+		}
+		if !updated {
+			for _, group := range [][]Participant{pr.Participants, pr.Reviewers} {
+				for _, p := range group {
+					if userMatchesUser(p.User, *me) || !isChangeRequestVote(participantVote(p)) {
+						continue
+					}
+					if t, ok := parseBitbucketTime(p.ParticipatedAt); ok && t.After(votedAt) {
+						updated = true
+						break
+					}
+				}
+				if updated {
+					break
+				}
+			}
+		}
+		if updated {
+			mr.UpdatedAfterMyVote = &updated
+		} else if activitiesOK && (commitsOK || lastReviewedCommit != "") {
+			mr.UpdatedAfterMyVote = &updated
+		}
+	} else if lastReviewedCommit != "" && pr.Source.Commit != "" {
+		if !commitsMatch(pr.Source.Commit, lastReviewedCommit) {
+			updated := true
+			mr.UpdatedAfterMyVote = &updated
+		}
+	}
+
+	return mr
+}
+
+func activityMatchesVote(a Activity, vote string) bool {
+	kind := strings.ToLower(strings.TrimSpace(a.Kind))
+	switch vote {
+	case VoteApproved:
+		return kind == "approval" || kind == "approved" || a.Approved
+	case VoteNeedsWork, VoteChangesRequested:
+		return kind == "reviewed" || kind == "changes_requested" || kind == "needs_work" ||
+			strings.EqualFold(a.State, "changes_requested") || strings.EqualFold(a.State, "needs_work")
+	default:
+		return false
+	}
 }

@@ -43,10 +43,19 @@ The process exit code matches the category:
   needed, and repeat the write only if the read shows it did not happen.
   `WRITE_SUCCEEDED_RESPONSE_INVALID` and `WRITE_SUCCEEDED_READ_FAILED` mean
   the write happened but its result could not be shown; read it, never redo it.
-- **`BATCH_PARTIAL_FAILURE`** (`pr approve|decline`, `comment delete` with
-  several items) → the items marked `ok` on stdout were applied, so never rerun
-  the whole batch. Retry only failed items whose own error is retryable. With
-  `--dry-run` nothing was sent; fix the failed items and preview again.
+- **`BATCH_PARTIAL_FAILURE`** (`pr approve|decline`, `comment delete` or batch
+  reads `pr get|status|threads`) → for write batches, items marked `ok` on
+  stdout were applied, so never rerun the whole batch; retry only failed items
+  whose own error is retryable. For read batches or `--dry-run`, nothing was
+  modified; retry failed refs or fix invalid inputs.
+- **`PR_HEAD_MOVED`** (exit 11 `conflict` on `pr review`) → the remote PR's
+  `source.commit` changed since `--expected-source-commit` was captured; zero
+  writes were sent. Refresh the PR and diff, revalidate anchors, and retry with
+  the new head SHA.
+- **`REVIEW_PARTIAL_FAILURE`** (`pr review`) → Phase 1 validation passed, but a
+  Phase 2 write failed mid-flight. Inspect `posted_comments`, `failed_item`, and
+  `vote_applied` emitted on stdout before retrying only the remaining unposted
+  items (never blindly resubmit already-posted comments).
 
 - **`CREDENTIAL_STORE_INACCESSIBLE` / `CREDENTIAL_NOT_VISIBLE_OR_MISSING`** →
   inspect the optional `recovery` object. When it says
@@ -74,11 +83,16 @@ The process exit code matches the category:
 - **`usage` `NOT_A_GIT_WORKTREE` on `pr fetch --exec` / `pr checkout --exec`** →
   the current directory is not inside a git checkout. `cd` into a local clone
   of the repo first, or drop `--exec` to keep the print-only behaviour.
+- **`usage` `GIT_REMOTE_MISMATCH` on `pr fetch` / `pr checkout`** → no remote
+  (or the explicit `--remote`) matches the PR's destination or source
+  repository. `cd` into a checkout of the target repo, pick a matching remote,
+  or pass `--force-remote` only for an intentional mirror.
 - **`rate_limit`** → wait the retry-after window then re-run.
 - **`permission` `READONLY_BLOCKED`** → the current session is in read-only
-  mode (`defaults.read_only` or `BITBUCKET_CLI_READ_ONLY=1`). Use `--allow-writes`
-  only within authorization to override that posture; `--dry-run` remains
-  available. See `safety-modes.md`.
+  mode (`defaults.read_only` or `BITBUCKET_CLI_READ_ONLY=1`). Pass root-level
+  `--allow-writes` (`bitbucket-cli --allow-writes <subcommand>`) only when
+  local read-only config is active and the write is authorized; `--dry-run`
+  remains available. See `safety-modes.md`.
 - **`permission` `HTTP_Forbidden` / HTTP 403 on a PR action** → distinguish
   token scope, account rights and deployment policy. For an authorized Data
   Center action, try the same user's existing browser session when available.

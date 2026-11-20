@@ -15,16 +15,20 @@ state** and a **local code checkout** for end-to-end code review.
 - **Layered configuration**: CLI flags / environment variables / `.env`
   / config file, with an interactive `init` wizard.
 - **Operation surface**:
-  - **Full PR lifecycle**: list / inbox / get / create / update / diff /
-    commits / activity / threads / status / files / approve /
-    unapprove / request-changes / decline / merge / fetch / checkout.
+  - **Full PR lifecycle**: list / inbox (with `my_vote` & `--my-vote`) / get /
+    create / update / diff / commits / activity / threads / status (with
+    `my_review`) / files / review (two-phase composite comments + verdict) /
+    approve / unapprove / request-changes / decline / merge / fetch / checkout
+    (with git remote identity verification). `pr get`, `pr status`, and
+    `pr threads` share bounded-concurrency batch read support with
+    `pr activity`, `pr approve`, and `pr decline`.
   - **Source browsing** at any ref: list / tree / get (with optional
     line-range slicing).
   - **Repos / branches / tags / commits**: list and detail for
     `repo` / `branch` / `tag` / `commit`, plus repository create, fork,
     and delete operations.
-  - **Comments**: list / add (with inline anchor support) / update /
-    delete.
+  - **Comments**: list (with `is_self`, `is_ai_attributed`, `author_kind`) /
+    add (with inline anchor support) / update / resolve / react / delete.
   - **Discovery commands**: `workspace list`, `user list`,
     `user search`, `tag list`, and so on, so every identifier the CLI
     accepts (`--workspace`, `--reviewer`, `--ref`, …) has a CLI-internal
@@ -61,14 +65,15 @@ the site root):
 | Get PR | `GET .../pullrequests/{id}` | `GET .../pull-requests/{id}` |
 | Update PR metadata | `PUT .../pullrequests/{id}` accepts partial metadata; omit `reviewers` to preserve them | `PUT .../pull-requests/{id}` requires the current `version` and treats `reviewers` as a complete replacement set; the client fetches and round-trips both |
 | Request changes | `POST` / `DELETE .../pullrequests/{id}/request-changes` | `PUT .../pull-requests/{id}/participants/{userSlug}` with `NEEDS_WORK`; withdrawal reads the caller's current vote and only sets `UNAPPROVED` for a confirmed Needs Work state, otherwise returning `PR_NO_CHANGE_REQUEST`. Preview and execution share the guard and identity lookup |
+| Composite review (`pr review`) | Two-phase client orchestration shared across flavors: Phase 1 verifies `--expected-source-commit` (`PR_HEAD_MOVED`) and resolves all inline anchors (retrying file-scoped diffs on truncated aggregate files); Phase 2 posts comments sequentially, rechecks `source.commit` immediately before voting (leaving the vote unapplied on drift), and returns partial results (`posted_comments`, `failed_item`, `vote_applied`) with `REVIEW_PARTIAL_FAILURE` on error or drift (Cloud lacks a commit-pinned vote endpoint) | Same two-phase client orchestration; uses DC anchor shapes and `PUT .../participants/{userSlug}` with `lastReviewedCommit` for both `APPROVED` and `NEEDS_WORK` so the server rejects stale votes |
 | Decline PR | `POST .../pullrequests/{id}/decline` with `message` | `POST .../pull-requests/{id}/decline?version=N` with `version` and optional `comment`; preview and execution share the version-reading builder |
 | PR diff (whole) | `GET .../pullrequests/{id}/diff` (text) | `GET .../pull-requests/{id}/diff` (JSON hunks; `Accept: text/plain` for raw text) |
 | PR diff (per file) | `GET .../pullrequests/{id}/diff?path=` | `GET .../pull-requests/{id}/diff/{path}` |
 | PR diffstat | `GET .../pullrequests/{id}/diffstat` | `GET .../pull-requests/{id}/changes` |
 | PR activity feed | `GET .../pullrequests/{id}/activity`; activity filters interpret merge/decline state updates without reshaping the response | `GET .../pull-requests/{id}/activities`; predefined-reviewer automation is classified as system activity |
-| PR merge precheck | Derived from `pullrequests/{id}` + `/statuses` | `GET .../pull-requests/{id}/merge` returns `{canMerge,conflicted,outcome,vetoes}` directly |
+| PR merge precheck & `my_review` | Derived from `pullrequests/{id}` + `/statuses` + activity/commits/comments (`my_review` timestamps normalized to UTC RFC 3339) | `GET .../pull-requests/{id}/merge` + commits + activities (reused for both `voted_at` and `unresolved_thread_count`) |
 | CI build status | `GET /2.0/repositories/{ws}/{repo}/commit/{hash}/statuses` | `GET /rest/build-status/1.0/commits/{hash}` (not under `/rest/api/1.0`) |
-| Inbox (my PRs) | `/2.0/pullrequests/{uuid}` (author) or workspace-scoped fan-out (reviewer/participant/any); no cross-repository close-time filter | `GET /rest/api/1.0/dashboard/pull-requests?role=&closedSince=`; `role` is omitted for any role |
+| Inbox (my PRs) | `/2.0/pullrequests/{uuid}` (author) or workspace-scoped fan-out (reviewer/participant/any) with `fields=+values.participants` to stamp `my_vote` without N+1 calls; no cross-repository close-time filter | `GET /rest/api/1.0/dashboard/pull-requests?role=&closedSince=`; reads `X-AUSERNAME` from the list response to stamp `my_vote` and apply `--my-vote` without N+1 calls |
 | List branches | `GET .../refs/branches` | `GET .../branches` |
 | List tags | `GET .../refs/tags` | `GET .../tags` |
 | Source file metadata | `GET .../src/{ref}/{path}?format=meta` | `GET .../files/{path}?at={ref}` |

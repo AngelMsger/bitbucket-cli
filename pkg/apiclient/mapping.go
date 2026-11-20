@@ -145,10 +145,11 @@ func mapCloudParticipants(ps []cloudParticipant) []Participant {
 	out := make([]Participant, 0, len(ps))
 	for _, p := range ps {
 		out = append(out, Participant{
-			User:     mapCloudUser(p.User),
-			Role:     p.Role,
-			Approved: p.Approved,
-			State:    p.State,
+			User:           mapCloudUser(p.User),
+			Role:           p.Role,
+			Approved:       p.Approved,
+			State:          p.State,
+			ParticipatedAt: p.ParticipatedOn,
 		})
 	}
 	return out
@@ -314,15 +315,18 @@ type cloudComment struct {
 }
 
 func mapCloudComment(prID int, c cloudComment) Comment {
+	author := mapCloudUser(c.User)
 	cm := Comment{
-		ID:        c.ID,
-		Content:   c.Content.Raw,
-		Author:    mapCloudUser(c.User),
-		PRID:      prID,
-		URL:       c.Links.HTML.Href,
-		CreatedAt: c.CreatedOn,
-		UpdatedAt: c.UpdatedOn,
-		Resolved:  c.Resolution != nil,
+		ID:             c.ID,
+		Content:        c.Content.Raw,
+		Author:         author,
+		PRID:           prID,
+		URL:            c.Links.HTML.Href,
+		CreatedAt:      c.CreatedOn,
+		UpdatedAt:      c.UpdatedOn,
+		Resolved:       c.Resolution != nil,
+		IsAIAttributed: IsAIAttributedText(c.Content.Raw),
+		AuthorKind:     ClassifyAuthorKind(author),
 	}
 	if c.Parent != nil {
 		cm.ParentID = c.Parent.ID
@@ -504,18 +508,20 @@ func mapDCPR(repo RepoRef, r dcPR) *PullRequest {
 	}
 	for _, rv := range r.Reviewers {
 		pr.Reviewers = append(pr.Reviewers, Participant{
-			User:     mapDCUser(rv.User),
-			Role:     rv.Role,
-			Approved: rv.Approved,
-			State:    strings.ToLower(rv.Status),
+			User:               mapDCUser(rv.User),
+			Role:               rv.Role,
+			Approved:           rv.Approved,
+			State:              strings.ToLower(rv.Status),
+			LastReviewedCommit: rv.LastReviewedCommit,
 		})
 	}
 	for _, p := range r.Participants {
 		pr.Participants = append(pr.Participants, Participant{
-			User:     mapDCUser(p.User),
-			Role:     p.Role,
-			Approved: p.Approved,
-			State:    strings.ToLower(p.Status),
+			User:               mapDCUser(p.User),
+			Role:               p.Role,
+			Approved:           p.Approved,
+			State:              strings.ToLower(p.Status),
+			LastReviewedCommit: p.LastReviewedCommit,
 		})
 	}
 	return pr
@@ -726,16 +732,19 @@ func mapDCReactions(raw json.RawMessage) []CommentReaction {
 }
 
 func mapDCComment(prID int, c dcComment) Comment {
+	author := mapDCUser(c.Author)
 	cm := Comment{
-		ID:        c.ID,
-		Content:   c.Text,
-		Author:    mapDCUser(c.Author),
-		PRID:      prID,
-		CreatedAt: epochToISO(c.CreatedDate),
-		UpdatedAt: epochToISO(c.UpdatedDate),
-		Resolved:  c.State == "RESOLVED",
-		Task:      c.Severity == "BLOCKER",
-		Reactions: mapDCReactions(c.Properties),
+		ID:             c.ID,
+		Content:        c.Text,
+		Author:         author,
+		PRID:           prID,
+		CreatedAt:      epochToISO(c.CreatedDate),
+		UpdatedAt:      epochToISO(c.UpdatedDate),
+		Resolved:       c.State == "RESOLVED",
+		Task:           c.Severity == "BLOCKER",
+		Reactions:      mapDCReactions(c.Properties),
+		IsAIAttributed: IsAIAttributedText(c.Text),
+		AuthorKind:     ClassifyAuthorKind(author),
 	}
 	cm.Inline = inlineFromDCAnchor(c.Anchor)
 	if c.Parent != nil {

@@ -4,9 +4,15 @@ import (
 	"bufio"
 	"io"
 	"strings"
+	"sync"
 
 	cerrors "github.com/angelmsger/bitbucket-cli/pkg/errors"
 )
+
+// batchReadConcurrency bounds parallel reads in batch read commands (`pr get`,
+// `pr status`, `pr threads`) so large stdin pipelines stay fast without
+// flooding Bitbucket rate limits.
+const batchReadConcurrency = 4
 
 // batchItem is one entry in a batch operation's aggregated result.
 type batchItem struct {
@@ -79,6 +85,83 @@ func runBatch(s *appState, items []string, dryRun bool, do func(item string) (an
 		return batchPartialFailure(last.Category, failed, len(items), dryRun)
 	}
 	return nil
+}
+
+// runBatchRead executes read-only per-item lookups with bounded concurrency,
+// preserving the caller's input order in the emitted {items, has_more} payload.
+// With a single item it emits the bare result so single-target output remains
+// byte-identical. Any per-item error is recorded without stopping other items,
+// and the command exits non-zero when at least one item failed.
+func runBatchRead(s *appState, items []string, do func(item string) (any, error)) error {
+	if len(items) == 1 {
+		res, err := do(items[0])
+		if err != nil {
+			return err
+		}
+		return s.emit(res)
+	}
+	out, failed, last, anyRetryable := executeBatchRead(items, batchReadConcurrency, do)
+	if emitErr := s.emit(map[string]any{"items": out, "has_more": false}); emitErr != nil {
+		return emitErr
+	}
+	if failed > 0 {
+		return batchReadPartialFailure(last.Category, failed, len(items), anyRetryable)
+	}
+	return nil
+}
+
+func executeBatchRead(items []string, concurrency int, do func(item string) (any, error)) ([]batchItem, int, *cerrors.CLIError, bool) {
+	if concurrency < 1 {
+		concurrency = 1
+	}
+	out := make([]batchItem, len(items))
+	errs := make([]*cerrors.CLIError, len(items))
+
+	sem := make(chan struct{}, concurrency)
+	var wg sync.WaitGroup
+	for i, it := range items {
+		wg.Add(1)
+		go func(idx int, ref string) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			res, err := do(ref)
+			if err != nil {
+				ce := cerrors.AsCLIError(err)
+				body := ce.Payload().Error
+				out[idx] = batchItem{Ref: ref, OK: false, Error: &body}
+				errs[idx] = ce
+				return
+			}
+			out[idx] = batchItem{Ref: ref, OK: true, Result: res}
+		}(i, it)
+	}
+	wg.Wait()
+
+	failed := 0
+	var last *cerrors.CLIError
+	anyRetryable := false
+	for _, ce := range errs {
+		if ce != nil {
+			failed++
+			last = ce
+			if ce.Retryable {
+				anyRetryable = true
+			}
+		}
+	}
+	return out, failed, last, anyRetryable
+}
+
+// batchReadPartialFailure summarizes a read-only batch with failed items. Unlike
+// write batches, nothing was mutated, so retrying the failed items is safe.
+func batchReadPartialFailure(cat cerrors.Category, failed, total int, retryable bool) error {
+	e := cerrors.Newf(cat, "BATCH_PARTIAL_FAILURE",
+		"%d of %d read operations failed; see per-item results on stdout", failed, total).
+		WithHint("This was a read-only batch, so nothing was modified. Retry the failed refs or fix invalid references.").
+		WithNextSteps("Inspect the failed items on stdout and follow each item's own next_steps")
+	e.Retryable = retryable
+	return e
 }
 
 // batchPartialFailure summarizes a batch with failed items. In a live batch

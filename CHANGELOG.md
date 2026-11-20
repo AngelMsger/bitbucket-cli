@@ -2,6 +2,53 @@
 
 ## [Unreleased]
 
+### Added
+
+- `pr inbox` exposes `my_vote` (`unvoted` | `approved` | `needs_work` |
+  `changes_requested`) without extra per-PR API calls (using `X-AUSERNAME` on
+  Data Center and `fields=+values.participants` on Cloud) and adds
+  `--my-vote <value>` filtering across both flavors with pagination preserved.
+- `pr status` adds a `my_review` summary object (`vote`, `voted_at`,
+  `latest_commit_at`, `updated_after_my_vote`, `unresolved_thread_count`) for
+  single-call incremental review pruning.
+- `pr get`, `pr status`, and `pr threads` now accept multiple PR references or
+  `-` on stdin with bounded concurrency, preserving byte-identical single-target
+  output and emitting `{items, has_more}` per-item `ok` / `result` / `error`
+  aggregates with non-zero exit codes on partial failure.
+- `pr threads` and `comment list` expose projectable read-only authorship and
+  AI metadata fields: `is_self` (resolved once per invocation),
+  `is_ai_attributed`, and `author_kind` (`human` | `bot` | `unknown`, derived
+  from platform `author.type`).
+- `pr review <ref>` adds a two-phase composite review command (`--verdict`,
+  `--expected-source-commit`, `--input <file|->` JSON/YAML, `--dry-run`). Phase
+  1 checks `source.commit` (`PR_HEAD_MOVED`, exit 11) and resolves every inline
+  diff anchor (retrying truncated files via per-path diff) before sending any
+  write; Phase 2 posts comments sequentially, rechecks `source.commit`
+  immediately before voting (and sends `lastReviewedCommit` on Data Center
+  participant status updates), and emits partial outcomes (`posted_comments`,
+  `failed_item`, `vote_applied`) on stdout before returning non-retryable
+  `REVIEW_PARTIAL_FAILURE` on failure or head drift.
+
+### Changed
+
+- `pr fetch` and `pr checkout` now inspect `git remote -v` and verify
+  normalized remote URLs against the PR's destination repository and configured
+  deployment (host, HTTP(S) port, and Data Center context path), auto-selecting
+  a matching `upstream` over `origin`, redacting credentials from displayed
+  remote URLs, and failing with `GIT_REMOTE_MISMATCH` inside mismatched or
+  fork-only checkouts unless `--remote` is paired with `--force-remote`.
+  Print-only mode outside a git worktree is preserved.
+
+### Skill
+
+- Skill `0.21.0` adds explicit **Workflow precedence** layering separating
+  non-negotiable technical/safety invariants from default policies that users or
+  upper-layer team/task Skills may explicitly override, clarifies root-level
+  `--allow-writes` placement and boundaries, simplifies remote-matching guidance
+  to match automatic verification, and documents `pr inbox --my-vote`,
+  `pr status` `my_review`, batch reads, comment authorship/AI metadata, and
+  `pr review`.
+
 ## [0.30.1] — 2026-11-18
 
 ### Skill

@@ -55,6 +55,11 @@ func newCommentListCmd(s *appState) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if len(items) > 0 {
+				if me, uerr := client.CurrentUser(ctx); uerr == nil && me != nil {
+					apiclient.EnrichCommentsWithSelf(items, me)
+				}
+			}
 			if unresolved || tasks {
 				filtered := items[:0]
 				for _, c := range items {
