@@ -169,6 +169,12 @@ func parseReviewInput(raw []byte) (reviewInputDoc, error) {
 
 	if json.Valid(trimmed) {
 		switch trimmed[0] {
+		case '[', '{':
+			if err := validateJSONReviewTokens(trimmed); err != nil {
+				return reviewInputDoc{}, err
+			}
+		}
+		switch trimmed[0] {
 		case '[':
 			var comments []apiclient.ReviewCommentInput
 			dec := json.NewDecoder(bytes.NewReader(trimmed))
@@ -246,6 +252,141 @@ func parseReviewInput(raw []byte) (reviewInputDoc, error) {
 		return reviewInputDoc{}, cerrors.Newf(cerrors.CategoryUsage, "BAD_REVIEW_INPUT",
 			"--input must be a JSON/YAML object or array of comments (got %s)", strings.ToLower(string(trimmed[:min(len(trimmed), 24)])))
 	}
+}
+
+var (
+	validReviewRootKeys = map[string]bool{
+		"verdict":                true,
+		"expected_source_commit": true,
+		"comments":               true,
+	}
+	validReviewCommentKeys = map[string]bool{
+		"content":  true,
+		"path":     true,
+		"line":     true,
+		"side":     true,
+		"reply_to": true,
+	}
+)
+
+// validateJSONReviewTokens walks the raw JSON token stream of a review input
+// document to reject duplicate keys (e.g. two `"comments"` fields where the
+// second silently overwrites the first) and case-insensitive key matches (such
+// as `"Comments"` or `"Content"`, which encoding/json accepts by default).
+func validateJSONReviewTokens(raw []byte) error {
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	tok, err := dec.Token()
+	if err != nil {
+		return cerrors.Wrap(err, cerrors.CategoryUsage, "BAD_REVIEW_INPUT",
+			"could not parse --input JSON")
+	}
+	d, ok := tok.(json.Delim)
+	if !ok {
+		return cerrors.New(cerrors.CategoryUsage, "BAD_REVIEW_INPUT",
+			"--input JSON must be an object or array")
+	}
+	switch d {
+	case '{':
+		return validateJSONReviewObject(dec, validReviewRootKeys, true)
+	case '[':
+		return validateJSONCommentArray(dec)
+	default:
+		return cerrors.New(cerrors.CategoryUsage, "BAD_REVIEW_INPUT",
+			"--input JSON must be an object or array")
+	}
+}
+
+func validateJSONReviewObject(dec *json.Decoder, allowed map[string]bool, isRoot bool) error {
+	seen := make(map[string]bool, len(allowed))
+	for dec.More() {
+		kt, err := dec.Token()
+		if err != nil {
+			return cerrors.Wrap(err, cerrors.CategoryUsage, "BAD_REVIEW_INPUT",
+				"could not parse --input JSON key")
+		}
+		key, ok := kt.(string)
+		if !ok {
+			return cerrors.New(cerrors.CategoryUsage, "BAD_REVIEW_INPUT",
+				"expected string key in --input JSON object")
+		}
+		if !allowed[key] {
+			return cerrors.Newf(cerrors.CategoryUsage, "BAD_REVIEW_INPUT",
+				"unknown field %q in --input JSON (field names are case-sensitive)", key)
+		}
+		if seen[key] {
+			return cerrors.Newf(cerrors.CategoryUsage, "BAD_REVIEW_INPUT",
+				"duplicate field %q in --input JSON object", key)
+		}
+		seen[key] = true
+
+		vt, err := dec.Token()
+		if err != nil {
+			return cerrors.Wrap(err, cerrors.CategoryUsage, "BAD_REVIEW_INPUT",
+				"could not parse --input JSON value")
+		}
+		if delim, isDelim := vt.(json.Delim); isDelim {
+			if isRoot && key == "comments" && delim == '[' {
+				if err := validateJSONCommentArray(dec); err != nil {
+					return err
+				}
+				continue
+			}
+			if err := skipJSONContainer(dec, delim); err != nil {
+				return err
+			}
+		}
+	}
+	if _, err := dec.Token(); err != nil {
+		return cerrors.Wrap(err, cerrors.CategoryUsage, "BAD_REVIEW_INPUT",
+			"unclosed JSON object in --input")
+	}
+	return nil
+}
+
+func validateJSONCommentArray(dec *json.Decoder) error {
+	for dec.More() {
+		tok, err := dec.Token()
+		if err != nil {
+			return cerrors.Wrap(err, cerrors.CategoryUsage, "BAD_REVIEW_INPUT",
+				"could not parse --input JSON comment array")
+		}
+		delim, isDelim := tok.(json.Delim)
+		if !isDelim || delim != '{' {
+			if isDelim {
+				_ = skipJSONContainer(dec, delim)
+			}
+			return cerrors.New(cerrors.CategoryUsage, "BAD_REVIEW_INPUT",
+				"each item in --input comments must be a JSON object")
+		}
+		if err := validateJSONReviewObject(dec, validReviewCommentKeys, false); err != nil {
+			return err
+		}
+	}
+	if _, err := dec.Token(); err != nil {
+		return cerrors.Wrap(err, cerrors.CategoryUsage, "BAD_REVIEW_INPUT",
+			"unclosed JSON array in --input")
+	}
+	return nil
+}
+
+func skipJSONContainer(dec *json.Decoder, open json.Delim) error {
+	depth := 1
+	for depth > 0 {
+		tok, err := dec.Token()
+		if err != nil {
+			return cerrors.Wrap(err, cerrors.CategoryUsage, "BAD_REVIEW_INPUT",
+				"malformed JSON container in --input")
+		}
+		if d, ok := tok.(json.Delim); ok {
+			switch d {
+			case '{', '[':
+				depth++
+			case '}', ']':
+				depth--
+			}
+		}
+	}
+	return nil
 }
 
 // rejectNonIntegerCommentFields prevents gopkg.in/yaml.v3 from silently

@@ -146,6 +146,22 @@ func TestParseReviewInput(t *testing.T) {
 		}
 	})
 
+	t.Run("duplicate or case-variant keys in JSON or YAML are rejected", func(t *testing.T) {
+		for _, raw := range []string{
+			`{"verdict":"approve","comments":[{"content":"finding"}],"comments":[]}`,
+			`{"verdict":"approve","comments":[{"content":"finding"}],"Comments":[]}`,
+			`{"verdict":"approve","Verdict":"request-changes"}`,
+			`[{"content":"first","content":"second"}]`,
+			`[{"content":"first","Content":"second"}]`,
+			"verdict: approve\ncomments:\n  - content: finding\ncomments: []\n",
+			"verdict: approve\ncomments:\n  - content: finding\nComments: []\n",
+		} {
+			if _, err := parseReviewInput([]byte(raw)); err == nil || cerrors.AsCLIError(err).Code != "BAD_REVIEW_INPUT" {
+				t.Errorf("input %q: want BAD_REVIEW_INPUT, got %v", raw, err)
+			}
+		}
+	})
+
 	t.Run("single YAML document with explicit end marker succeeds", func(t *testing.T) {
 		raw := "---\nverdict: approve\n...\n"
 		doc, err := parseReviewInput([]byte(raw))
@@ -359,6 +375,25 @@ func TestPRReviewCLIContract(t *testing.T) {
 		if len(res.PostedComments) != 0 || res.VoteApplied || res.FailedItem == nil ||
 			res.FailedItem.Kind != "vote" || res.FailedItem.Error == nil || res.FailedItem.Error.Code != "HTTP_Forbidden" {
 			t.Fatalf("unexpected vote-only failure result: %+v", res)
+		}
+	})
+
+	t.Run("duplicate or case-divergent comments keys abort before any server write", func(t *testing.T) {
+		for _, stdin := range []string{
+			`{"verdict":"approve","comments":[{"content":"blocker"}],"comments":[]}`,
+			`{"verdict":"approve","comments":[{"content":"blocker"}],"Comments":[]}`,
+		} {
+			atomic.StoreInt32(&writes, 0)
+			_, err := runCommandCapture(t, false, stdin, srv.URL, "pr", "review", "PROJ/demo/1", "--input", "-")
+			if err == nil {
+				t.Fatalf("stdin=%s: expected BAD_REVIEW_INPUT", stdin)
+			}
+			if ce := cerrors.AsCLIError(err); ce.Code != "BAD_REVIEW_INPUT" {
+				t.Fatalf("stdin=%s: code = %s, want BAD_REVIEW_INPUT", stdin, ce.Code)
+			}
+			if atomic.LoadInt32(&writes) != 0 {
+				t.Fatalf("stdin=%s: sent %d writes, want 0", stdin, writes)
+			}
 		}
 	})
 }
