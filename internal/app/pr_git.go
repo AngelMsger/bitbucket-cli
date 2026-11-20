@@ -132,16 +132,36 @@ type prGitMeta struct {
 // and base branch/commit. An explicit --base skips the API call (keeping the
 // command usable offline) while still verifying the destination RepoRef and
 // deployment host (from the PR URL when supplied, or the configured base URL).
+// In online mode (no --base), a full PR URL must target the same Bitbucket
+// deployment as the active server configuration before querying the API.
 func resolvePRGitMeta(s *appState, rawArg string, ref apiclient.RepoRef, id int, baseOverride string) (prGitMeta, error) {
 	baseURL := strings.TrimSpace(s.cfg().BaseURL)
 	flavor := apiclient.Flavor(s.cfg().Flavor)
 	parsedURL := urlref.Parse(rawArg)
-	if parsedURL.IsURL && parsedURL.BaseURL != "" && (baseOverride != "" || baseURL == "") {
-		baseURL = parsedURL.BaseURL
-		if apiclient.IsCloudHost(baseURL) {
-			flavor = apiclient.FlavorCloud
-		} else if flavor == apiclient.FlavorCloud {
-			flavor = apiclient.FlavorAuto
+	if parsedURL.IsURL && parsedURL.BaseURL != "" {
+		if baseOverride != "" || baseURL == "" {
+			baseURL = parsedURL.BaseURL
+			if apiclient.IsCloudHost(baseURL) {
+				flavor = apiclient.FlavorCloud
+			} else if flavor == apiclient.FlavorCloud {
+				flavor = apiclient.FlavorAuto
+			}
+		} else {
+			cfgIsCloud := flavor == apiclient.FlavorCloud ||
+				((flavor == "" || flavor == apiclient.FlavorAuto) && apiclient.IsCloudHost(baseURL))
+			if !gittransport.SameDeployment(parsedURL.BaseURL, baseURL, cfgIsCloud) {
+				cleanURLBase := gittransport.SanitizeRemoteURL(parsedURL.BaseURL)
+				cleanCfgBase := gittransport.SanitizeRemoteURL(baseURL)
+				return prGitMeta{}, cerrors.Newf(cerrors.CategoryUsage, "PR_SERVER_MISMATCH",
+					"PR URL deployment %s does not match configured Bitbucket server %s",
+					cleanURLBase, cleanCfgBase).
+					WithHint("The active context points at a different Bitbucket server than the PR URL; refusing to query or fetch from the wrong deployment.").
+					WithNextSteps(
+						"bitbucket-cli config get-contexts   # list configured contexts",
+						"Re-run with --use-context <name> for "+cleanURLBase,
+						"Or pass --base <branch> for offline command generation against the PR URL",
+					)
+			}
 		}
 	}
 	isCloud := flavor == apiclient.FlavorCloud ||

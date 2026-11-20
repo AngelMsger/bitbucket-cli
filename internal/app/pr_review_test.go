@@ -123,6 +123,29 @@ func TestParseReviewInput(t *testing.T) {
 		}
 	})
 
+	t.Run("JSON UTF-16 surrogate pair escape (Python json.dumps default) succeeds", func(t *testing.T) {
+		doc, err := parseReviewInput([]byte(`{"comments":[{"content":"\ud83d\udc4d looks good"}]}`))
+		if err != nil {
+			t.Fatalf("JSON UTF-16 surrogate escape failed: %v", err)
+		}
+		if len(doc.Comments) != 1 || doc.Comments[0].Content != "👍 looks good" {
+			t.Fatalf("got %+v, want 👍 looks good", doc.Comments)
+		}
+	})
+
+	t.Run("fractional reply_to or line is rejected in both JSON and YAML", func(t *testing.T) {
+		for _, raw := range []string{
+			`{"comments":[{"reply_to":42.9,"content":"bad"}]}`,
+			`[{"line":10.5,"path":"a.go","content":"bad"}]`,
+			`[{reply_to: 42.9, content: bad}]`,
+			"comments:\n  - path: a.go\n    line: 10.5\n    content: bad\n",
+		} {
+			if _, err := parseReviewInput([]byte(raw)); err == nil || cerrors.AsCLIError(err).Code != "BAD_REVIEW_INPUT" {
+				t.Errorf("input %q: want BAD_REVIEW_INPUT, got %v", raw, err)
+			}
+		}
+	})
+
 	t.Run("single YAML document with explicit end marker succeeds", func(t *testing.T) {
 		raw := "---\nverdict: approve\n...\n"
 		doc, err := parseReviewInput([]byte(raw))
@@ -198,6 +221,7 @@ func runCommandCaptureWithFlavor(t *testing.T, readOnly bool, stdin string, base
 func TestPRReviewCLIContract(t *testing.T) {
 	var writes int32
 	var failSecondComment atomic.Bool
+	var forbidVote atomic.Bool
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -226,6 +250,11 @@ func TestPRReviewCLIContract(t *testing.T) {
 			_, _ = w.Write([]byte(`{"id": 100, "text": "posted", "author": {"name": "alice", "type": "NORMAL"}}`))
 		case r.Method == http.MethodPut && r.URL.Path == "/rest/api/1.0/projects/PROJ/repos/demo/pull-requests/1/participants/alice":
 			atomic.AddInt32(&writes, 1)
+			if forbidVote.Load() {
+				w.WriteHeader(http.StatusForbidden)
+				_, _ = w.Write([]byte(`{"errors":[{"message":"cannot approve own PR"}]}`))
+				return
+			}
 			_, _ = w.Write([]byte(`{"approved": true, "status": "APPROVED"}`))
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -306,6 +335,30 @@ func TestPRReviewCLIContract(t *testing.T) {
 		}
 		if len(res.PostedComments) != 1 || res.VoteApplied || res.FailedItem == nil || res.FailedItem.Index != 1 {
 			t.Fatalf("unexpected partial result: %+v", res)
+		}
+	})
+
+	t.Run("vote-only 403 failure still emits failed_item and vote_applied on stdout", func(t *testing.T) {
+		atomic.StoreInt32(&writes, 0)
+		forbidVote.Store(true)
+		defer forbidVote.Store(false)
+
+		out, err := runCommandCapture(t, false, "", srv.URL, "pr", "review", "PROJ/demo/1",
+			"--verdict", "approve", "--expected-source-commit", "aaaa1111")
+		if err == nil {
+			t.Fatal("expected REVIEW_PARTIAL_FAILURE")
+		}
+		ce := cerrors.AsCLIError(err)
+		if ce.Code != "REVIEW_PARTIAL_FAILURE" || ce.Category != cerrors.CategoryPermission || ce.HTTPStatus != http.StatusForbidden {
+			t.Fatalf("err = %+v, want permission/REVIEW_PARTIAL_FAILURE/403", ce)
+		}
+		var res apiclient.PRReviewResult
+		if err := json.Unmarshal([]byte(out), &res); err != nil {
+			t.Fatalf("decode vote-only failure stdout: %v\nraw: %s", err, out)
+		}
+		if len(res.PostedComments) != 0 || res.VoteApplied || res.FailedItem == nil ||
+			res.FailedItem.Kind != "vote" || res.FailedItem.Error == nil || res.FailedItem.Error.Code != "HTTP_Forbidden" {
+			t.Fatalf("unexpected vote-only failure result: %+v", res)
 		}
 	})
 }
@@ -535,5 +588,56 @@ func TestPRFetchOfflineFullPRURLVerifiesHostWithoutServerConfig(t *testing.T) {
 	}
 	if payload["remote"] != "upstream" {
 		t.Fatalf("remote = %v, want upstream", payload["remote"])
+	}
+}
+
+func TestPRFetchAndCheckoutOnlinePRURLRejectsMismatchedServer(t *testing.T) {
+	var apiHits int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&apiHits, 1)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+			"id": 1, "state": "OPEN",
+			"fromRef": {"displayId": "feat", "latestCommit": "1111", "repository": {"slug": "demo", "project": {"key": "ws"}}},
+			"toRef":   {"displayId": "main", "latestCommit": "0000", "repository": {"slug": "demo", "project": {"key": "ws"}}}
+		}`))
+	}))
+	defer srv.Close()
+
+	dir := t.TempDir()
+	runGit := func(args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", args...)
+		cmd.Dir = dir
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v failed: %v\n%s", args, err, out)
+		}
+	}
+	runGit("init")
+	// Local checkout matches the configured DC test server, NOT bitbucket.org.
+	runGit("remote", "add", "origin", srv.URL+"/scm/ws/demo.git")
+
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(origDir) })
+
+	for _, subcmd := range []string{"fetch", "checkout"} {
+		atomic.StoreInt32(&apiHits, 0)
+		_, err := runCommandCapture(t, false, "", srv.URL,
+			"pr", subcmd, "https://bitbucket.org/ws/demo/pull-requests/1")
+		if err == nil {
+			t.Fatalf("pr %s: expected PR_SERVER_MISMATCH for bitbucket.org URL against %s", subcmd, srv.URL)
+		}
+		if ce := cerrors.AsCLIError(err); ce.Code != "PR_SERVER_MISMATCH" || ce.Category != cerrors.CategoryUsage {
+			t.Fatalf("pr %s: got %s/%s (%v), want usage/PR_SERVER_MISMATCH", subcmd, ce.Category, ce.Code, ce)
+		}
+		if atomic.LoadInt32(&apiHits) != 0 {
+			t.Fatalf("pr %s: must abort before querying mismatched server, got %d API hits", subcmd, apiHits)
+		}
 	}
 }

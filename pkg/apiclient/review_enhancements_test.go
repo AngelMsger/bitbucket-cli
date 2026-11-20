@@ -967,7 +967,9 @@ func TestSubmitPRReviewDataCenterSendsLastReviewedCommit(t *testing.T) {
 			}
 
 			// 3. Head moves from A -> B right before vote PUT (even with 0 comments):
-			// server rejects stale lastReviewedCommit with 409 Conflict; CLI must not report vote applied.
+			// server rejects stale lastReviewedCommit with 409 Conflict; CLI emits
+			// partial PRReviewResult (failed_item.kind=vote, vote_applied=false) and
+			// returns conflict REVIEW_PARTIAL_FAILURE with HTTP 409.
 			advanceAfterGetPR = true
 			res, err = c.SubmitPRReview(context.Background(), SubmitPRReviewReq{
 				Repo:                 RepoRef{Workspace: "PROJ", Slug: "demo"},
@@ -978,11 +980,12 @@ func TestSubmitPRReviewDataCenterSendsLastReviewedCommit(t *testing.T) {
 			if err == nil {
 				t.Fatal("expected HTTP 409 conflict error when PR moved before vote PUT")
 			}
-			if res != nil && res.VoteApplied {
-				t.Fatalf("vote must not be reported applied on 409 conflict: %+v", res)
+			if res == nil || res.VoteApplied || res.FailedItem == nil || res.FailedItem.Kind != "vote" ||
+				res.FailedItem.Error == nil || res.FailedItem.Error.HTTPStatus != http.StatusConflict {
+				t.Fatalf("expected failed_item(vote, 409) with vote_applied=false, got: %+v", res)
 			}
-			if ce := cerrors.AsCLIError(err); ce.Category != cerrors.CategoryConflict || ce.HTTPStatus != http.StatusConflict {
-				t.Fatalf("got %s (http=%d), want conflict/409", ce.Category, ce.HTTPStatus)
+			if ce := cerrors.AsCLIError(err); ce.Category != cerrors.CategoryConflict || ce.HTTPStatus != http.StatusConflict || ce.Code != "REVIEW_PARTIAL_FAILURE" {
+				t.Fatalf("got %s/%s (http=%d), want conflict/REVIEW_PARTIAL_FAILURE/409", ce.Category, ce.Code, ce.HTTPStatus)
 			}
 		})
 	}

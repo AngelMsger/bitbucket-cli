@@ -2,6 +2,7 @@ package app
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"os"
 	"strings"
@@ -155,9 +156,10 @@ func readReviewInput(path string, stdin io.Reader) ([]byte, error) {
 
 // parseReviewInput parses either a JSON/YAML object ({verdict,
 // expected_source_commit, comments}) or a bare JSON/YAML array of comment
-// objects (including YAML flow style such as `[{content: hello}]`). Unknown
-// keys and trailing or multi-document streams are rejected so typos or
-// malformed inputs fail loudly instead of silently dropping feedback.
+// objects (including YAML flow style such as `[{content: hello}]`). Valid JSON
+// is decoded strictly with encoding/json (preserving RFC 8259 UTF-16 surrogate
+// escapes and rejecting fractional numbers for integer fields); non-JSON inputs
+// fall back to YAML 1.2 with matching strict integer and single-document checks.
 func parseReviewInput(raw []byte) (reviewInputDoc, error) {
 	trimmed := bytes.TrimSpace(raw)
 	if len(trimmed) == 0 {
@@ -165,10 +167,38 @@ func parseReviewInput(raw []byte) (reviewInputDoc, error) {
 			"--input content is empty")
 	}
 
-	// YAML 1.2 is a superset of JSON and handles JSON, block YAML, and flow
-	// YAML (`[{content: hello}]`) uniformly. Decode the document AST first to
-	// distinguish sequence vs mapping and confirm the entire stream is a single
-	// document ending at EOF.
+	if json.Valid(trimmed) {
+		switch trimmed[0] {
+		case '[':
+			var comments []apiclient.ReviewCommentInput
+			dec := json.NewDecoder(bytes.NewReader(trimmed))
+			dec.DisallowUnknownFields()
+			if err := dec.Decode(&comments); err != nil {
+				return reviewInputDoc{}, cerrors.Wrap(err, cerrors.CategoryUsage, "BAD_REVIEW_INPUT",
+					"could not parse --input JSON comment array")
+			}
+			if err := ensureSingleJSONDoc(dec); err != nil {
+				return reviewInputDoc{}, err
+			}
+			return reviewInputDoc{Comments: comments}, nil
+		case '{':
+			var doc reviewInputDoc
+			dec := json.NewDecoder(bytes.NewReader(trimmed))
+			dec.DisallowUnknownFields()
+			if err := dec.Decode(&doc); err != nil {
+				return reviewInputDoc{}, cerrors.Wrap(err, cerrors.CategoryUsage, "BAD_REVIEW_INPUT",
+					"could not parse --input JSON object")
+			}
+			if err := ensureSingleJSONDoc(dec); err != nil {
+				return reviewInputDoc{}, err
+			}
+			return doc, nil
+		}
+	}
+
+	// Non-JSON input (including YAML block and flow collections such as
+	// `[{content: hello}]`): decode AST first to verify single-document EOF,
+	// enforce integer-only scalar types on line/reply_to, and route by kind.
 	nodeDec := yaml.NewDecoder(bytes.NewReader(trimmed))
 	var node yaml.Node
 	if err := nodeDec.Decode(&node); err != nil {
@@ -184,6 +214,9 @@ func parseReviewInput(raw []byte) (reviewInputDoc, error) {
 	}
 
 	root := node.Content[0]
+	if err := rejectNonIntegerCommentFields(root); err != nil {
+		return reviewInputDoc{}, err
+	}
 	switch root.Kind {
 	case yaml.SequenceNode:
 		var comments []apiclient.ReviewCommentInput
@@ -213,6 +246,45 @@ func parseReviewInput(raw []byte) (reviewInputDoc, error) {
 		return reviewInputDoc{}, cerrors.Newf(cerrors.CategoryUsage, "BAD_REVIEW_INPUT",
 			"--input must be a JSON/YAML object or array of comments (got %s)", strings.ToLower(string(trimmed[:min(len(trimmed), 24)])))
 	}
+}
+
+// rejectNonIntegerCommentFields prevents gopkg.in/yaml.v3 from silently
+// truncating float scalars (such as `reply_to: 42.9` -> 42) into Go int fields.
+func rejectNonIntegerCommentFields(n *yaml.Node) error {
+	if n == nil {
+		return nil
+	}
+	switch n.Kind {
+	case yaml.SequenceNode:
+		for _, child := range n.Content {
+			if err := rejectNonIntegerCommentFields(child); err != nil {
+				return err
+			}
+		}
+	case yaml.MappingNode:
+		for i := 0; i+1 < len(n.Content); i += 2 {
+			k, v := n.Content[i], n.Content[i+1]
+			if k.Value == "reply_to" || k.Value == "line" {
+				if v.Kind == yaml.ScalarNode && v.Tag == "!!float" {
+					return cerrors.Newf(cerrors.CategoryUsage, "BAD_REVIEW_INPUT",
+						"field %q must be an integer, got %q", k.Value, v.Value)
+				}
+			}
+			if err := rejectNonIntegerCommentFields(v); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func ensureSingleJSONDoc(dec *json.Decoder) error {
+	var extra any
+	if err := dec.Decode(&extra); err != io.EOF {
+		return cerrors.New(cerrors.CategoryUsage, "BAD_REVIEW_INPUT",
+			"unexpected trailing content after JSON document in --input")
+	}
+	return nil
 }
 
 func ensureSingleYAMLDoc(dec *yaml.Decoder) error {

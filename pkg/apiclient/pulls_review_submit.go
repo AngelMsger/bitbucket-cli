@@ -149,7 +149,7 @@ func (c *apiClient) SubmitPRReview(ctx context.Context, req SubmitPRReviewReq) (
 				Comment: &itemCopy,
 				Error:   &body,
 			}
-			return res, reviewPartialFailure(ce.Category, res)
+			return res, reviewPartialFailure(ce.Category, ce.HTTPStatus, res)
 		}
 		res.PostedComments = append(res.PostedComments, *cm)
 	}
@@ -170,7 +170,7 @@ func (c *apiClient) SubmitPRReview(ctx context.Context, req SubmitPRReviewReq) (
 						Verdict: prep.plan.Verdict,
 						Error:   &body,
 					}
-					return res, reviewPartialFailure(ce.Category, res)
+					return res, reviewPartialFailure(ce.Category, ce.HTTPStatus, res)
 				}
 				if !commitsMatch(freshPR.Source.Commit, expectedHead) {
 					ce := prHeadMovedError(prep.plan.PR, freshPR.Source.Commit, expectedHead)
@@ -180,15 +180,12 @@ func (c *apiClient) SubmitPRReview(ctx context.Context, req SubmitPRReviewReq) (
 						Verdict: prep.plan.Verdict,
 						Error:   &body,
 					}
-					return res, reviewPartialFailure(cerrors.CategoryConflict, res)
+					return res, reviewPartialFailure(cerrors.CategoryConflict, 0, res)
 				}
 			}
 		}
 
 		if verr := c.doWriteJSON(ctx, prep.vote.method, prep.vote.path, nil, prep.vote.payload, nil, prReviewWriteTarget(req.Repo, req.PRID)); verr != nil {
-			if len(res.PostedComments) == 0 {
-				return nil, verr
-			}
 			ce := cerrors.AsCLIError(verr)
 			body := ce.Payload().Error
 			res.FailedItem = &PRReviewFailure{
@@ -196,7 +193,7 @@ func (c *apiClient) SubmitPRReview(ctx context.Context, req SubmitPRReviewReq) (
 				Verdict: prep.plan.Verdict,
 				Error:   &body,
 			}
-			return res, reviewPartialFailure(ce.Category, res)
+			return res, reviewPartialFailure(ce.Category, ce.HTTPStatus, res)
 		}
 		res.VoteApplied = true
 	}
@@ -450,7 +447,7 @@ func cleanDiffPath(p string) string {
 	return p
 }
 
-func reviewPartialFailure(cat cerrors.Category, res *PRReviewResult) error {
+func reviewPartialFailure(cat cerrors.Category, httpStatus int, res *PRReviewResult) error {
 	var msg string
 	if res.FailedItem != nil && res.FailedItem.Kind == "vote" {
 		if res.FailedItem.Error != nil && res.FailedItem.Error.Code == "PR_HEAD_MOVED" {
@@ -474,6 +471,9 @@ func reviewPartialFailure(cat cerrors.Category, res *PRReviewResult) error {
 			"bitbucket-cli pr threads "+res.PR,
 			"bitbucket-cli pr status "+res.PR,
 		)
+	if httpStatus > 0 {
+		e = e.WithHTTPStatus(httpStatus)
+	}
 	e.Retryable = false
 	return e
 }

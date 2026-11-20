@@ -160,10 +160,7 @@ func (r RemoteRepo) MatchesDeployment(baseURL string, cloud bool) bool {
 	if err != nil || b.Hostname() == "" {
 		return false
 	}
-	expectedHost := strings.ToLower(b.Hostname())
-	if cloud && expectedHost == "api.bitbucket.org" {
-		expectedHost = "bitbucket.org"
-	}
+	expectedHost := normalizeDeploymentHost(b.Hostname(), cloud)
 	if !strings.EqualFold(r.Host, expectedHost) {
 		return false
 	}
@@ -185,6 +182,39 @@ func (r RemoteRepo) MatchesDeployment(baseURL string, cloud bool) bool {
 	default:
 		return false
 	}
+}
+
+// SameDeployment reports whether two Bitbucket HTTP(S) base URLs (for example,
+// a web PR URL's deployment base and a configured API server base URL) refer to
+// the same Bitbucket installation. On Bitbucket Cloud, `api.bitbucket.org` and
+// `bitbucket.org` map to the same deployment on the default HTTPS port.
+func SameDeployment(urlA, urlB string, cloud bool) bool {
+	a, err := url.Parse(strings.TrimSpace(urlA))
+	if err != nil || a.Hostname() == "" {
+		return false
+	}
+	b, err := url.Parse(strings.TrimSpace(urlB))
+	if err != nil || b.Hostname() == "" {
+		return false
+	}
+	if !strings.EqualFold(normalizeDeploymentHost(a.Hostname(), cloud), normalizeDeploymentHost(b.Hostname(), cloud)) {
+		return false
+	}
+	if effectiveHTTPPort(strings.ToLower(a.Scheme), a.Port()) != effectiveHTTPPort(strings.ToLower(b.Scheme), b.Port()) {
+		return false
+	}
+	if cloud {
+		return true
+	}
+	return strings.Trim(a.Path, "/") == strings.Trim(b.Path, "/")
+}
+
+func normalizeDeploymentHost(host string, cloud bool) string {
+	h := strings.ToLower(strings.TrimSpace(host))
+	if cloud && h == "api.bitbucket.org" {
+		return "bitbucket.org"
+	}
+	return h
 }
 
 func effectiveHTTPPort(scheme, port string) string {

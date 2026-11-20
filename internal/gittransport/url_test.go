@@ -206,3 +206,25 @@ func TestSanitizeRemoteURL(t *testing.T) {
 		}
 	}
 }
+
+func TestSameDeployment(t *testing.T) {
+	tests := []struct {
+		a, b  string
+		cloud bool
+		want  bool
+	}{
+		{"https://bitbucket.org", "https://api.bitbucket.org", true, true},
+		{"https://bitbucket.org", "https://api.bitbucket.org/2.0", true, true},
+		{"https://bitbucket.org", "https://bb.corp.internal", false, false},
+		{"https://bb.corp.internal", "https://api.bitbucket.org", true, false},
+		{"https://bb.corp.internal:8443/dc1", "https://bb.corp.internal:8443/dc1", false, true},
+		{"https://bb.corp.internal:8443/dc1", "https://bb.corp.internal:8443/dc2", false, false},
+		{"https://bb.corp.internal:8443", "https://bb.corp.internal:9443", false, false},
+		{"https://bb.corp.internal:443", "https://bb.corp.internal", false, true},
+	}
+	for _, tc := range tests {
+		if got := SameDeployment(tc.a, tc.b, tc.cloud); got != tc.want {
+			t.Errorf("SameDeployment(%q, %q, cloud=%v) = %v, want %v", tc.a, tc.b, tc.cloud, got, tc.want)
+		}
+	}
+}
